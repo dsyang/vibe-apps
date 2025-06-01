@@ -61,27 +61,18 @@ The application is configured to only deploy to production when changes are push
    - Vercel automatically deploys to production
    - Production URL updates with new changes
 
-### Vercel Project Settings
+### Vercel Project Configuration
 
-Optimal settings for this Vite project:
+Vercel automatically detects and configures optimal settings for Vite projects. However, you can customize these settings if needed:
 
-```json
-{
-  "framework": "vite",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
-  "nodeVersion": "18.x",
-  "git": {
-    "productionBranch": "production",
-    "deploymentEnabled": {
-      "production": true,
-      "main": false,
-      "feature/*": false
-    }
-  }
-}
-```
+1. Go to your project's Settings in the Vercel dashboard
+2. Under "Build & Development Settings":
+   - Framework Preset: Vite
+   - Build Command: `npm run build` (or your custom build command)
+   - Output Directory: `dist` (default for Vite)
+   - Install Command: `npm install` (or your package manager's install command)
+
+For most Vite projects, the automatic configuration will work without any changes. If you need to override these settings, use the Vercel dashboard rather than manual JSON configuration.
 
 ### Custom Domains
 
@@ -101,4 +92,52 @@ npm run build
 
 # Preview production build
 npm run preview
-``` 
+```
+
+## Local CLI Deployment
+
+You can deploy directly from your local machine using the Vercel CLI:
+
+### Setup
+
+1. Install Vercel CLI locally:
+   ```bash
+   npm install -D vercel
+   ```
+
+2. Login and link your project:
+   ```bash
+   # Login to Vercel
+   npx vercel login
+
+   # Link your project
+   npx vercel link
+
+   # Pull environment variables
+   npx vercel env pull .env.local
+   ```
+
+### Deployment Commands
+
+1. **Local Development**
+   ```bash
+   # Start local development server with Vercel features
+   npx vercel dev
+   ```
+
+2. **Preview Deployment**
+   ```bash
+   # Deploy to preview environment
+   npx vercel
+
+   # Deploy to specific environment (if you have custom environments)
+   npx vercel deploy --target=environment-name
+   ```
+
+3. **Production Deployment**
+   ```bash
+   # Deploy to production
+   npx vercel --prod
+   ```
+
+Each preview deployment will get a unique URL for testing. Production deployments will update your production domain if the deployment is successful. 

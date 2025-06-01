@@ -18,22 +18,26 @@ function About() {
     <div className="max-w-2xl mx-auto">
       <h1 className="text-4xl font-bold text-gray-900 mb-4">About</h1>
       <p className="text-gray-600">
-        This is the about page of your application. You can customize this content as needed.
+        This was created by Dan with the help of Cursor.
       </p>
     </div>
   );
 }
 
-function App() {
+interface AppProps {
+  RouterComponent?: typeof Router;
+}
+
+function App({ RouterComponent = Router }: AppProps) {
   return (
-    <Router>
+    <RouterComponent>
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
         </Routes>
       </Layout>
-    </Router>
+    </RouterComponent>
   );
 }
 
