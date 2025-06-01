@@ -4,8 +4,7 @@ This guide outlines the contribution workflow and guidelines for this project.
 
 ## AI Assistant Guidelines
 
-- Do not create commits automatically, please ask for my permission before doing that. 
-- When you run tests, use the command `npm test run` so that the command terminates after your tests.
+- see the cursor rules files
 
 ### Workflow Instructions
 
