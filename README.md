@@ -2,6 +2,11 @@
 
 A modern React application with TypeScript, Tailwind CSS, and Vite.
 
+## Ideas
+
+- A feature similar to Instagram Stories for sharing with family members who are not on Instagram.
+- A clone of [time.is](https://time.is) for precise time tracking.
+
 ## Development
 
 ```bash
