@@ -13,4 +13,4 @@ describe('App', () => {
     expect(screen.getByText(/Home/i)).toBeInTheDocument();
     expect(screen.getByText(/About/i)).toBeInTheDocument();
   });
-}); 
+});

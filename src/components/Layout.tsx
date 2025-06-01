@@ -16,31 +16,18 @@ export function Layout({ children }: LayoutProps) {
                 <span className="font-semibold text-gray-500 text-lg">Your App</span>
               </Link>
             </div>
-            <div className="hidden md:flex items-center space-x-3">
-              <Link to="/" className="py-2 px-2 font-medium text-gray-500 hover:text-gray-900">Home</Link>
-              <Link to="/about" className="py-2 px-2 font-medium text-gray-500 hover:text-gray-900">About</Link>
-            </div>
-            {/* Mobile menu button */}
-            <div className="md:hidden flex items-center">
-              <button className="outline-none mobile-menu-button">
-                <svg className="w-6 h-6 text-gray-500 hover:text-gray-900"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path d="M4 6h16M4 12h16M4 18h16"></path>
-                </svg>
-              </button>
+            <div className="flex items-center space-x-3">
+              <Link to="/" className="py-2 px-2 font-medium text-gray-500 hover:text-gray-900">
+                Home
+              </Link>
+              <Link to="/about" className="py-2 px-2 font-medium text-gray-500 hover:text-gray-900">
+                About
+              </Link>
             </div>
           </div>
         </div>
       </nav>
-      <main className="container mx-auto px-4 py-8">
-        {children}
-      </main>
+      <main className="container mx-auto px-4 py-8">{children}</main>
     </div>
   );
-} 
+}

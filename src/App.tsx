@@ -6,7 +6,8 @@ function Home() {
     <div className="max-w-2xl mx-auto">
       <h1 className="text-4xl font-bold text-gray-900 mb-4">Welcome to Your App</h1>
       <p className="text-gray-600">
-        This is a modern React application built with TypeScript, featuring responsive design and testing capabilities.
+        This is a modern React application built with TypeScript, featuring responsive design and
+        testing capabilities.
       </p>
     </div>
   );
