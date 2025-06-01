@@ -20,7 +20,7 @@ describe('App', () => {
     
     // Verify About page content is shown
     expect(screen.getByRole('heading', { name: /About/i })).toBeInTheDocument();
-    expect(screen.getByText(/This is the about page/i)).toBeInTheDocument();
+    expect(screen.getByText(/This was created by Dan with the help of Cursor/i)).toBeInTheDocument();
   });
 
   it('renders about page directly when navigated to /about', () => {
@@ -32,7 +32,7 @@ describe('App', () => {
       />
     );
     expect(screen.getByRole('heading', { name: /About/i })).toBeInTheDocument();
-    expect(screen.getByText(/This is the about page/i)).toBeInTheDocument();
+    expect(screen.getByText(/This was created by Dan with the help of Cursor/i)).toBeInTheDocument();
   });
 
   it('navigates back to home page when clicking Home link from about page', async () => {
