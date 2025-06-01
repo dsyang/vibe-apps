@@ -24,16 +24,20 @@ function About() {
   );
 }
 
-function App() {
+interface AppProps {
+  RouterComponent?: typeof Router;
+}
+
+function App({ RouterComponent = Router }: AppProps) {
   return (
-    <Router>
+    <RouterComponent>
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
         </Routes>
       </Layout>
-    </Router>
+    </RouterComponent>
   );
 }
 
