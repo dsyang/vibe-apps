@@ -2,33 +2,40 @@
 
 ## Vercel Deployment
 
-### Quick Deploy
+### Production Deployment Configuration
 
-1. Push your code to GitHub
-2. Go to [Vercel](https://vercel.com)
-3. Import your repository
-4. Vercel will automatically detect it's a Vite app and configure the build settings
-5. Click "Deploy"
+The application is configured to only deploy to production when changes are pushed to the `production` branch.
 
-### Branch Deployments
+1. Go to [Vercel](https://vercel.com)
+2. Import your repository
+3. In Project Settings > Git:
+   - Set Production Branch to: `production`
+   - Disable auto-deployment for other branches
+4. Click "Save"
 
-We use the following branching strategy:
+### Branch Strategy
 
-- `main` - Production branch
-  - Automatically deploys to production URL
+- `production` - Production branch
+  - Only branch that deploys to production URL
   - Requires pull request review
   - Contains stable, tested code
 
+- `main` - Development branch
+  - Main development branch
+  - No automatic deployments
+  - Used for feature integration
+
 - `feature/*` - Feature branches
-  - Gets preview deployments
-  - Use for individual features
-  - Example: `feature/user-profile`
+  - Created from `main`
+  - No automatic deployments
+  - Merge to `main` first, then to `production`
 
 ### Deployment Process
 
 1. **Feature Development**
    ```bash
-   # Create new feature branch
+   # Create new feature branch from main
+   git checkout main
    git checkout -b feature/new-feature
    
    # Make changes and commit
@@ -38,18 +45,20 @@ We use the following branching strategy:
    # Push to GitHub
    git push origin feature/new-feature
    ```
-   - Vercel automatically creates a preview deployment
-   - Preview URL will be available in GitHub PR
 
-2. **Pull Request**
-   - Create PR to `main`
-   - Review preview deployment
+2. **Integration to Main**
+   - Create PR from `feature/new-feature` to `main`
    - Get code review
    - Merge when approved
 
 3. **Production Deployment**
-   - Merging to `main` triggers production deployment
-   - Vercel automatically builds and deploys
+   ```bash
+   # After feature is tested in main
+   git checkout production
+   git merge main
+   git push origin production
+   ```
+   - Vercel automatically deploys to production
    - Production URL updates with new changes
 
 ### Vercel Project Settings
@@ -62,7 +71,15 @@ Optimal settings for this Vite project:
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
-  "nodeVersion": "18.x"
+  "nodeVersion": "18.x",
+  "git": {
+    "productionBranch": "production",
+    "deploymentEnabled": {
+      "production": true,
+      "main": false,
+      "feature/*": false
+    }
+  }
 }
 ```
 
