@@ -13,7 +13,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="flex justify-between items-center h-16">
             <div className="flex space-x-7">
               <Link to="/" className="flex items-center py-4 px-2">
-                <span className="font-semibold text-gray-500 text-lg">Your App</span>
+                <span className="font-semibold text-gray-500 text-lg">Vibe Apps</span>
               </Link>
             </div>
             <div className="flex items-center space-x-3">
