@@ -1,3 +1,81 @@
+# Vibe Apps
+
+A modern React application with TypeScript, Tailwind CSS, and Vite.
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Run tests
+npm test
+
+# Lint code
+npm run lint
+```
+
+## Production Build
+
+```bash
+# Create production build
+npm run build
+
+# Preview production build locally
+npm run preview
+```
+
+## Deployment
+
+### Option 1: Vercel (Recommended)
+
+1. Push your code to GitHub
+2. Go to [Vercel](https://vercel.com)
+3. Import your repository
+4. Vercel will automatically detect it's a Vite app and configure the build settings
+5. Click "Deploy"
+
+### Option 2: Netlify
+
+1. Push your code to GitHub
+2. Go to [Netlify](https://netlify.com)
+3. Import your repository
+4. Configure build settings:
+   - Build command: `npm run build`
+   - Publish directory: `dist`
+5. Click "Deploy"
+
+### Option 3: Manual Deployment
+
+The `dist` folder contains the production build. You can deploy these files to any static hosting service:
+
+- Amazon S3
+- GitHub Pages
+- Any static file host
+
+## Environment Variables
+
+Create a `.env` file for environment-specific variables:
+
+```env
+VITE_API_URL=your_api_url_here
+```
+
+Note: Only variables prefixed with `VITE_` will be exposed to your application.
+
+## Tech Stack
+
+- React
+- TypeScript
+- Tailwind CSS
+- Vite
+- Vitest
+- ESLint
+- Prettier
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
