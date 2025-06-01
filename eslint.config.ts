@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint';
 import prettier from 'eslint-plugin-prettier';
 import eslintConfigPrettier from 'eslint-config-prettier';
 
-export default tseslint.config(
+const config = tseslint.config(
   { ignores: ['dist'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -31,10 +31,7 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       'prettier/prettier': 'error',
       '@typescript-eslint/no-unused-vars': 'error',
       '@typescript-eslint/no-explicit-any': 'warn',
@@ -64,5 +61,7 @@ export default tseslint.config(
       'prettier/prettier': 'error',
     },
   },
-  eslintConfigPrettier,
-); 
+  eslintConfigPrettier
+);
+
+export default config;
