@@ -54,8 +54,10 @@ def generate_index(tools):
     tools_html = ""
     for tool in sorted(tools, key=lambda t: t["title"].lower()):
         tools_html += f"""        <li class="tool-item">
-            <h2><a href="{tool['path']}">{tool['title']}</a></h2>
-            <p>{tool['description']}</p>
+            <a href="{tool['path']}" class="tool-link">
+                <h2>{tool['title']}</h2>
+                <p>{tool['description']}</p>
+            </a>
         </li>
 """
 
@@ -116,19 +118,31 @@ def generate_index(tools):
         .tool-item {{
             border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 1rem 1.25rem;
             margin-bottom: 1rem;
             background: var(--card-bg);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }}
+        .tool-item:hover {{
+            border-color: var(--link);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }}
+        @media (prefers-color-scheme: dark) {{
+            .tool-item:hover {{
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            }}
+        }}
+        .tool-link {{
+            display: block;
+            padding: 1rem 1.25rem;
+            color: inherit;
+            text-decoration: none;
         }}
         .tool-item h2 {{
             margin: 0 0 0.5rem 0;
             font-size: 1.25rem;
-        }}
-        .tool-item a {{
             color: var(--link);
-            text-decoration: none;
         }}
-        .tool-item a:hover {{
+        .tool-item:hover h2 {{
             color: var(--link-hover);
             text-decoration: underline;
         }}
