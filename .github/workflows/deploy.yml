@@ -28,13 +28,15 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Build index from tools
+        run: python3 build.py
+
       - name: Build site
         run: |
-          # Create _site directory with all content
           mkdir -p _site
 
-          # Copy all HTML files
-          cp -r *.html _site/ 2>/dev/null || true
+          # Copy generated index
+          cp index.html _site/
 
           # Copy tools directory
           cp -r tools/ _site/tools/ 2>/dev/null || true

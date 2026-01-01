@@ -12,7 +12,7 @@ A collection of small, single-file HTML tools built with AI assistance. Inspired
 ## Adding a New Tool
 
 1. Create a new `.html` file in the `tools/` directory
-2. Use this basic template:
+2. Include these required meta tags for the index to pick up your tool:
 
 ```html
 <!DOCTYPE html>
@@ -20,6 +20,7 @@ A collection of small, single-file HTML tools built with AI assistance. Inspired
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Brief description of what the tool does">
     <title>Tool Name - Vibe Apps</title>
     <style>
         /* Your styles here */
@@ -38,16 +39,13 @@ A collection of small, single-file HTML tools built with AI assistance. Inspired
 </html>
 ```
 
-3. Add an entry to `index.html` in the tools list:
+3. Create a PR - the index page is auto-generated from your tool's metadata!
 
-```html
-<li class="tool-item">
-    <h2><a href="tools/your-tool.html">Tool Name</a></h2>
-    <p>Brief description of what the tool does</p>
-</li>
-```
-
-4. Create a PR - the tool will be deployed automatically when merged to main
+The build script (`build.py`) automatically:
+- Scans the `tools/` directory for `.html` files
+- Extracts the title from `<title>` (strips " - Vibe Apps" suffix)
+- Extracts the description from `<meta name="description">`
+- Generates `index.html` with all tools listed alphabetically
 
 ## Deployment
 
