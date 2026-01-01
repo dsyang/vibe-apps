@@ -685,6 +685,12 @@
     window.addEventListener('DOMContentLoaded', () => {
         new Game2048();
     });
+
+    // Prevent accidental navigation (especially from swipe gestures on mobile)
+    window.addEventListener('beforeunload', (e) => {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome requires returnValue to be set
+    });
 </script>
 
 </body>
