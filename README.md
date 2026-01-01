@@ -1,137 +1,83 @@
 # Vibe Apps
 
-A modern React application with TypeScript, Tailwind CSS, and Vite.
+A collection of small, single-file HTML tools built with AI assistance. Inspired by [tools.simonwillison.net](https://tools.simonwillison.net).
 
-## Ideas
+## Philosophy
 
-- A feature similar to Instagram Stories for sharing with family members who are not on Instagram.
-- A clone of [time.is](https://time.is) for precise time tracking.
+- **Single-file design**: Each tool is a self-contained HTML file with inline CSS and JavaScript
+- **No build step**: No React, no bundlers - just HTML you can open in a browser
+- **CDN dependencies**: When needed, load libraries from CDNs like cdnjs or jsDelivr
+- **Keep it small**: A few hundred lines per tool for maintainability
 
-## Development
+## Adding a New Tool
 
-```bash
-# Install dependencies
-npm install
+1. Create a new `.html` file in the `tools/` directory
+2. Use this basic template:
 
-# Start development server
-npm run dev
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Name - Vibe Apps</title>
+    <style>
+        /* Your styles here */
+    </style>
+</head>
+<body>
+    <a href="../">&larr; Back to all tools</a>
+    <h1>Tool Name</h1>
 
-# Run tests
-npm test
+    <!-- Your tool UI here -->
 
-# Lint code
-npm run lint
+    <script>
+        // Your JavaScript here
+    </script>
+</body>
+</html>
 ```
 
-## Production Build
+3. Add an entry to `index.html` in the tools list:
 
-```bash
-# Create production build
-npm run build
-
-# Preview production build locally
-npm run preview
+```html
+<li class="tool-item">
+    <h2><a href="tools/your-tool.html">Tool Name</a></h2>
+    <p>Brief description of what the tool does</p>
+</li>
 ```
+
+4. Create a PR - the tool will be deployed automatically when merged to main
 
 ## Deployment
 
-### Option 1: Vercel (Recommended)
+The site automatically deploys to GitHub Pages when PRs are merged to `main`.
 
-1. Push your code to GitHub
-2. Go to [Vercel](https://vercel.com)
-3. Import your repository
-4. Vercel will automatically detect it's a Vite app and configure the build settings
-5. Click "Deploy"
+- **Build**: Runs on every push and PR
+- **Deploy**: Only deploys on merge to `main`
+- **URL**: `https://dsyang.github.io/vibe-apps/`
 
-### Option 2: Netlify
+### Enabling GitHub Pages (one-time setup)
 
-1. Push your code to GitHub
-2. Go to [Netlify](https://netlify.com)
-3. Import your repository
-4. Configure build settings:
-   - Build command: `npm run build`
-   - Publish directory: `dist`
-5. Click "Deploy"
+1. Go to repository Settings → Pages
+2. Under "Build and deployment", set Source to "GitHub Actions"
 
-### Option 3: Manual Deployment
+## Tips for Vibe Coding Tools
 
-The `dist` folder contains the production build. You can deploy these files to any static hosting service:
+From [Simon Willison's tips](https://simonwillison.net/2025/Dec/10/html-tools/):
 
-- Amazon S3
-- GitHub Pages
-- Any static file host
+- **Start with AI**: Use Claude Artifacts or similar to prototype quickly
+- **Say "No React"**: Keep prompts simple to avoid unnecessary complexity
+- **URL persistence**: Store state in URL params for sharing/bookmarking
+- **LocalStorage for secrets**: Keep API keys client-side
+- **File handling**: Use `<input type="file">` for local processing
+- **Copy-paste interface**: Use clipboard operations for input/output
 
-## Environment Variables
+## Ideas
 
-Create a `.env` file for environment-specific variables:
+- A feature similar to Instagram Stories for sharing with family members who are not on Instagram
+- A clone of [time.is](https://time.is) for precise time tracking
 
-```env
-VITE_API_URL=your_api_url_here
-```
+## License
 
-Note: Only variables prefixed with `VITE_` will be exposed to your application.
-
-## Tech Stack
-
-- React
-- TypeScript
-- Tailwind CSS
-- Vite
-- Vitest
-- ESLint
-- Prettier
-
-# React + TypeScript + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+MIT

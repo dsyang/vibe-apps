@@ -1,13 +1,131 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibe Apps - Small Tools Collection</title>
+    <style>
+        :root {
+            --bg: #fafafa;
+            --text: #1a1a1a;
+            --link: #0066cc;
+            --link-hover: #004499;
+            --border: #e0e0e0;
+            --card-bg: #ffffff;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1a1a1a;
+                --text: #e0e0e0;
+                --link: #66b3ff;
+                --link-hover: #99ccff;
+                --border: #333333;
+                --card-bg: #252525;
+            }
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+            background: var(--bg);
+            color: var(--text);
+        }
+        h1 {
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 2rem;
+        }
+        @media (prefers-color-scheme: dark) {
+            .subtitle {
+                color: #999;
+            }
+        }
+        .tools-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .tool-item {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            background: var(--card-bg);
+        }
+        .tool-item h2 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.25rem;
+        }
+        .tool-item a {
+            color: var(--link);
+            text-decoration: none;
+        }
+        .tool-item a:hover {
+            color: var(--link-hover);
+            text-decoration: underline;
+        }
+        .tool-item p {
+            margin: 0;
+            color: #666;
+            font-size: 0.95rem;
+        }
+        @media (prefers-color-scheme: dark) {
+            .tool-item p {
+                color: #999;
+            }
+        }
+        footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.9rem;
+            color: #666;
+        }
+        @media (prefers-color-scheme: dark) {
+            footer {
+                color: #999;
+            }
+        }
+        footer a {
+            color: var(--link);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #666;
+        }
+        @media (prefers-color-scheme: dark) {
+            .empty-state {
+                color: #999;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Vibe Apps</h1>
+    <p class="subtitle">Small single-file HTML tools, built with AI assistance</p>
+
+    <ul class="tools-list" id="tools-list">
+        <!-- Tools will be listed here -->
+        <li class="tool-item">
+            <h2><a href="tools/word-counter.html">Word Counter</a></h2>
+            <p>Count words, characters, sentences, and paragraphs in text</p>
+        </li>
+    </ul>
+
+    <footer>
+        <p>
+            Built with help from AI. Inspired by
+            <a href="https://tools.simonwillison.net" target="_blank" rel="noopener">tools.simonwillison.net</a>.
+            View source on <a href="https://github.com/dsyang/vibe-apps" target="_blank" rel="noopener">GitHub</a>.
+        </p>
+    </footer>
+</body>
 </html>
