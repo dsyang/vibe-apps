@@ -10,7 +10,6 @@ Each tool should have:
 import os
 import re
 from pathlib import Path
-from datetime import datetime
 
 TOOLS_DIR = Path("tools")
 INDEX_FILE = Path("index.html")
