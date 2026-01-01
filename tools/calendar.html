@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Calendar 2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@import url('https://fonts.bunny.net/css?family=oswald:300,400');
+
+@media print {
+  @page {
+    margin: 0;
+  }
+  
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  
+  body {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+  
+  .year-title {
+    font-size: 7pt !important;
+    margin: 0 !important;
+    flex-shrink: 0;
+  }
+  
+  .quarters {
+    flex: 1;
+    height: 100% !important;
+    min-height: 0;
+    gap: 0 !important;
+  }
+  
+  .quarter {
+    overflow: hidden;
+    min-height: 0;
+    box-sizing: border-box;
+  }
+  
+  /* Top-left: more padding on right and bottom (fold lines) */
+  .quarter:nth-child(1) {
+    padding: 2mm 5mm 5mm 2mm !important;
+  }
+  
+  /* Top-right: more padding on left and bottom (fold lines) */
+  .quarter:nth-child(2) {
+    padding: 2mm 2mm 5mm 5mm !important;
+  }
+  
+  /* Bottom-left: more padding on right and top (fold lines) */
+  .quarter:nth-child(3) {
+    padding: 5mm 5mm 2mm 2mm !important;
+  }
+  
+  /* Bottom-right: more padding on left and top (fold lines) */
+  .quarter:nth-child(4) {
+    padding: 5mm 2mm 2mm 5mm !important;
+  }
+  
+  table {
+    height: 100%;
+    border-spacing: 1mm 0 !important;
+  }
+  
+  th {
+    font-size: 5pt !important;
+    padding: 0.3mm 0 !important;
+  }
+  
+  td {
+    font-size: 4pt !important;
+    padding: 0.2mm 0.3mm !important;
+    line-height: 1 !important;
+    border-bottom-width: 0.5px !important;
+  }
+  
+  .date, .day {
+    width: auto !important;
+  }
+  
+  .weekend {
+    background: #d8d8d8 !important;
+  }
+}
+
+html {
+  font-family: 'Oswald', system-ui, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 1em;
+  box-sizing: border-box;
+}
+
+.year-title {
+  margin: 0 0 0.3em 0;
+  text-align: center;
+  font-size: 1.2em;
+  font-weight: 400;
+}
+
+.quarters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 1em;
+  height: 100%;
+}
+
+.quarter {
+  display: flex;
+  flex-direction: column;
+}
+
+table {
+  width: 100%;
+  flex: 1;
+  border-collapse: separate;
+  border-spacing: 0.3em 0;
+}
+
+td, th {
+  font-weight: normal;
+  text-transform: uppercase;
+  padding: 0.2em 0.3em;
+  font-size: 11px;
+  font-weight: 300;
+  color: #000;
+}
+
+th {
+  font-size: 12px;
+  font-weight: 400;
+  border-bottom: 1px solid #888;
+  text-align: center;
+}
+
+td {
+  border-bottom: 1px solid #888;
+}
+
+td:empty {
+  border-bottom: none;
+}
+
+.date {
+  display: inline-block;
+  width: 1.5em;
+  text-align: right;
+}
+
+.day {
+  display: inline-block;
+  text-align: center;
+  width: 1em;
+  color: #888;
+}
+
+.weekend {
+  background: #eee;
+  font-weight: 400;
+}
+
+* {
+  color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+</style>
+</head>
+<body>
+
+<div class="quarters" id="quarters"></div>
+
+<script>
+const year = 2026;
+const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const dayLetters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+// Check for leap year
+if ((year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0)) {
+  daysInMonth[1] = 29;
+}
+
+function getDayOfWeek(year, month, day) {
+  return new Date(year, month, day).getDay(); // 0 = Sunday, 6 = Saturday
+}
+
+function isWeekend(year, month, day) {
+  const dow = getDayOfWeek(year, month, day);
+  return dow === 0 || dow === 6;
+}
+
+function buildQuarter(startMonth) {
+  const quarter = document.createElement('div');
+  quarter.className = 'quarter';
+  
+  const title = document.createElement('p');
+  title.className = 'year-title';
+  title.textContent = '2026';
+  quarter.appendChild(title);
+  
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  
+  for (let i = 0; i < 3; i++) {
+    const th = document.createElement('th');
+    th.textContent = monthNames[startMonth + i];
+    headerRow.appendChild(th);
+  }
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+  
+  const tbody = document.createElement('tbody');
+  
+  // Simple 1-31 rows
+  for (let day = 1; day <= 31; day++) {
+    const tr = document.createElement('tr');
+    
+    for (let i = 0; i < 3; i++) {
+      const month = startMonth + i;
+      const td = document.createElement('td');
+      
+      if (day <= daysInMonth[month]) {
+        const dayLetter = dayLetters[getDayOfWeek(year, month, day)];
+        td.innerHTML = `<span class="date">${day}</span> <span class="day">${dayLetter}</span>`;
+        if (isWeekend(year, month, day)) {
+          td.className = 'weekend';
+        }
+      }
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  
+  table.appendChild(tbody);
+  quarter.appendChild(table);
+  return quarter;
+}
+
+const container = document.getElementById('quarters');
+container.appendChild(buildQuarter(0));  // Q1: Jan, Feb, Mar
+container.appendChild(buildQuarter(3));  // Q2: Apr, May, Jun
+container.appendChild(buildQuarter(6));  // Q3: Jul, Aug, Sep
+container.appendChild(buildQuarter(9));  // Q4: Oct, Nov, Dec
+</script>
+
+</body>
+</html>
