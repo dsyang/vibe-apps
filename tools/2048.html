@@ -186,6 +186,45 @@
         font-size: 14px;
         text-align: center;
         line-height: 1.6;
+        margin-bottom: 20px;
+    }
+
+    .virtual-controls {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+        margin: 0 auto;
+        justify-content: center;
+    }
+
+    .virtual-controls button {
+        flex: 1;
+        max-width: 80px;
+        font-size: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 8px;
+        min-height: 60px;
+        gap: 2px;
+    }
+
+    .virtual-controls button .key {
+        font-size: 12px;
+        opacity: 0.7;
+    }
+
+    @media (max-width: 400px) {
+        .virtual-controls button {
+            max-width: none;
+            padding: 10px 5px;
+            font-size: 18px;
+        }
+        
+        .virtual-controls button .key {
+            font-size: 10px;
+        }
     }
 
     @media (max-width: 520px) {
@@ -240,7 +279,26 @@
     </div>
 
     <div class="instructions">
-        <strong>How to play:</strong> Use arrow keys or swipe to move tiles. Tiles with the same number merge into one when they touch. Add them up to reach 2048!
+        <strong>How to play:</strong> Use arrow keys, swipe, or buttons below to move tiles. Tiles with the same number merge into one when they touch. Add them up to reach 2048!
+    </div>
+
+    <div class="virtual-controls">
+        <button id="btnLeft" aria-label="Move left">
+            <div>◀</div>
+            <div class="key">h</div>
+        </button>
+        <button id="btnDown" aria-label="Move down">
+            <div>▼</div>
+            <div class="key">j</div>
+        </button>
+        <button id="btnUp" aria-label="Move up">
+            <div>▲</div>
+            <div class="key">k</div>
+        </button>
+        <button id="btnRight" aria-label="Move right">
+            <div>▶</div>
+            <div class="key">l</div>
+        </button>
     </div>
 </div>
 
@@ -276,31 +334,83 @@
             document.addEventListener('keydown', (e) => {
                 if (this.gameOver) return;
                 
-                const key = e.key;
-                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
+                const key = e.key.toLowerCase();
+                const keyMap = {
+                    'arrowup': 'ArrowUp',
+                    'arrowdown': 'ArrowDown',
+                    'arrowleft': 'ArrowLeft',
+                    'arrowright': 'ArrowRight',
+                    'k': 'ArrowUp',
+                    'j': 'ArrowDown',
+                    'h': 'ArrowLeft',
+                    'l': 'ArrowRight'
+                };
+                
+                if (keyMap[key]) {
                     e.preventDefault();
-                    this.move(key);
+                    this.move(keyMap[key]);
                 }
             });
 
-            // Touch controls
+            // Touch controls on game area
             let touchStartX = 0;
             let touchStartY = 0;
-            let touchEndX = 0;
-            let touchEndY = 0;
 
-            this.gridElement.addEventListener('touchstart', (e) => {
-                touchStartX = e.changedTouches[0].screenX;
-                touchStartY = e.changedTouches[0].screenY;
+            const gameContainer = document.querySelector('.game-container');
+            
+            gameContainer.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
             }, { passive: true });
 
-            this.gridElement.addEventListener('touchend', (e) => {
+            gameContainer.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+
+            gameContainer.addEventListener('touchend', (e) => {
                 if (this.gameOver) return;
                 
-                touchEndX = e.changedTouches[0].screenX;
-                touchEndY = e.changedTouches[0].screenY;
-                this.handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+                const minSwipeDistance = 30;
+
+                if (Math.abs(deltaX) < minSwipeDistance && Math.abs(deltaY) < minSwipeDistance) {
+                    return;
+                }
+
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    // Horizontal swipe
+                    if (deltaX > 0) {
+                        this.move('ArrowRight');
+                    } else {
+                        this.move('ArrowLeft');
+                    }
+                } else {
+                    // Vertical swipe
+                    if (deltaY > 0) {
+                        this.move('ArrowDown');
+                    } else {
+                        this.move('ArrowUp');
+                    }
+                }
             }, { passive: true });
+
+            // Virtual button controls
+            document.getElementById('btnUp').addEventListener('click', () => {
+                if (!this.gameOver) this.move('ArrowUp');
+            });
+            document.getElementById('btnDown').addEventListener('click', () => {
+                if (!this.gameOver) this.move('ArrowDown');
+            });
+            document.getElementById('btnLeft').addEventListener('click', () => {
+                if (!this.gameOver) this.move('ArrowLeft');
+            });
+            document.getElementById('btnRight').addEventListener('click', () => {
+                if (!this.gameOver) this.move('ArrowRight');
+            });
 
             // New game button
             document.getElementById('newGame').addEventListener('click', () => this.newGame());
