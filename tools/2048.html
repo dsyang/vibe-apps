@@ -13,7 +13,6 @@
             box-sizing: border-box;
         }
 
-```
     body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
         background: #faf8ef;
@@ -250,7 +249,6 @@
         }
     }
 </style>
-```
 
 </head>
 <body>
@@ -263,7 +261,6 @@
             </div>
         </div>
 
-```
     <div class="controls">
         <button id="newGame">New Game</button>
     </div>
@@ -310,15 +307,20 @@
             this.grid = [];
             this.score = 0;
             this.gameOver = false;
-            
+            this.storageKey = 'game2048-state';
+
             this.gridElement = document.getElementById('grid');
             this.tileContainer = document.getElementById('tileContainer');
             this.scoreElement = document.getElementById('score');
             this.gameOverOverlay = document.getElementById('gameOverOverlay');
-            
+
             this.setupGrid();
             this.setupEventListeners();
-            this.newGame();
+
+            // Load saved game or start new game
+            if (!this.loadGame()) {
+                this.newGame();
+            }
         }
 
         setupGrid() {
@@ -450,11 +452,46 @@
             this.gameOver = false;
             this.scoreElement.textContent = '0';
             this.gameOverOverlay.classList.remove('active');
-            
+
+            // Clear saved game from localStorage
+            localStorage.removeItem(this.storageKey);
+
             // Add two initial tiles
             this.addRandomTile();
             this.addRandomTile();
             this.render();
+            this.saveGame();
+        }
+
+        saveGame() {
+            const gameState = {
+                grid: this.grid,
+                score: this.score,
+                gameOver: this.gameOver
+            };
+            localStorage.setItem(this.storageKey, JSON.stringify(gameState));
+        }
+
+        loadGame() {
+            const savedState = localStorage.getItem(this.storageKey);
+            if (savedState) {
+                try {
+                    const gameState = JSON.parse(savedState);
+                    this.grid = gameState.grid;
+                    this.score = gameState.score;
+                    this.gameOver = gameState.gameOver;
+                    this.scoreElement.textContent = this.score;
+                    if (this.gameOver) {
+                        this.gameOverOverlay.classList.add('active');
+                    }
+                    this.render();
+                    return true;
+                } catch (e) {
+                    console.error('Failed to load saved game:', e);
+                    return false;
+                }
+            }
+            return false;
         }
 
         addRandomTile() {
@@ -497,11 +534,14 @@
             if (moved) {
                 this.addRandomTile();
                 this.render();
-                
+
                 if (!this.canMove()) {
                     this.gameOver = true;
                     this.gameOverOverlay.classList.add('active');
                 }
+
+                // Save game state after each move
+                this.saveGame();
             }
         }
 
@@ -688,8 +728,13 @@
     window.addEventListener('DOMContentLoaded', () => {
         new Game2048();
     });
+
+    // Prevent accidental navigation (especially from swipe gestures on mobile)
+    window.addEventListener('beforeunload', (e) => {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome requires returnValue to be set
+    });
 </script>
-```
 
 </body>
 </html>
