@@ -7,7 +7,6 @@ Each tool should have:
 - A <meta name="description" content="..."> tag
 """
 
-import os
 import re
 from pathlib import Path
 
