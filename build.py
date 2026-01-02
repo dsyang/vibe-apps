@@ -66,7 +66,7 @@ def generate_index(tools):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Small Tools - Small Tools Collection</title>
+    <title>Small Tools Collection</title>
     <style>
         :root {{
             --bg: #fafafa;
