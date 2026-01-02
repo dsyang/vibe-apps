@@ -150,13 +150,14 @@
 <script>
     const timezones = [
         { name: 'Local', zone: Intl.DateTimeFormat().resolvedOptions().timeZone },
-        { name: 'New York', zone: 'America/New_York' },
+        { name: 'Honolulu', zone: 'Pacific/Honolulu' },
         { name: 'Los Angeles', zone: 'America/Los_Angeles' },
+        { name: 'Chicago', zone: 'America/Chicago' },
+        { name: 'New York', zone: 'America/New_York' },
         { name: 'London', zone: 'Europe/London' },
         { name: 'Tokyo', zone: 'Asia/Tokyo' },
-        { name: 'Sydney', zone: 'Australia/Sydney' },
-        { name: 'Dubai', zone: 'Asia/Dubai' },
-        { name: 'Singapore', zone: 'Asia/Singapore' }
+        { name: 'Taipei', zone: 'Asia/Taipei' },
+        { name: 'Sydney', zone: 'Australia/Sydney' }
     ];
 
     let currentTimezone = timezones[0];
