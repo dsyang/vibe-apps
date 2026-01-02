@@ -3,7 +3,7 @@
 Build script to generate index.html from tools in the tools/ directory.
 
 Each tool should have:
-- A <title> tag (will strip " - Vibe Apps" suffix)
+- A <title> tag (will strip " - Small Tools" suffix)
 - A <meta name="description" content="..."> tag
 """
 
@@ -21,8 +21,8 @@ def extract_metadata(html_path):
     title_match = re.search(r"<title>(.+?)</title>", content, re.IGNORECASE)
     if title_match:
         title = title_match.group(1)
-        # Remove " - Vibe Apps" suffix if present
-        title = re.sub(r"\s*-\s*Vibe Apps$", "", title, flags=re.IGNORECASE)
+        # Remove " - Small Tools" suffix if present
+        title = re.sub(r"\s*-\s*Small Tools$", "", title, flags=re.IGNORECASE)
     else:
         title = html_path.stem.replace("-", " ").title()
 
@@ -66,7 +66,7 @@ def generate_index(tools):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vibe Apps - Small Tools Collection</title>
+    <title>Small Tools - Small Tools Collection</title>
     <style>
         :root {{
             --bg: #fafafa;
@@ -186,7 +186,7 @@ def generate_index(tools):
     </style>
 </head>
 <body>
-    <h1>Vibe Apps</h1>
+    <h1>Small Tools</h1>
     <p class="subtitle">Small single-file HTML tools, built with AI assistance</p>
 
     <ul class="tools-list">

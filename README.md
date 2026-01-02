@@ -1,4 +1,4 @@
-# Vibe Apps
+# Small Tools
 
 A collection of small, single-file HTML tools built with AI assistance. Inspired by [tools.simonwillison.net](https://tools.simonwillison.net).
 
@@ -21,7 +21,7 @@ A collection of small, single-file HTML tools built with AI assistance. Inspired
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Brief description of what the tool does">
-    <title>Tool Name - Vibe Apps</title>
+    <title>Tool Name - Small Tools</title>
     <style>
         /* Your styles here */
     </style>
@@ -43,7 +43,7 @@ A collection of small, single-file HTML tools built with AI assistance. Inspired
 
 The build script (`build.py`) automatically:
 - Scans the `tools/` directory for `.html` files
-- Extracts the title from `<title>` (strips " - Vibe Apps" suffix)
+- Extracts the title from `<title>` (strips " - Small Tools" suffix)
 - Extracts the description from `<meta name="description">`
 - Generates `index.html` with all tools listed alphabetically
 
