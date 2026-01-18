@@ -1,10 +1,11 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0">
     <meta name="description" content="Multi-touch random selector - tap the screen with multiple fingers to randomly choose one">
-    <title>Chwazi Clone</title>
+    <title>Pick 1</title>
     <style>
         * {
             margin: 0;
@@ -14,149 +15,148 @@
             user-select: none;
         }
 
-        body {
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            touch-action: none;
-        }
+```
+    body {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        touch-action: none;
+    }
 
-        #touch-area {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
+    #touch-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
 
-        .instructions {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: white;
-            font-size: 24px;
-            font-weight: 300;
-            pointer-events: none;
-            transition: opacity 0.3s;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
+    .instructions {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: white;
+        font-size: 24px;
+        font-weight: 300;
+        pointer-events: none;
+        transition: opacity 0.3s;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
 
-        .instructions small {
-            display: block;
-            margin-top: 10px;
-            font-size: 14px;
-            opacity: 0.8;
-        }
+    .instructions small {
+        display: block;
+        margin-top: 10px;
+        font-size: 14px;
+        opacity: 0.8;
+    }
 
-        .instructions.hidden {
-            opacity: 0;
-        }
+    .instructions.hidden {
+        opacity: 0;
+    }
 
-        .touch-counter {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: white;
-            font-size: 18px;
-            font-weight: 500;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
+    .touch-counter {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
+        font-size: 18px;
+        font-weight: 500;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
 
-        .touch-counter.show {
-            opacity: 1;
-        }
+    .touch-counter.show {
+        opacity: 1;
+    }
 
-        .countdown {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 150px;
-            font-weight: bold;
-            color: white;
-            pointer-events: none;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
+    .countdown {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 150px;
+        font-weight: bold;
+        color: white;
+        pointer-events: none;
+        text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
 
-        .countdown.show {
-            opacity: 1;
-        }
+    .countdown.show {
+        opacity: 1;
+    }
 
-        .countdown.pulse {
-            animation: countdownPulse 0.3s ease-out;
-        }
+    .countdown.pulse {
+        animation: countdownPulse 0.3s ease-out;
+    }
 
-        @keyframes countdownPulse {
-            0% {
-                transform: translate(-50%, -50%) scale(1.3);
-            }
-            100% {
-                transform: translate(-50%, -50%) scale(1);
-            }
+    @keyframes countdownPulse {
+        0% {
+            transform: translate(-50%, -50%) scale(1.3);
         }
+        100% {
+            transform: translate(-50%, -50%) scale(1);
+        }
+    }
 
-        .touch-point {
-            position: absolute;
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            border: 3px solid rgba(255, 255, 255, 0.8);
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            transition: all 0.2s;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
-        }
+    .touch-point {
+        position: absolute;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        transition: all 0.2s;
+    }
 
-        .touch-point.winner {
-            background: rgba(255, 215, 0, 0.8);
-            border: 4px solid gold;
-            width: 120px;
-            height: 120px;
-            box-shadow: 0 0 40px rgba(255, 215, 0, 0.9), 0 0 80px rgba(255, 215, 0, 0.5);
-            animation: winnerPulse 0.5s ease-out;
-        }
+    .touch-point.winner {
+        width: 120px;
+        height: 120px;
+        animation: winnerPulse 0.5s ease-out;
+        filter: brightness(1.2) saturate(1.3);
+    }
 
-        .touch-point.loser {
-            opacity: 0.2;
-            transform: translate(-50%, -50%) scale(0.7);
-        }
+    .touch-point.loser {
+        opacity: 0.15;
+        transform: translate(-50%, -50%) scale(0.7);
+        filter: saturate(0.5);
+    }
 
-        @keyframes winnerPulse {
-            0%, 100% {
-                transform: translate(-50%, -50%) scale(1);
-            }
-            50% {
-                transform: translate(-50%, -50%) scale(1.3);
-            }
+    @keyframes winnerPulse {
+        0%, 100% {
+            transform: translate(-50%, -50%) scale(1);
         }
+        50% {
+            transform: translate(-50%, -50%) scale(1.3);
+        }
+    }
 
-        .reset-hint {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: white;
-            font-size: 14px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-        }
+    .reset-hint {
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
+        font-size: 14px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none;
+    }
 
-        .reset-hint.show {
-            opacity: 0.7;
-        }
-    </style>
+    .reset-hint.show {
+        opacity: 0.7;
+    }
+</style>
+```
+
 </head>
 <body>
     <div id="touch-area"></div>
@@ -168,219 +168,245 @@
     <div class="countdown" id="countdown">3</div>
     <div class="reset-hint" id="reset-hint">Tap anywhere to reset</div>
 
-    <script>
-        const touchArea = document.getElementById('touch-area');
-        const instructions = document.getElementById('instructions');
-        const touchCounter = document.getElementById('touch-counter');
-        const countdownEl = document.getElementById('countdown');
-        const resetHint = document.getElementById('reset-hint');
+```
+<script>
+    const touchArea = document.getElementById('touch-area');
+    const instructions = document.getElementById('instructions');
+    const touchCounter = document.getElementById('touch-counter');
+    const countdownEl = document.getElementById('countdown');
+    const resetHint = document.getElementById('reset-hint');
 
-        let touches = new Map();
-        let touchElements = new Map();
-        let hasWinner = false;
-        let countdownTimer = null;
-        let currentCount = 3;
-        let desktopClickId = 0;
+    // Vibrant, distinct colors for touch points
+    const colors = [
+        { bg: 'rgba(255, 107, 107, 0.6)', border: '#ff6b6b', shadow: 'rgba(255, 107, 107, 0.5)' },  // Red
+        { bg: 'rgba(78, 205, 196, 0.6)', border: '#4ecdc4', shadow: 'rgba(78, 205, 196, 0.5)' },   // Teal
+        { bg: 'rgba(255, 217, 61, 0.6)', border: '#ffd93d', shadow: 'rgba(255, 217, 61, 0.5)' },   // Yellow
+        { bg: 'rgba(149, 117, 205, 0.6)', border: '#9575cd', shadow: 'rgba(149, 117, 205, 0.5)' }, // Purple
+        { bg: 'rgba(255, 154, 139, 0.6)', border: '#ff9a8b', shadow: 'rgba(255, 154, 139, 0.5)' }, // Coral
+        { bg: 'rgba(100, 181, 246, 0.6)', border: '#64b5f6', shadow: 'rgba(100, 181, 246, 0.5)' }, // Blue
+        { bg: 'rgba(129, 199, 132, 0.6)', border: '#81c784', shadow: 'rgba(129, 199, 132, 0.5)' }, // Green
+        { bg: 'rgba(255, 138, 101, 0.6)', border: '#ff8a65', shadow: 'rgba(255, 138, 101, 0.5)' }, // Orange
+        { bg: 'rgba(240, 98, 146, 0.6)', border: '#f06292', shadow: 'rgba(240, 98, 146, 0.5)' },   // Pink
+        { bg: 'rgba(38, 198, 218, 0.6)', border: '#26c6da', shadow: 'rgba(38, 198, 218, 0.5)' },   // Cyan
+    ];
 
-        const COUNTDOWN_INTERVAL = 1000; // 1 second per count
+    let touches = new Map();
+    let touchElements = new Map();
+    let colorIndex = 0;
+    let hasWinner = false;
+    let countdownTimer = null;
+    let currentCount = 3;
+    let desktopClickId = 0;
 
-        function updateTouchCounter() {
-            const count = touches.size;
-            touchCounter.textContent = count === 1 ? '1 finger' : `${count} fingers`;
-            
-            if (count > 0) {
-                touchCounter.classList.add('show');
-                instructions.classList.add('hidden');
-            } else {
-                touchCounter.classList.remove('show');
-                instructions.classList.remove('hidden');
-            }
-        }
+    const COUNTDOWN_INTERVAL = 1000;
 
-        function createTouchElement(x, y, id) {
-            const el = document.createElement('div');
-            el.className = 'touch-point';
-            el.style.left = x + 'px';
-            el.style.top = y + 'px';
-            document.body.appendChild(el);
-            touchElements.set(id, el);
-            return el;
-        }
+    function getNextColor() {
+        const color = colors[colorIndex % colors.length];
+        colorIndex++;
+        return color;
+    }
 
-        function removeTouchElement(id) {
-            const el = touchElements.get(id);
-            if (el) {
-                el.remove();
-                touchElements.delete(id);
-            }
-        }
-
-        function startCountdown() {
-            // Reset countdown to 3
-            currentCount = 3;
-            countdownEl.textContent = currentCount;
-            countdownEl.classList.add('show');
-            
-            // Trigger pulse animation
-            countdownEl.classList.remove('pulse');
-            void countdownEl.offsetWidth;
-            countdownEl.classList.add('pulse');
-            
-            // Clear any existing timer
-            clearInterval(countdownTimer);
-            
-            // Start the countdown
-            countdownTimer = setInterval(() => {
-                currentCount--;
-                
-                if (currentCount > 0) {
-                    countdownEl.textContent = currentCount;
-                    countdownEl.classList.remove('pulse');
-                    void countdownEl.offsetWidth;
-                    countdownEl.classList.add('pulse');
-                } else {
-                    clearInterval(countdownTimer);
-                    countdownEl.classList.remove('show');
-                    selectWinner();
-                }
-            }, COUNTDOWN_INTERVAL);
-        }
-
-        function stopCountdown() {
-            clearInterval(countdownTimer);
-            countdownTimer = null;
-            currentCount = 3;
-            countdownEl.classList.remove('show');
-            countdownEl.classList.remove('pulse');
-        }
-
-        function onTouchChange() {
-            updateTouchCounter();
-            
-            if (hasWinner) return;
-            
-            if (touches.size >= 2) {
-                // Start or restart countdown
-                startCountdown();
-            } else {
-                // Stop countdown if less than 2 touches
-                stopCountdown();
-            }
-        }
-
-        function selectWinner() {
-            const touchArray = Array.from(touches.values());
-            if (touchArray.length === 0) {
-                reset();
-                return;
-            }
-            
-            hasWinner = true;
+    function updateTouchCounter() {
+        const count = touches.size;
+        touchCounter.textContent = count === 1 ? '1 finger' : `${count} fingers`;
+        
+        if (count > 0) {
+            touchCounter.classList.add('show');
+            instructions.classList.add('hidden');
+        } else {
             touchCounter.classList.remove('show');
-            const winner = touchArray[Math.floor(Math.random() * touchArray.length)];
-            
-            touchElements.forEach((el, id) => {
-                if (id === winner.id) {
-                    el.classList.add('winner');
-                } else {
-                    el.classList.add('loser');
-                }
-            });
-            
-            resetHint.classList.add('show');
-        }
-
-        function reset() {
-            hasWinner = false;
-            stopCountdown();
-            touches.clear();
-            touchElements.forEach(el => el.remove());
-            touchElements.clear();
             instructions.classList.remove('hidden');
-            touchCounter.classList.remove('show');
-            countdownEl.textContent = '3';
-            resetHint.classList.remove('show');
-            desktopClickId = 0;
         }
+    }
 
-        // Touch events
-        touchArea.addEventListener('touchstart', (e) => {
-            e.preventDefault();
+    function createTouchElement(x, y, id) {
+        const color = getNextColor();
+        const el = document.createElement('div');
+        el.className = 'touch-point';
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.style.background = color.bg;
+        el.style.border = `3px solid ${color.border}`;
+        el.style.boxShadow = `0 0 25px ${color.shadow}, 0 0 50px ${color.shadow}`;
+        el.dataset.color = JSON.stringify(color);
+        document.body.appendChild(el);
+        touchElements.set(id, el);
+        return el;
+    }
+
+    function removeTouchElement(id) {
+        const el = touchElements.get(id);
+        if (el) {
+            el.remove();
+            touchElements.delete(id);
+        }
+    }
+
+    function startCountdown() {
+        currentCount = 3;
+        countdownEl.textContent = currentCount;
+        countdownEl.classList.add('show');
+        
+        countdownEl.classList.remove('pulse');
+        void countdownEl.offsetWidth;
+        countdownEl.classList.add('pulse');
+        
+        clearInterval(countdownTimer);
+        
+        countdownTimer = setInterval(() => {
+            currentCount--;
             
-            if (hasWinner) {
-                reset();
-                return;
+            if (currentCount > 0) {
+                countdownEl.textContent = currentCount;
+                countdownEl.classList.remove('pulse');
+                void countdownEl.offsetWidth;
+                countdownEl.classList.add('pulse');
+            } else {
+                clearInterval(countdownTimer);
+                countdownEl.classList.remove('show');
+                selectWinner();
             }
-            
-            for (let touch of e.changedTouches) {
+        }, COUNTDOWN_INTERVAL);
+    }
+
+    function stopCountdown() {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+        currentCount = 3;
+        countdownEl.classList.remove('show');
+        countdownEl.classList.remove('pulse');
+    }
+
+    function onTouchChange() {
+        updateTouchCounter();
+        
+        if (hasWinner) return;
+        
+        if (touches.size >= 2) {
+            startCountdown();
+        } else {
+            stopCountdown();
+        }
+    }
+
+    function selectWinner() {
+        const touchArray = Array.from(touches.values());
+        if (touchArray.length === 0) {
+            reset();
+            return;
+        }
+        
+        hasWinner = true;
+        touchCounter.classList.remove('show');
+        const winner = touchArray[Math.floor(Math.random() * touchArray.length)];
+        
+        touchElements.forEach((el, id) => {
+            if (id === winner.id) {
+                el.classList.add('winner');
+                // Enhance the winner's glow
+                const color = JSON.parse(el.dataset.color);
+                el.style.boxShadow = `0 0 40px ${color.shadow}, 0 0 80px ${color.shadow}, 0 0 120px ${color.shadow}`;
+            } else {
+                el.classList.add('loser');
+            }
+        });
+        
+        resetHint.classList.add('show');
+    }
+
+    function reset() {
+        hasWinner = false;
+        stopCountdown();
+        touches.clear();
+        touchElements.forEach(el => el.remove());
+        touchElements.clear();
+        instructions.classList.remove('hidden');
+        touchCounter.classList.remove('show');
+        countdownEl.textContent = '3';
+        resetHint.classList.remove('show');
+        desktopClickId = 0;
+        colorIndex = 0;
+    }
+
+    // Touch events
+    touchArea.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        
+        if (hasWinner) {
+            reset();
+            return;
+        }
+        
+        for (let touch of e.changedTouches) {
+            touches.set(touch.identifier, {
+                id: touch.identifier,
+                x: touch.clientX,
+                y: touch.clientY
+            });
+            createTouchElement(touch.clientX, touch.clientY, touch.identifier);
+        }
+        
+        onTouchChange();
+    });
+
+    touchArea.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        
+        if (hasWinner) return;
+        
+        for (let touch of e.changedTouches) {
+            if (touches.has(touch.identifier)) {
                 touches.set(touch.identifier, {
                     id: touch.identifier,
                     x: touch.clientX,
                     y: touch.clientY
                 });
-                createTouchElement(touch.clientX, touch.clientY, touch.identifier);
-            }
-            
-            onTouchChange();
-        });
-
-        touchArea.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            
-            if (hasWinner) return;
-            
-            for (let touch of e.changedTouches) {
-                if (touches.has(touch.identifier)) {
-                    touches.set(touch.identifier, {
-                        id: touch.identifier,
-                        x: touch.clientX,
-                        y: touch.clientY
-                    });
-                    
-                    const el = touchElements.get(touch.identifier);
-                    if (el) {
-                        el.style.left = touch.clientX + 'px';
-                        el.style.top = touch.clientY + 'px';
-                    }
+                
+                const el = touchElements.get(touch.identifier);
+                if (el) {
+                    el.style.left = touch.clientX + 'px';
+                    el.style.top = touch.clientY + 'px';
                 }
             }
-        });
+        }
+    });
 
-        touchArea.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            
-            if (hasWinner) return;
-            
-            for (let touch of e.changedTouches) {
-                touches.delete(touch.identifier);
-                removeTouchElement(touch.identifier);
-            }
-            
-            onTouchChange();
-        });
+    touchArea.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        
+        if (hasWinner) return;
+        
+        for (let touch of e.changedTouches) {
+            touches.delete(touch.identifier);
+            removeTouchElement(touch.identifier);
+        }
+        
+        onTouchChange();
+    });
 
-        // Mouse/click support for desktop testing
-        touchArea.addEventListener('click', (e) => {
-            if (hasWinner) {
-                reset();
-                return;
-            }
-            
-            const id = 'click-' + desktopClickId++;
-            touches.set(id, {
-                id: id,
-                x: e.clientX,
-                y: e.clientY
-            });
-            createTouchElement(e.clientX, e.clientY, id);
-            
-            onTouchChange();
+    // Mouse/click support for desktop testing
+    touchArea.addEventListener('click', (e) => {
+        if (hasWinner) {
+            reset();
+            return;
+        }
+        
+        const id = 'click-' + desktopClickId++;
+        touches.set(id, {
+            id: id,
+            x: e.clientX,
+            y: e.clientY
         });
+        createTouchElement(e.clientX, e.clientY, id);
+        
+        onTouchChange();
+    });
 
-        // Prevent context menu on long press
-        touchArea.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-        });
-    </script>
+    touchArea.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+    });
+</script>
+```
+
 </body>
 </html>
