@@ -46,6 +46,27 @@ The build script (`build.py`) automatically:
 - Extracts the title from `<title>` (strips " - Small Tools" suffix)
 - Extracts the description from `<meta name="description">`
 - Generates `index.html` with all tools listed alphabetically
+- Injects Google Analytics tracking code into all pages (index and tools)
+- Creates a `_site/` directory with processed files ready for deployment
+
+## Analytics
+
+The site includes Google Analytics (GA4) tracking to monitor page visits across all tools.
+
+### Configuration
+
+To configure your Google Analytics measurement ID:
+
+1. Open `build.py` and find the `ANALYTICS_SNIPPET` constant (around line 18)
+2. Replace `G-XXXXXXXXXX` with your actual GA4 measurement ID
+3. Run `python3 build.py` to regenerate the site with your analytics ID
+4. Commit and push the changes
+
+The analytics code is automatically injected into:
+- The main index page
+- All tool pages (current and future)
+
+This means any new tools added to the `tools/` directory will automatically have analytics tracking when the build script runs.
 
 ## Deployment
 

@@ -8,10 +8,36 @@ Each tool should have:
 """
 
 import re
+import shutil
 from pathlib import Path
 
 TOOLS_DIR = Path("tools")
 INDEX_FILE = Path("index.html")
+SITE_DIR = Path("_site")
+
+# Google Analytics GA4 tracking code
+ANALYTICS_SNIPPET = """    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-09L8FQCBH4"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-09L8FQCBH4');
+    </script>
+"""
+
+def inject_analytics(html_content):
+    """Inject Google Analytics tracking code into HTML content."""
+    # Check if analytics is already present
+    if 'googletagmanager.com/gtag/js' in html_content:
+        return html_content
+
+    # Inject before closing </head> tag
+    head_close_pattern = re.compile(r'(</head>)', re.IGNORECASE)
+    if head_close_pattern.search(html_content):
+        return head_close_pattern.sub(f'{ANALYTICS_SNIPPET}\\1', html_content)
+
+    return html_content
 
 def extract_metadata(html_path):
     """Extract title and description from an HTML file."""
@@ -67,6 +93,7 @@ def generate_index(tools):
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Small Tools Collection</title>
+{ANALYTICS_SNIPPET}
     <style>
         :root {{
             --bg: #fafafa;
@@ -207,16 +234,40 @@ def generate_index(tools):
 def main():
     tools = []
 
+    # Create _site directory structure
+    print("Creating _site directory structure...")
+    SITE_DIR.mkdir(exist_ok=True)
+    (SITE_DIR / "tools").mkdir(exist_ok=True)
+
+    # Process tool files
     if TOOLS_DIR.exists():
         for html_file in TOOLS_DIR.glob("*.html"):
             print(f"Found tool: {html_file.name}")
             metadata = extract_metadata(html_file)
             tools.append(metadata)
 
+            # Read original tool HTML
+            tool_content = html_file.read_text(encoding="utf-8")
+
+            # Inject analytics
+            tool_content_with_analytics = inject_analytics(tool_content)
+
+            # Write processed tool to _site/tools/
+            output_path = SITE_DIR / "tools" / html_file.name
+            output_path.write_text(tool_content_with_analytics, encoding="utf-8")
+            print(f"  Processed {html_file.name} -> {output_path}")
+
+    # Generate index.html with analytics
     print(f"Building index with {len(tools)} tool(s)...")
     index_content = generate_index(tools)
+
+    # Write to both root (for compatibility) and _site/
     INDEX_FILE.write_text(index_content, encoding="utf-8")
     print(f"Generated {INDEX_FILE}")
+
+    site_index = SITE_DIR / "index.html"
+    site_index.write_text(index_content, encoding="utf-8")
+    print(f"Generated {site_index}")
 
 if __name__ == "__main__":
     main()
