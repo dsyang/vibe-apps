@@ -28,20 +28,12 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Build index from tools
-        run: python3 build.py
-
       - name: Build site
         run: |
-          mkdir -p _site
+          # Build index and process tools with analytics
+          python3 build.py
 
-          # Copy generated index
-          cp index.html _site/
-
-          # Copy tools directory
-          cp -r tools/ _site/tools/ 2>/dev/null || true
-
-          # Copy .nojekyll
+          # Copy .nojekyll to _site (build.py creates _site and processes files)
           cp .nojekyll _site/
 
       - name: Upload artifact
