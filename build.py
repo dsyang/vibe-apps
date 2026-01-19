@@ -16,14 +16,13 @@ INDEX_FILE = Path("index.html")
 SITE_DIR = Path("_site")
 
 # Google Analytics GA4 tracking code
-# Replace G-XXXXXXXXXX with your actual Google Analytics measurement ID
 ANALYTICS_SNIPPET = """    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-09L8FQCBH4"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
-        gtag('config', 'G-XXXXXXXXXX');
+        gtag('config', 'G-09L8FQCBH4');
     </script>
 """
 
