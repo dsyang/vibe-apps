@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="description" content="Multi-touch random selector - tap the screen with multiple fingers to randomly choose one">
+    <title>Chwazi Clone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+    body {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        touch-action: none;
+    }
+
+    #touch-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    .instructions {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: white;
+        font-size: 24px;
+        font-weight: 300;
+        pointer-events: none;
+        transition: opacity 0.5s ease-out;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .instructions small {
+        display: block;
+        margin-top: 10px;
+        font-size: 14px;
+        opacity: 0.8;
+    }
+
+    .instructions.hidden {
+        opacity: 0;
+    }
+
+    .touch-counter {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: white;
+        font-size: 18px;
+        font-weight: 500;
+        opacity: 0;
+        transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        pointer-events: none;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        text-align: center;
+    }
+
+    .touch-counter.show {
+        opacity: 1;
+    }
+
+    .touch-counter .chance {
+        font-size: 14px;
+        opacity: 0.7;
+        margin-top: 4px;
+    }
+
+    .countdown {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.5);
+        font-size: 180px;
+        font-weight: 800;
+        color: white;
+        pointer-events: none;
+        text-shadow: 0 0 40px rgba(255,255,255,0.3);
+        opacity: 0;
+        transition: none;
+    }
+
+    .countdown.animate-in {
+        animation: countIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .countdown.animate-out {
+        animation: countOut 0.6s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards;
+    }
+
+    @keyframes countIn {
+        0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(2.5) rotate(-10deg);
+            filter: blur(20px);
+        }
+        100% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            filter: blur(0);
+        }
+    }
+
+    @keyframes countOut {
+        0% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            filter: blur(0);
+        }
+        100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.3);
+            filter: blur(10px);
+        }
+    }
+
+    .touch-point {
+        position: absolute;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        transform: translate(-50%, -50%) scale(0);
+        pointer-events: none;
+        animation: touchAppear 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    @keyframes touchAppear {
+        0% {
+            transform: translate(-50%, -50%) scale(0);
+            opacity: 0;
+        }
+        100% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+    }
+
+    .touch-point.removing {
+        animation: touchDisappear 0.3s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards;
+    }
+
+    @keyframes touchDisappear {
+        0% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+        100% {
+            transform: translate(-50%, -50%) scale(0);
+            opacity: 0;
+        }
+    }
+
+    .touch-point::after {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: -4px;
+        right: -4px;
+        bottom: -4px;
+        border-radius: 50%;
+        border: 2px solid rgba(255,255,255,0.3);
+        animation: touchPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes touchPulse {
+        0%, 100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+        50% {
+            transform: scale(1.15);
+            opacity: 0.5;
+        }
+    }
+
+    .touch-point.winner {
+        animation: winnerReveal 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        filter: brightness(1.2) saturate(1.3);
+    }
+
+    .touch-point.winner::after {
+        animation: winnerRing 1s ease-out infinite;
+    }
+
+    @keyframes winnerReveal {
+        0% {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        50% {
+            transform: translate(-50%, -50%) scale(1.5);
+        }
+        100% {
+            transform: translate(-50%, -50%) scale(1.3);
+        }
+    }
+
+    @keyframes winnerRing {
+        0% {
+            transform: scale(1);
+            opacity: 1;
+            border-width: 3px;
+        }
+        100% {
+            transform: scale(2);
+            opacity: 0;
+            border-width: 1px;
+        }
+    }
+
+    .touch-point.loser {
+        animation: loserFade 0.5s ease-out forwards;
+    }
+
+    @keyframes loserFade {
+        0% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+            filter: saturate(1);
+        }
+        100% {
+            transform: translate(-50%, -50%) scale(0.6);
+            opacity: 0.15;
+            filter: saturate(0.3);
+        }
+    }
+
+    .reset-hint {
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        color: white;
+        font-size: 14px;
+        opacity: 0;
+        transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        pointer-events: none;
+    }
+
+    .reset-hint.show {
+        opacity: 0.7;
+        transform: translateX(-50%) translateY(0);
+    }
+
+    .debug-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(255, 0, 0, 0.7);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+        display: none;
+    }
+
+    .debug-badge.show {
+        display: block;
+    }
+</style>
+```
+
+</head>
+<body>
+    <div id="touch-area"></div>
+    <div class="instructions" id="instructions">
+        Place multiple fingers on the screen
+    </div>
+    <div class="touch-counter" id="touch-counter">
+        <div class="count">0 touches</div>
+        <div class="chance"></div>
+    </div>
+    <div class="countdown" id="countdown">3</div>
+    <div class="reset-hint" id="reset-hint">Tap anywhere to reset</div>
+    <div class="debug-badge" id="debug-badge">DEBUG MODE</div>
+
+```
+<script>
+    // Set to true to enable mouse click support for desktop testing
+    const DEBUG_MODE = false;
+
+    const touchArea = document.getElementById('touch-area');
+    const instructions = document.getElementById('instructions');
+    const touchCounter = document.getElementById('touch-counter');
+    const countdownEl = document.getElementById('countdown');
+    const resetHint = document.getElementById('reset-hint');
+    const debugBadge = document.getElementById('debug-badge');
+
+    // Show debug badge and update instructions if in debug mode
+    if (DEBUG_MODE) {
+        debugBadge.classList.add('show');
+        instructions.innerHTML = 'Place multiple fingers on the screen<small>Debug: Click to add points</small>';
+    }
+
+    const colors = [
+        { bg: 'rgba(255, 107, 107, 0.6)', border: '#ff6b6b', shadow: 'rgba(255, 107, 107, 0.5)' },
+        { bg: 'rgba(78, 205, 196, 0.6)', border: '#4ecdc4', shadow: 'rgba(78, 205, 196, 0.5)' },
+        { bg: 'rgba(255, 217, 61, 0.6)', border: '#ffd93d', shadow: 'rgba(255, 217, 61, 0.5)' },
+        { bg: 'rgba(149, 117, 205, 0.6)', border: '#9575cd', shadow: 'rgba(149, 117, 205, 0.5)' },
+        { bg: 'rgba(255, 154, 139, 0.6)', border: '#ff9a8b', shadow: 'rgba(255, 154, 139, 0.5)' },
+        { bg: 'rgba(100, 181, 246, 0.6)', border: '#64b5f6', shadow: 'rgba(100, 181, 246, 0.5)' },
+        { bg: 'rgba(129, 199, 132, 0.6)', border: '#81c784', shadow: 'rgba(129, 199, 132, 0.5)' },
+        { bg: 'rgba(255, 138, 101, 0.6)', border: '#ff8a65', shadow: 'rgba(255, 138, 101, 0.5)' },
+        { bg: 'rgba(240, 98, 146, 0.6)', border: '#f06292', shadow: 'rgba(240, 98, 146, 0.5)' },
+        { bg: 'rgba(38, 198, 218, 0.6)', border: '#26c6da', shadow: 'rgba(38, 198, 218, 0.5)' },
+    ];
+
+    // State
+    let touches = new Map();           // Active touch data (id -> {id, x, y})
+    let touchElements = new Map();     // Active touch DOM elements (id -> element)
+    let pendingRemovals = new Set();   // Track elements being animated out
+    let colorIndex = 0;
+    let hasWinner = false;
+    let isSelecting = false;           // Prevent race conditions during winner selection
+    let countdownTimer = null;
+    let currentCount = 3;
+    let desktopClickId = 0;
+
+    const COUNTDOWN_INTERVAL = 1000;
+
+    function getNextColor() {
+        const color = colors[colorIndex % colors.length];
+        colorIndex++;
+        return color;
+    }
+
+    function updateTouchCounter() {
+        const count = touches.size;
+        const countEl = touchCounter.querySelector('.count');
+        const chanceEl = touchCounter.querySelector('.chance');
+        
+        countEl.textContent = count === 1 ? '1 touch' : `${count} touches`;
+        
+        if (count >= 2) {
+            const percent = (100 / count).toFixed(1);
+            chanceEl.textContent = `${percent}% chance each`;
+        } else {
+            chanceEl.textContent = '';
+        }
+        
+        if (count > 0) {
+            touchCounter.classList.add('show');
+            instructions.classList.add('hidden');
+        } else {
+            touchCounter.classList.remove('show');
+            instructions.classList.remove('hidden');
+            // Reset color index when all touches removed
+            colorIndex = 0;
+        }
+    }
+
+    function createTouchElement(x, y, id) {
+        const color = getNextColor();
+        const el = document.createElement('div');
+        el.className = 'touch-point';
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.style.background = color.bg;
+        el.style.border = `3px solid ${color.border}`;
+        el.style.boxShadow = `0 0 25px ${color.shadow}, 0 0 50px ${color.shadow}`;
+        el.dataset.color = JSON.stringify(color);
+        document.body.appendChild(el);
+        touchElements.set(id, el);
+        return el;
+    }
+
+    function removeTouchElement(id) {
+        const el = touchElements.get(id);
+        if (el && !pendingRemovals.has(id)) {
+            pendingRemovals.add(id);
+            touchElements.delete(id);
+            el.classList.add('removing');
+            
+            setTimeout(() => {
+                el.remove();
+                pendingRemovals.delete(id);
+            }, 300);
+        }
+    }
+
+    function removeAllTouchElements() {
+        // Remove active elements
+        touchElements.forEach((el, id) => {
+            el.remove();
+        });
+        touchElements.clear();
+        
+        // Also remove any elements pending removal
+        document.querySelectorAll('.touch-point').forEach(el => el.remove());
+        pendingRemovals.clear();
+    }
+
+    function animateCountdown(num) {
+        countdownEl.textContent = num;
+        countdownEl.classList.remove('animate-in', 'animate-out');
+        void countdownEl.offsetWidth;
+        countdownEl.classList.add('animate-in');
+        
+        setTimeout(() => {
+            countdownEl.classList.remove('animate-in');
+            countdownEl.classList.add('animate-out');
+        }, 700);
+    }
+
+    function startCountdown() {
+        currentCount = 3;
+        animateCountdown(currentCount);
+        
+        clearInterval(countdownTimer);
+        
+        countdownTimer = setInterval(() => {
+            currentCount--;
+            
+            if (currentCount > 0) {
+                animateCountdown(currentCount);
+            } else {
+                clearInterval(countdownTimer);
+                countdownTimer = null;
+                countdownEl.classList.remove('animate-in', 'animate-out');
+                countdownEl.style.opacity = '0';
+                selectWinner();
+            }
+        }, COUNTDOWN_INTERVAL);
+    }
+
+    function stopCountdown() {
+        if (countdownTimer) {
+            clearInterval(countdownTimer);
+            countdownTimer = null;
+        }
+        currentCount = 3;
+        countdownEl.classList.remove('animate-in', 'animate-out');
+        countdownEl.style.opacity = '0';
+    }
+
+    function onTouchChange() {
+        updateTouchCounter();
+        
+        if (hasWinner || isSelecting) return;
+        
+        if (touches.size >= 2) {
+            startCountdown();
+        } else {
+            stopCountdown();
+        }
+    }
+
+    function selectWinner() {
+        // Prevent re-entry
+        if (isSelecting || hasWinner) return;
+        isSelecting = true;
+        
+        const touchArray = Array.from(touches.values());
+        
+        // Safety check - need at least 1 touch to select winner
+        if (touchArray.length === 0) {
+            isSelecting = false;
+            reset();
+            return;
+        }
+        
+        hasWinner = true;
+        touchCounter.classList.remove('show');
+        
+        const winner = touchArray[Math.floor(Math.random() * touchArray.length)];
+        
+        // Apply winner/loser states to current elements
+        touchElements.forEach((el, id) => {
+            if (id === winner.id) {
+                el.classList.add('winner');
+                const color = JSON.parse(el.dataset.color);
+                el.style.boxShadow = `0 0 40px ${color.shadow}, 0 0 80px ${color.shadow}, 0 0 120px ${color.shadow}`;
+            } else {
+                el.classList.add('loser');
+            }
+        });
+        
+        resetHint.classList.add('show');
+        isSelecting = false;
+    }
+
+    function reset() {
+        hasWinner = false;
+        isSelecting = false;
+        stopCountdown();
+        touches.clear();
+        removeAllTouchElements();
+        instructions.classList.remove('hidden');
+        touchCounter.classList.remove('show');
+        countdownEl.textContent = '3';
+        countdownEl.style.opacity = '0';
+        resetHint.classList.remove('show');
+        desktopClickId = 0;
+        colorIndex = 0;
+    }
+
+    function addTouch(id, x, y) {
+        touches.set(id, { id, x, y });
+        createTouchElement(x, y, id);
+    }
+
+    function updateTouch(id, x, y) {
+        if (touches.has(id)) {
+            touches.set(id, { id, x, y });
+            
+            const el = touchElements.get(id);
+            if (el) {
+                el.style.left = x + 'px';
+                el.style.top = y + 'px';
+            }
+        }
+    }
+
+    function removeTouch(id) {
+        if (touches.has(id)) {
+            touches.delete(id);
+            removeTouchElement(id);
+        }
+    }
+
+    // Touch events
+    touchArea.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        
+        if (hasWinner) {
+            reset();
+            return;
+        }
+        
+        if (isSelecting) return;
+        
+        for (const touch of e.changedTouches) {
+            addTouch(touch.identifier, touch.clientX, touch.clientY);
+        }
+        
+        onTouchChange();
+    });
+
+    touchArea.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        
+        if (hasWinner || isSelecting) return;
+        
+        for (const touch of e.changedTouches) {
+            updateTouch(touch.identifier, touch.clientX, touch.clientY);
+        }
+    });
+
+    touchArea.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        
+        // Always clean up touches, even if winner selected
+        // This prevents ghost touches
+        for (const touch of e.changedTouches) {
+            removeTouch(touch.identifier);
+        }
+        
+        if (!hasWinner && !isSelecting) {
+            onTouchChange();
+        }
+    });
+
+    // Handle touch cancel (e.g., incoming call, gesture interruption)
+    touchArea.addEventListener('touchcancel', (e) => {
+        e.preventDefault();
+        
+        for (const touch of e.changedTouches) {
+            removeTouch(touch.identifier);
+        }
+        
+        if (!hasWinner && !isSelecting) {
+            onTouchChange();
+        }
+    });
+
+    // Mouse/click support for desktop testing (only in debug mode)
+    if (DEBUG_MODE) {
+        touchArea.addEventListener('click', (e) => {
+            if (hasWinner) {
+                reset();
+                return;
+            }
+            
+            if (isSelecting) return;
+            
+            const id = 'click-' + desktopClickId++;
+            addTouch(id, e.clientX, e.clientY);
+            onTouchChange();
+        });
+    }
+
+    touchArea.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+    });
+</script>
+
+</body>
+</html>
