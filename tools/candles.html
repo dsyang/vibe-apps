@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="Interactive virtual birthday candles - tap to add, tap candle to remove" />
+    <title>Birthday Candles</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+    html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        touch-action: manipulation;
+    }
+
+    body {
+        background: #000000;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+    }
+
+    #candle-container {
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 20px;
+        width: 90%;
+        flex-wrap: nowrap;
+        position: fixed;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .candle {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+        animation: appear 0.3s ease-out;
+    }
+
+    @keyframes appear {
+        from {
+            transform: scale(0) translateY(50px);
+            opacity: 0;
+        }
+        to {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .candle:active {
+        transform: scale(0.95);
+    }
+
+    .flame-container {
+        position: relative;
+        width: 40px;
+        height: 70px;
+        margin-bottom: -5px;
+    }
+
+    .flame {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 28px;
+        height: 60px;
+        background: linear-gradient(to top, #ff4500 0%, #ff6b35 20%, #ffa500 40%, #ffd700 70%, #fff8dc 100%);
+        border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+        animation: flicker 0.15s ease-in-out infinite alternate;
+        box-shadow: 
+            0 0 20px #ff6b35,
+            0 0 40px #ff8c00,
+            0 0 60px #ffa500,
+            0 0 80px rgba(255, 165, 0, 0.5);
+        filter: blur(0.5px);
+    }
+
+    .flame::before {
+        content: '';
+        position: absolute;
+        bottom: 2px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 10px;
+        height: 28px;
+        background: linear-gradient(to top, #1e90ff 0%, #4169e1 30%, #87ceeb 70%, #b0e0e6 100%);
+        border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+        animation: innerFlicker 0.1s ease-in-out infinite alternate;
+        filter: blur(0.3px);
+    }
+
+    .flame::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 24px;
+        height: 50px;
+        background: linear-gradient(to top, transparent 0%, rgba(255, 200, 50, 0.3) 50%, transparent 100%);
+        border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+        animation: outerFlicker 0.2s ease-in-out infinite alternate-reverse;
+    }
+
+    @keyframes flicker {
+        0% {
+            transform: translateX(-50%) scaleX(1) scaleY(1) rotate(-1deg);
+            opacity: 1;
+        }
+        20% {
+            transform: translateX(-51%) scaleX(0.97) scaleY(1.02) rotate(0.5deg);
+        }
+        40% {
+            transform: translateX(-49%) scaleX(1.01) scaleY(0.98) rotate(-0.5deg);
+        }
+        60% {
+            transform: translateX(-50%) scaleX(0.98) scaleY(1.03) rotate(1deg);
+        }
+        80% {
+            transform: translateX(-51%) scaleX(1.02) scaleY(0.97) rotate(-0.3deg);
+        }
+        100% {
+            transform: translateX(-50%) scaleX(0.99) scaleY(1.01) rotate(0.8deg);
+            opacity: 0.95;
+        }
+    }
+
+    @keyframes innerFlicker {
+        0% {
+            transform: translateX(-50%) scaleX(1) scaleY(1);
+            opacity: 0.9;
+        }
+        25% {
+            transform: translateX(-52%) scaleX(0.9) scaleY(1.08);
+        }
+        50% {
+            transform: translateX(-48%) scaleX(1.05) scaleY(0.95);
+        }
+        75% {
+            transform: translateX(-50%) scaleX(0.95) scaleY(1.05);
+        }
+        100% {
+            transform: translateX(-50%) scaleX(1.02) scaleY(0.98);
+            opacity: 1;
+        }
+    }
+
+    @keyframes outerFlicker {
+        0% {
+            transform: translateX(-50%) scaleX(1) scaleY(1);
+            opacity: 0.4;
+        }
+        50% {
+            transform: translateX(-50%) scaleX(1.1) scaleY(0.95);
+            opacity: 0.6;
+        }
+        100% {
+            transform: translateX(-50%) scaleX(0.95) scaleY(1.05);
+            opacity: 0.3;
+        }
+    }
+
+    .glow {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100px;
+        height: 100px;
+        background: radial-gradient(circle, rgba(255, 165, 0, 0.5) 0%, rgba(255, 100, 0, 0.2) 40%, transparent 70%);
+        border-radius: 50%;
+        animation: glowPulse 0.3s ease-in-out infinite alternate;
+        pointer-events: none;
+    }
+
+    @keyframes glowPulse {
+        0% {
+            transform: translateX(-50%) scale(1);
+            opacity: 0.5;
+        }
+        50% {
+            transform: translateX(-50%) scale(1.1);
+            opacity: 0.7;
+        }
+        100% {
+            transform: translateX(-50%) scale(1.05);
+            opacity: 0.6;
+        }
+    }
+
+    .wick {
+        width: 5px;
+        height: 15px;
+        background: linear-gradient(to top, #2c2c2c, #4a4a4a);
+        border-radius: 1px;
+    }
+
+    .wax {
+        width: 50px;
+        height: 200px;
+        background: linear-gradient(to right, #e8d5b7, #fff8e7, #e8d5b7);
+        border-radius: 3px 3px 5px 5px;
+        position: relative;
+        box-shadow: 
+            inset -3px 0 5px rgba(0, 0, 0, 0.1),
+            inset 3px 0 5px rgba(255, 255, 255, 0.3);
+    }
+
+    .wax::before {
+        content: '';
+        position: absolute;
+        top: -6px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 56px;
+        height: 18px;
+        background: linear-gradient(to bottom, #fff8e7, #e8d5b7);
+        border-radius: 50%;
+    }
+
+    .drip {
+        position: absolute;
+        width: 8px;
+        height: 15px;
+        background: linear-gradient(to right, #e8d5b7, #fff8e7);
+        border-radius: 0 0 50% 50%;
+        animation: dripMove 3s ease-in-out infinite;
+    }
+
+    @keyframes dripMove {
+        0%, 100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(5px);
+        }
+    }
+
+    #instructions {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: rgba(255, 255, 255, 0.5);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 14px;
+        text-align: center;
+        pointer-events: none;
+        transition: opacity 0.5s ease;
+    }
+
+    #counter {
+        display: none;
+    }
+
+    #rotate-message {
+        display: none;
+    }
+</style>
+```
+
+</head>
+<body>
+    <div id="rotate-message">
+        <div class="rotate-icon">📱</div>
+        <div>Please rotate your device to landscape mode</div>
+    </div>
+
+```
+<div id="instructions">Tap anywhere to add a candle • Tap a candle to remove it</div>
+<div id="candle-container"></div>
+<div id="counter">Candles: <span id="count">0</span></div>
+
+<script>
+    const container = document.getElementById('candle-container');
+    const countDisplay = document.getElementById('count');
+    const instructions = document.getElementById('instructions');
+    let candles = [];
+
+    function createCandle() {
+        const candle = document.createElement('div');
+        candle.className = 'candle';
+        
+        const dripLeft = 5 + Math.random() * 10;
+        const dripTop = 20 + Math.random() * 40;
+        
+        candle.innerHTML = `
+            <div class="flame-container">
+                <div class="glow"></div>
+                <div class="flame"></div>
+            </div>
+            <div class="wick"></div>
+            <div class="wax">
+                <div class="drip" style="left: ${dripLeft}px; top: ${dripTop}px;"></div>
+            </div>
+        `;
+
+        candle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            removeCandle(candle);
+        });
+
+        candle.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            candle.dataset.touched = 'true';
+        });
+
+        candle.addEventListener('touchend', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (candle.dataset.touched === 'true') {
+                removeCandle(candle);
+                candle.dataset.touched = 'false';
+            }
+        });
+
+        return candle;
+    }
+
+    function addCandle() {
+        const candle = createCandle();
+        candles.push(candle);
+        container.appendChild(candle);
+        updateCount();
+        updateCandleSizes();
+        
+        if (candles.length > 0) {
+            instructions.style.opacity = '0';
+        }
+    }
+
+    function removeCandle(candle) {
+        candle.style.animation = 'none';
+        candle.style.transform = 'scale(0)';
+        candle.style.opacity = '0';
+        candle.style.transition = 'all 0.1s ease';
+        
+        setTimeout(() => {
+            const index = candles.indexOf(candle);
+            if (index > -1) {
+                candles.splice(index, 1);
+            }
+            candle.remove();
+            updateCount();
+            updateCandleSizes();
+            
+            if (candles.length === 0) {
+                instructions.style.opacity = '1';
+            }
+        }, 100);
+    }
+
+    function updateCount() {
+        countDisplay.textContent = candles.length;
+    }
+
+    function updateCandleSizes() {
+        const count = candles.length;
+        let scale = 1;
+        let gap = 20;
+
+        if (count > 20) {
+            scale = 0.5;
+            gap = 8;
+        } else if (count > 15) {
+            scale = 0.6;
+            gap = 10;
+        } else if (count > 10) {
+            scale = 0.75;
+            gap = 12;
+        } else if (count > 5) {
+            scale = 0.9;
+            gap = 15;
+        }
+
+        container.style.gap = `${gap}px`;
+        
+        candles.forEach(candle => {
+            candle.style.transform = `scale(${scale})`;
+        });
+    }
+
+    document.body.addEventListener('click', (e) => {
+        if (e.target === document.body || e.target === container) {
+            addCandle();
+        }
+    });
+
+    document.body.addEventListener('touchend', (e) => {
+        if (e.target === document.body || e.target === container) {
+            e.preventDefault();
+            addCandle();
+        }
+    });
+
+    // Prevent double-tap zoom
+    document.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+    });
+
+    // Start with one candle
+    addCandle();
+</script>
+
+</body>
+</html>
