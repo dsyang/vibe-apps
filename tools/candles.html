@@ -28,16 +28,12 @@
     }
 
     #candle-container {
-        display: flex;
-        align-items: flex-end;
-        justify-content: center;
-        gap: 20px;
-        width: 90%;
-        flex-wrap: nowrap;
         position: fixed;
         bottom: 0;
-        left: 50%;
-        transform: translateX(-50%);
+        left: 0;
+        width: 100%;
+        height: 70%;
+        pointer-events: none;
     }
 
     .candle {
@@ -47,6 +43,8 @@
         cursor: pointer;
         transition: transform 0.2s ease;
         animation: appear 0.3s ease-out;
+        position: absolute;
+        pointer-events: auto;
     }
 
     @keyframes appear {
@@ -209,6 +207,30 @@
         border-radius: 1px;
     }
 
+    .smoke {
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 8px;
+        height: 8px;
+        background: rgba(150, 150, 150, 0.6);
+        border-radius: 50%;
+        animation: smokeRise 1.5s ease-out forwards;
+        pointer-events: none;
+    }
+
+    @keyframes smokeRise {
+        0% {
+            opacity: 0.8;
+            transform: translateX(-50%) translateY(0) scale(1);
+        }
+        100% {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-80px) scale(3);
+        }
+    }
+
     .wax {
         width: 50px;
         height: 200px;
@@ -264,7 +286,13 @@
     }
 
     #counter {
-        display: none;
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        color: rgba(255, 255, 255, 0.5);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 16px;
+        pointer-events: none;
     }
 
     #rotate-message {
@@ -290,6 +318,108 @@
     const countDisplay = document.getElementById('count');
     const instructions = document.getElementById('instructions');
     let candles = [];
+    let audioContext = null;
+    let analyser = null;
+    let microphone = null;
+    let isListening = false;
+
+    // Blow detection
+    async function startMicrophone() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            microphone = audioContext.createMediaStreamSource(stream);
+            microphone.connect(analyser);
+            
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            isListening = true;
+            let blowStartTime = 0;
+            const blowThreshold = 130; // volume threshold
+            const blowDuration = 300; // ms of sustained blow needed
+            
+            function detectBlow() {
+                if (!isListening) return;
+                
+                analyser.getByteFrequencyData(dataArray);
+                
+                // Get average volume
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                }
+                const average = sum / bufferLength;
+                
+                if (average > blowThreshold) {
+                    if (blowStartTime === 0) {
+                        blowStartTime = Date.now();
+                    } else if (Date.now() - blowStartTime > blowDuration) {
+                        blowOutCandles();
+                        blowStartTime = 0;
+                    }
+                } else {
+                    blowStartTime = 0;
+                }
+                
+                requestAnimationFrame(detectBlow);
+            }
+            
+            detectBlow();
+            instructions.textContent = 'Blow to extinguish • Tap to add • Tap candle to remove';
+            
+        } catch (err) {
+            console.log('Microphone access denied:', err);
+            instructions.textContent = 'Tap anywhere to add a candle • Tap a candle to remove it';
+        }
+    }
+
+    function blowOutCandles() {
+        if (candles.length === 0) return;
+        
+        candles.forEach((candle, index) => {
+            setTimeout(() => {
+                const flame = candle.querySelector('.flame');
+                const glow = candle.querySelector('.glow');
+                
+                if (flame && glow) {
+                    // Blow out animation
+                    flame.style.transition = 'all 0.3s ease-out';
+                    flame.style.transform = 'translateX(-50%) scaleY(0.1) scaleX(2)';
+                    flame.style.opacity = '0';
+                    
+                    glow.style.transition = 'all 0.3s ease-out';
+                    glow.style.opacity = '0';
+                    
+                    // Add smoke effect
+                    const smoke = document.createElement('div');
+                    smoke.className = 'smoke';
+                    candle.querySelector('.flame-container').appendChild(smoke);
+                    
+                    setTimeout(() => {
+                        smoke.remove();
+                    }, 1500);
+                }
+            }, index * 50); // Stagger the blowout
+        });
+    }
+
+    // Re-light candles by tapping on blown out ones
+    function relightCandle(candle) {
+        const flame = candle.querySelector('.flame');
+        const glow = candle.querySelector('.glow');
+        
+        if (flame && glow) {
+            flame.style.transition = 'all 0.3s ease-in';
+            flame.style.transform = '';
+            flame.style.opacity = '';
+            
+            glow.style.transition = 'all 0.3s ease-in';
+            glow.style.opacity = '';
+        }
+    }
 
     function createCandle() {
         const candle = document.createElement('div');
@@ -311,7 +441,12 @@
 
         candle.addEventListener('click', (e) => {
             e.stopPropagation();
-            removeCandle(candle);
+            const flame = candle.querySelector('.flame');
+            if (flame.style.opacity === '0') {
+                relightCandle(candle);
+            } else {
+                removeCandle(candle);
+            }
         });
 
         candle.addEventListener('touchstart', (e) => {
@@ -323,7 +458,12 @@
             e.stopPropagation();
             e.preventDefault();
             if (candle.dataset.touched === 'true') {
-                removeCandle(candle);
+                const flame = candle.querySelector('.flame');
+                if (flame.style.opacity === '0') {
+                    relightCandle(candle);
+                } else {
+                    removeCandle(candle);
+                }
                 candle.dataset.touched = 'false';
             }
         });
@@ -335,17 +475,67 @@
         const candle = createCandle();
         candles.push(candle);
         container.appendChild(candle);
+        
+        // Position candle in rows for 3D cake effect
+        repositionAllCandles();
+        
         updateCount();
-        updateCandleSizes();
         
         if (candles.length > 0) {
             instructions.style.opacity = '0';
         }
     }
 
+    function repositionAllCandles() {
+        const totalCandles = candles.length;
+        const containerWidth = window.innerWidth;
+        
+        // Define rows from front (bottom) to back (top)
+        // All anchored at bottom, back rows have smaller candles
+        const rowConfigs = [
+            { scale: 1.0, candleWidth: 70 },
+            { scale: 0.75, candleWidth: 55 },
+            { scale: 0.55, candleWidth: 42 },
+            { scale: 0.4, candleWidth: 32 },
+            { scale: 0.3, candleWidth: 25 },
+            { scale: 0.22, candleWidth: 20 },
+        ];
+        
+        // Distribute candles across rows
+        let candleIndex = 0;
+        for (let r = 0; r < rowConfigs.length && candleIndex < totalCandles; r++) {
+            const config = rowConfigs[r];
+            const maxInRow = Math.floor((containerWidth - 20) / config.candleWidth);
+            const remaining = totalCandles - candleIndex;
+            const inThisRow = Math.min(remaining, maxInRow);
+            
+            // Position candles in this row
+            for (let i = 0; i < inThisRow && candleIndex < totalCandles; i++) {
+                const candle = candles[candleIndex];
+                
+                // Evenly distribute across row with padding
+                const totalRowWidth = inThisRow * config.candleWidth;
+                const startX = (containerWidth - totalRowWidth) / 2 + config.candleWidth / 2;
+                const xPos = startX + (i * config.candleWidth);
+                
+                candle.style.left = `${xPos}px`;
+                candle.style.bottom = `0px`;
+                candle.style.transform = `translateX(-50%) scale(${config.scale})`;
+                candle.style.transformOrigin = 'bottom center';
+                candle.style.zIndex = 100 - r * 10;
+                candle.dataset.scale = config.scale;
+                
+                candleIndex++;
+            }
+        }
+    }
+
+    // Reposition on window resize
+    window.addEventListener('resize', repositionAllCandles);
+
     function removeCandle(candle) {
         candle.style.animation = 'none';
-        candle.style.transform = 'scale(0)';
+        candle.style.transform = `translateX(-50%) scale(0)`;
         candle.style.opacity = '0';
         candle.style.transition = 'all 0.1s ease';
         
@@ -355,8 +545,8 @@
                 candles.splice(index, 1);
             }
             candle.remove();
+            repositionAllCandles();
             updateCount();
-            updateCandleSizes();
             
             if (candles.length === 0) {
                 instructions.style.opacity = '1';
@@ -366,32 +556,6 @@
 
     function updateCount() {
         countDisplay.textContent = candles.length;
-    }
-
-    function updateCandleSizes() {
-        const count = candles.length;
-        let scale = 1;
-        let gap = 20;
-
-        if (count > 20) {
-            scale = 0.5;
-            gap = 8;
-        } else if (count > 15) {
-            scale = 0.6;
-            gap = 10;
-        } else if (count > 10) {
-            scale = 0.75;
-            gap = 12;
-        } else if (count > 5) {
-            scale = 0.9;
-            gap = 15;
-        }
-
-        container.style.gap = `${gap}px`;
-        
-        candles.forEach(candle => {
-            candle.style.transform = `scale(${scale})`;
-        });
     }
 
     document.body.addEventListener('click', (e) => {
@@ -414,6 +578,9 @@
 
     // Start with one candle
     addCandle();
+
+    // Start microphone
+    startMicrophone();
 </script>
 
 </body>
