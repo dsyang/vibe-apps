@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A calculator-style app for determining the correct Chinese kinship terms for extended family members using traditional characters and Taiwanese conventions." />
+    <title>親屬稱謂計算機</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --ink: #1a1410;
+            --cream: #f5f0e8;
+            --red: #c23a2e;
+            --red-dark: #9e2e24;
+            --gold: #c9a84c;
+            --gold-light: #e8d9a0;
+            --jade: #4a7c6f;
+            --jade-dark: #3a6359;
+            --warm-gray: #8c8278;
+            --paper: #ede7db;
+            --shadow: rgba(26, 20, 16, 0.12);
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: var(--cream);
+            color: var(--ink);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-image:
+                radial-gradient(circle at 20% 80%, rgba(201, 168, 76, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(194, 58, 46, 0.04) 0%, transparent 50%);
+        }
+
+        .calculator {
+            width: 100%;
+            max-width: 420px;
+            background: var(--paper);
+            border-radius: 20px;
+            box-shadow:
+                0 2px 4px var(--shadow),
+                0 8px 24px var(--shadow),
+                0 24px 48px rgba(26, 20, 16, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            overflow: hidden;
+            border: 1px solid rgba(26, 20, 16, 0.06);
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+            padding: 20px 24px 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 18px,
+                rgba(255,255,255,0.03) 18px,
+                rgba(255,255,255,0.03) 19px
+            );
+        }
+
+        .header h1 {
+            font-family: 'Noto Serif TC', serif;
+            font-weight: 900;
+            font-size: 22px;
+            color: #fff;
+            letter-spacing: 4px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 11px;
+            color: rgba(255,255,255,0.7);
+            margin-top: 4px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Display */
+        .display-area {
+            padding: 20px 24px;
+            background: linear-gradient(180deg, rgba(26,20,16,0.02) 0%, transparent 100%);
+            border-bottom: 1px solid rgba(26,20,16,0.06);
+        }
+
+        .expression {
+            font-family: 'Noto Serif TC', serif;
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--ink);
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            letter-spacing: 1px;
+            overflow-x: auto;
+            white-space: nowrap;
+            scrollbar-width: none;
+        }
+
+        .expression::-webkit-scrollbar { display: none; }
+
+        .expression .placeholder {
+            color: var(--warm-gray);
+            font-weight: 400;
+        }
+
+        .expression .de {
+            color: var(--gold);
+            margin: 0 1px;
+        }
+
+        .result-area {
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            margin-top: 8px;
+            padding-top: 12px;
+            border-top: 1px dashed rgba(26,20,16,0.1);
+        }
+
+        .result-area .label {
+            font-size: 13px;
+            color: var(--warm-gray);
+            font-weight: 300;
+        }
+
+        .result-area .result {
+            font-family: 'Noto Serif TC', serif;
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--red);
+            letter-spacing: 2px;
+            animation: resultPop 0.3s ease-out;
+        }
+
+        .result-area .result-note {
+            font-size: 12px;
+            color: var(--warm-gray);
+            margin-top: 4px;
+            font-weight: 300;
+        }
+
+        .result-area .result-pinyin {
+            font-size: 15px;
+            color: var(--jade);
+            margin-top: 2px;
+            font-weight: 400;
+            letter-spacing: 1px;
+            font-style: italic;
+        }
+
+        @keyframes resultPop {
+            0% { transform: scale(0.8); opacity: 0; }
+            60% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .result-area .error {
+            font-size: 14px;
+            color: var(--warm-gray);
+            font-style: italic;
+        }
+
+        /* Button Grid */
+        .buttons {
+            padding: 16px 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn-row {
+            display: grid;
+            gap: 10px;
+        }
+
+        .btn-row.family { grid-template-columns: repeat(4, 1fr); }
+        .btn-row.controls { grid-template-columns: repeat(4, 1fr); }
+
+        .section-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--warm-gray);
+            padding: 4px 8px 2px;
+            font-weight: 500;
+        }
+
+        button {
+            font-family: 'Noto Sans TC', sans-serif;
+            border: none;
+            cursor: pointer;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.15s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .btn-family {
+            background: #fff;
+            color: var(--ink);
+            font-size: 18px;
+            padding: 14px 4px;
+            box-shadow: 0 1px 3px var(--shadow), 0 1px 0 rgba(255,255,255,0.8) inset;
+            border: 1px solid rgba(26,20,16,0.06);
+            letter-spacing: 2px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1px;
+            line-height: 1.1;
+        }
+
+        .btn-family .en {
+            font-size: 8px;
+            letter-spacing: 0.5px;
+            color: var(--warm-gray);
+            font-weight: 400;
+        }
+
+        .btn-family:hover {
+            background: #fefcf8;
+            box-shadow: 0 2px 8px var(--shadow);
+            transform: translateY(-1px);
+        }
+
+        .btn-family:active {
+            transform: translateY(0) scale(0.97);
+            box-shadow: 0 1px 2px var(--shadow);
+            background: var(--gold-light);
+        }
+
+        .btn-de {
+            background: linear-gradient(135deg, var(--gold) 0%, #d4b255 100%);
+            color: #fff;
+            font-size: 20px;
+            padding: 14px 4px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            box-shadow: 0 2px 6px rgba(201, 168, 76, 0.3);
+        }
+
+        .btn-de:hover {
+            box-shadow: 0 4px 12px rgba(201, 168, 76, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-equals {
+            background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+            color: #fff;
+            font-size: 20px;
+            padding: 14px 4px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            box-shadow: 0 2px 6px rgba(194, 58, 46, 0.3);
+        }
+
+        .btn-equals:hover {
+            box-shadow: 0 4px 12px rgba(194, 58, 46, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-clear {
+            background: var(--jade);
+            color: #fff;
+            font-size: 13px;
+            padding: 14px 4px;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        .btn-clear:hover {
+            background: var(--jade-dark);
+        }
+
+        .btn-back {
+            background: var(--warm-gray);
+            color: #fff;
+            font-size: 16px;
+            padding: 14px 4px;
+            font-weight: 500;
+        }
+
+        .btn-back:hover {
+            background: #7a736a;
+        }
+
+        /* Spouse / In-law toggle */
+        .toggle-row {
+            display: flex;
+            gap: 8px;
+            padding: 0 4px;
+        }
+
+        .btn-toggle {
+            flex: 1;
+            background: transparent;
+            color: var(--warm-gray);
+            font-size: 11px;
+            padding: 8px 4px;
+            border: 1px solid rgba(26,20,16,0.1);
+            border-radius: 8px;
+            letter-spacing: 1px;
+        }
+
+        .btn-toggle.active {
+            background: var(--ink);
+            color: var(--cream);
+            border-color: var(--ink);
+        }
+
+        .btn-toggle:hover:not(.active) {
+            border-color: var(--ink);
+            color: var(--ink);
+        }
+
+        /* Sound toggle */
+        .sound-toggle {
+            position: absolute;
+            top: 18px;
+            right: 20px;
+            z-index: 2;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            color: #fff;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        .sound-toggle:hover {
+            background: rgba(255,255,255,0.25);
+            transform: scale(1.05);
+        }
+
+        .sound-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .sound-toggle.off {
+            opacity: 0.5;
+        }
+
+        .sound-toggle .icon-on,
+        .sound-toggle .icon-off {
+            position: absolute;
+            transition: opacity 0.2s ease;
+        }
+
+        .sound-toggle.off .icon-on { opacity: 0; }
+        .sound-toggle.off .icon-off { opacity: 1; }
+        .sound-toggle:not(.off) .icon-on { opacity: 1; }
+        .sound-toggle:not(.off) .icon-off { opacity: 0; }
+
+        /* Speaking indicator pulse */
+        .speaking-indicator {
+            display: none;
+            width: 8px;
+            height: 8px;
+            background: var(--gold);
+            border-radius: 50%;
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            animation: speakPulse 0.8s ease-in-out infinite;
+        }
+
+        .speaking-indicator.active {
+            display: block;
+        }
+
+        @keyframes speakPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.6; }
+        }
+
+        /* Footer */
+        .footer {
+            padding: 12px 24px 16px;
+            text-align: center;
+            font-size: 10px;
+            color: var(--warm-gray);
+            letter-spacing: 1px;
+            border-top: 1px solid rgba(26,20,16,0.04);
+        }
+
+        /* Responsive */
+        @media (max-width: 380px) {
+            .expression { font-size: 22px; }
+            .btn-family { font-size: 16px; padding: 12px 4px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <div class="header">
+            <h1>親屬稱謂計算機</h1>
+            <p>Family Relationship Calculator — Taiwan</p>
+            <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" title="Toggle pronunciation">
+                <span class="icon-on">🔊</span>
+                <span class="icon-off">🔇</span>
+                <span class="speaking-indicator" id="speakingDot"></span>
+            </button>
+        </div>
+
+        <div class="display-area">
+            <div class="expression" id="expression">
+                <span class="placeholder">我的⋯</span>
+            </div>
+            <div class="result-area" id="resultArea">
+                <span class="label">按下「是」來查詢稱謂</span>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <div class="section-label">家人 Family</div>
+            <div class="btn-row family">
+                <button class="btn-family" onclick="addRelation('爸爸')">爸爸<span class="en">dad</span></button>
+                <button class="btn-family" onclick="addRelation('媽媽')">媽媽<span class="en">mom</span></button>
+                <button class="btn-family" onclick="addRelation('哥哥')">哥哥<span class="en">older bro</span></button>
+                <button class="btn-family" onclick="addRelation('弟弟')">弟弟<span class="en">younger bro</span></button>
+            </div>
+            <div class="btn-row family">
+                <button class="btn-family" onclick="addRelation('姊姊')">姊姊<span class="en">older sis</span></button>
+                <button class="btn-family" onclick="addRelation('妹妹')">妹妹<span class="en">younger sis</span></button>
+                <button class="btn-family" onclick="addRelation('兒子')">兒子<span class="en">son</span></button>
+                <button class="btn-family" onclick="addRelation('女兒')">女兒<span class="en">daughter</span></button>
+            </div>
+
+            <div class="section-label" style="margin-top: 4px;">配偶 Spouse</div>
+            <div class="btn-row family">
+                <button class="btn-family" onclick="addRelation('丈夫')">丈夫<span class="en">husband</span></button>
+                <button class="btn-family" onclick="addRelation('太太')">太太<span class="en">wife</span></button>
+                <button class="btn-family" style="visibility:hidden"></button>
+                <button class="btn-family" style="visibility:hidden"></button>
+            </div>
+
+            <div class="section-label" style="margin-top: 4px;">操作 Controls</div>
+            <div class="btn-row controls">
+                <button class="btn-de" onclick="addDe()">的</button>
+                <button class="btn-equals" onclick="calculate()">是</button>
+                <button class="btn-back" onclick="backspace()">←</button>
+                <button class="btn-clear" onclick="clearAll()">清除</button>
+            </div>
+        </div>
+
+        <div class="footer">臺灣傳統親屬稱謂 · Traditional Chinese Kinship</div>
+    </div>
+
+    <script>
+    // State
+    let chain = []; // array of relation strings like ['爸爸', '爸爸']
+    let hasDe = false; // whether the last token was 的
+    let soundOn = false; // sound toggle state — off by default (needs user gesture)
+    document.getElementById('soundToggle').classList.add('off');
+
+    // ============================
+    // TEXT-TO-SPEECH (cross-platform)
+    // Single persistent Audio element to prevent overlap.
+    // Uses Google Translate TTS, falls back to Web Speech API.
+    // ============================
+    const audioEl = new Audio();
+    audioEl.volume = 1.0;
+    let speakId = 0; // monotonic ID to ignore stale callbacks
+
+    function getTTSUrl(text) {
+        const encoded = encodeURIComponent(text);
+        return `https://translate.google.com/translate_tts?ie=UTF-8&tl=zh-TW&client=tw-ob&q=${encoded}`;
+    }
+
+    function hardStop() {
+        speakId++;
+        audioEl.pause();
+        audioEl.removeAttribute('src');
+        audioEl.load(); // reset internal state fully
+        audioEl.onended = null;
+        audioEl.onerror = null;
+        if (typeof speechSynthesis !== 'undefined') {
+            try { speechSynthesis.cancel(); } catch(e) {}
+        }
+        document.getElementById('speakingDot').classList.remove('active');
+    }
+
+    function speak(text) {
+        if (!soundOn || !text) return Promise.resolve();
+
+        // Kill anything currently playing
+        hardStop();
+
+        const myId = speakId;
+        const dot = document.getElementById('speakingDot');
+
+        return new Promise((resolve) => {
+            dot.classList.add('active');
+
+            const done = () => {
+                if (myId !== speakId) return; // stale, ignore
+                dot.classList.remove('active');
+                audioEl.onended = null;
+                audioEl.onerror = null;
+                resolve();
+            };
+
+            const tryFallback = () => {
+                if (myId !== speakId) { resolve(); return; }
+                if (typeof speechSynthesis !== 'undefined') {
+                    speakFallback(text, myId).then(resolve);
+                } else {
+                    done();
+                }
+            };
+
+            try {
+                audioEl.onended = done;
+                audioEl.onerror = tryFallback;
+                audioEl.src = getTTSUrl(text);
+                audioEl.load();
+                audioEl.playbackRate = 1.4;
+
+                const playPromise = audioEl.play();
+                if (playPromise && playPromise.catch) {
+                    playPromise.catch(tryFallback);
+                }
+            } catch(e) {
+                tryFallback();
+            }
+        });
+    }
+
+    // Web Speech API fallback for desktop browsers
+    function speakFallback(text, myId) {
+        return new Promise((resolve) => {
+            if (myId !== speakId) { resolve(); return; }
+            try {
+                speechSynthesis.cancel();
+                const utter = new SpeechSynthesisUtterance(text);
+                utter.lang = 'zh-TW';
+                utter.rate = 1.3;
+
+                const dot = document.getElementById('speakingDot');
+                dot.classList.add('active');
+
+                utter.onend = () => {
+                    if (myId !== speakId) { resolve(); return; }
+                    dot.classList.remove('active');
+                    resolve();
+                };
+                utter.onerror = () => {
+                    dot.classList.remove('active');
+                    resolve();
+                };
+                speechSynthesis.speak(utter);
+            } catch(e) {
+                resolve();
+            }
+        });
+    }
+
+    function toggleSound() {
+        soundOn = !soundOn;
+        const btn = document.getElementById('soundToggle');
+        if (soundOn) {
+            btn.classList.remove('off');
+        } else {
+            btn.classList.add('off');
+            hardStop();
+        }
+    }
+
+    // ============================
+    // COMPREHENSIVE RELATIONSHIP MAP
+    // Keys are chains joined by '的', values are [title, note, pinyin]
+    // ============================
+    const RELATIONS = {
+        // === SELF's parents ===
+        '爸爸': ['爸爸', '父親', 'bàba'],
+        '媽媽': ['媽媽', '母親', 'māma'],
+
+        // === Paternal grandparents ===
+        '爸爸的爸爸': ['爺爺', '祖父', 'yéye'],
+        '爸爸的媽媽': ['奶奶', '祖母', 'nǎinai'],
+
+        // === Maternal grandparents ===
+        '媽媽的爸爸': ['外公', '外祖父', 'wàigōng'],
+        '媽媽的媽媽': ['外婆', '外祖母', 'wàipó'],
+
+        // === Paternal great-grandparents ===
+        '爸爸的爸爸的爸爸': ['曾祖父', '太公', 'zēngzǔfù'],
+        '爸爸的爸爸的媽媽': ['曾祖母', '太婆', 'zēngzǔmǔ'],
+        '爸爸的媽媽的爸爸': ['外曾祖父', '(奶奶的父親)', 'wàizēngzǔfù'],
+        '爸爸的媽媽的媽媽': ['外曾祖母', '(奶奶的母親)', 'wàizēngzǔmǔ'],
+
+        // === Maternal great-grandparents ===
+        '媽媽的爸爸的爸爸': ['外曾祖父', '(外公的父親)', 'wàizēngzǔfù'],
+        '媽媽的爸爸的媽媽': ['外曾祖母', '(外公的母親)', 'wàizēngzǔmǔ'],
+        '媽媽的媽媽的爸爸': ['外曾外祖父', '(外婆的父親)', 'wàizēngwàizǔfù'],
+        '媽媽的媽媽的媽媽': ['外曾外祖母', '(外婆的母親)', 'wàizēngwàizǔmǔ'],
+
+        // === Father's siblings ===
+        '爸爸的哥哥': ['伯父', '伯伯', 'bófù'],
+        '爸爸的弟弟': ['叔叔', '叔父', 'shūshu'],
+        '爸爸的姊姊': ['姑姑', '姑媽', 'gūgu'],
+        '爸爸的妹妹': ['姑姑', '小姑', 'gūgu'],
+
+        // === Father's siblings' spouses ===
+        '爸爸的哥哥的太太': ['伯母', '伯娘', 'bómǔ'],
+        '爸爸的弟弟的太太': ['嬸嬸', '嬸母', 'shěnshen'],
+        '爸爸的姊姊的丈夫': ['姑丈', '姑父', 'gūzhàng'],
+        '爸爸的妹妹的丈夫': ['姑丈', '姑父', 'gūzhàng'],
+
+        // === Mother's siblings ===
+        '媽媽的哥哥': ['舅舅', '舅父', 'jiùjiu'],
+        '媽媽的弟弟': ['舅舅', '舅父', 'jiùjiu'],
+        '媽媽的姊姊': ['姨媽', '大姨', 'yímā'],
+        '媽媽的妹妹': ['阿姨', '小姨', 'āyí'],
+
+        // === Mother's siblings' spouses ===
+        '媽媽的哥哥的太太': ['舅媽', '舅母', 'jiùmā'],
+        '媽媽的弟弟的太太': ['舅媽', '舅母', 'jiùmā'],
+        '媽媽的姊姊的丈夫': ['姨丈', '姨父', 'yízhàng'],
+        '媽媽的妹妹的丈夫': ['姨丈', '姨父', 'yízhàng'],
+
+        // === Siblings ===
+        '哥哥': ['哥哥', '兄', 'gēge'],
+        '弟弟': ['弟弟', '弟', 'dìdi'],
+        '姊姊': ['姊姊', '姊', 'jiějie'],
+        '妹妹': ['妹妹', '妹', 'mèimei'],
+
+        // === Siblings' spouses ===
+        '哥哥的太太': ['嫂嫂', '嫂子', 'sǎosao'],
+        '弟弟的太太': ['弟媳', '弟妹', 'dìxí'],
+        '姊姊的丈夫': ['姊夫', '姐夫', 'jiěfū'],
+        '妹妹的丈夫': ['妹夫', '妹婿', 'mèifū'],
+
+        // === Own spouse ===
+        '丈夫': ['丈夫', '先生/老公', 'zhàngfū'],
+        '太太': ['太太', '妻子/老婆', 'tàitai'],
+
+        // === Children ===
+        '兒子': ['兒子', '子', 'érzi'],
+        '女兒': ['女兒', '女', 'nǚʼér'],
+
+        // === Children's spouses ===
+        '兒子的太太': ['媳婦', '兒媳', 'xífù'],
+        '女兒的丈夫': ['女婿', '姑爺', 'nǚxù'],
+
+        // === Grandchildren ===
+        '兒子的兒子': ['孫子', '孫兒', 'sūnzi'],
+        '兒子的女兒': ['孫女', '', 'sūnnǚ'],
+        '女兒的兒子': ['外孫', '外孫子', 'wàisūn'],
+        '女兒的女兒': ['外孫女', '', 'wàisūnnǚ'],
+
+        // === Great-grandchildren ===
+        '兒子的兒子的兒子': ['曾孫', '', 'zēngsūn'],
+        '兒子的兒子的女兒': ['曾孫女', '', 'zēngsūnnǚ'],
+        '女兒的兒子的兒子': ['外曾孫', '', 'wàizēngsūn'],
+        '女兒的女兒的女兒': ['外曾孫女', '', 'wàizēngsūnnǚ'],
+
+        // === Spouse's parents (in-laws) ===
+        '丈夫的爸爸': ['公公', '家翁', 'gōnggong'],
+        '丈夫的媽媽': ['婆婆', '家姑', 'pópo'],
+        '太太的爸爸': ['岳父', '丈人', 'yuèfù'],
+        '太太的媽媽': ['岳母', '丈母娘', 'yuèmǔ'],
+
+        // === Spouse's siblings ===
+        '丈夫的哥哥': ['大伯', '大伯子', 'dàbó'],
+        '丈夫的弟弟': ['小叔', '小叔子', 'xiǎoshū'],
+        '丈夫的姊姊': ['大姑', '大姑子', 'dàgū'],
+        '丈夫的妹妹': ['小姑', '小姑子', 'xiǎogū'],
+        '太太的哥哥': ['大舅子', '內兄', 'dàjiùzi'],
+        '太太的弟弟': ['小舅子', '內弟', 'xiǎojiùzi'],
+        '太太的姊姊': ['大姨子', '姨姊', 'dàyízi'],
+        '太太的妹妹': ['小姨子', '姨妹', 'xiǎoyízi'],
+
+        // === Spouse's siblings' spouses ===
+        '丈夫的哥哥的太太': ['大嫂', '', 'dàsǎo'],
+        '丈夫的弟弟的太太': ['弟媳', '', 'dìxí'],
+        '丈夫的姊姊的丈夫': ['大姑丈', '', 'dàgūzhàng'],
+        '丈夫的妹妹的丈夫': ['小姑丈', '', 'xiǎogūzhàng'],
+
+        // === Paternal cousins (father's brothers' children) ===
+        '爸爸的哥哥的兒子': ['堂哥/堂弟', '堂兄弟', 'tánggē / tángdì'],
+        '爸爸的哥哥的女兒': ['堂姊/堂妹', '堂姊妹', 'tángjiě / tángmèi'],
+        '爸爸的弟弟的兒子': ['堂哥/堂弟', '堂兄弟', 'tánggē / tángdì'],
+        '爸爸的弟弟的女兒': ['堂姊/堂妹', '堂姊妹', 'tángjiě / tángmèi'],
+
+        // === Paternal cousins (father's sisters' children) ===
+        '爸爸的姊姊的兒子': ['表哥/表弟', '姑表兄弟', 'biǎogē / biǎodì'],
+        '爸爸的姊姊的女兒': ['表姊/表妹', '姑表姊妹', 'biǎojiě / biǎomèi'],
+        '爸爸的妹妹的兒子': ['表哥/表弟', '姑表兄弟', 'biǎogē / biǎodì'],
+        '爸爸的妹妹的女兒': ['表姊/表妹', '姑表姊妹', 'biǎojiě / biǎomèi'],
+
+        // === Maternal cousins (mother's brothers' children) ===
+        '媽媽的哥哥的兒子': ['表哥/表弟', '舅表兄弟', 'biǎogē / biǎodì'],
+        '媽媽的哥哥的女兒': ['表姊/表妹', '舅表姊妹', 'biǎojiě / biǎomèi'],
+        '媽媽的弟弟的兒子': ['表哥/表弟', '舅表兄弟', 'biǎogē / biǎodì'],
+        '媽媽的弟弟的女兒': ['表姊/表妹', '舅表姊妹', 'biǎojiě / biǎomèi'],
+
+        // === Maternal cousins (mother's sisters' children) ===
+        '媽媽的姊姊的兒子': ['表哥/表弟', '姨表兄弟', 'biǎogē / biǎodì'],
+        '媽媽的姊姊的女兒': ['表姊/表妹', '姨表姊妹', 'biǎojiě / biǎomèi'],
+        '媽媽的妹妹的兒子': ['表哥/表弟', '姨表兄弟', 'biǎogē / biǎodì'],
+        '媽媽的妹妹的女兒': ['表姊/表妹', '姨表姊妹', 'biǎojiě / biǎomèi'],
+
+        // === Nephews & Nieces (brother's children) ===
+        '哥哥的兒子': ['姪子', '姪兒', 'zhízi'],
+        '哥哥的女兒': ['姪女', '', 'zhínǚ'],
+        '弟弟的兒子': ['姪子', '姪兒', 'zhízi'],
+        '弟弟的女兒': ['姪女', '', 'zhínǚ'],
+
+        // === Nephews & Nieces (sister's children) ===
+        '姊姊的兒子': ['外甥', '', 'wàishēng'],
+        '姊姊的女兒': ['外甥女', '', 'wàishēngnǚ'],
+        '妹妹的兒子': ['外甥', '', 'wàishēng'],
+        '妹妹的女兒': ['外甥女', '', 'wàishēngnǚ'],
+
+        // === Paternal grandparents' siblings ===
+        '爸爸的爸爸的哥哥': ['伯公', '伯祖父', 'bógōng'],
+        '爸爸的爸爸的弟弟': ['叔公', '叔祖父', 'shūgōng'],
+        '爸爸的爸爸的姊姊': ['姑婆', '姑祖母', 'gūpó'],
+        '爸爸的爸爸的妹妹': ['姑婆', '姑祖母', 'gūpó'],
+        '爸爸的媽媽的哥哥': ['舅公', '舅祖父', 'jiùgōng'],
+        '爸爸的媽媽的弟弟': ['舅公', '舅祖父', 'jiùgōng'],
+        '爸爸的媽媽的姊姊': ['姨婆', '姨祖母', 'yípó'],
+        '爸爸的媽媽的妹妹': ['姨婆', '姨祖母', 'yípó'],
+
+        // === Maternal grandparents' siblings ===
+        '媽媽的爸爸的哥哥': ['外伯公', '', 'wàibógōng'],
+        '媽媽的爸爸的弟弟': ['外叔公', '', 'wàishūgōng'],
+        '媽媽的爸爸的姊姊': ['外姑婆', '', 'wàigūpó'],
+        '媽媽的爸爸的妹妹': ['外姑婆', '', 'wàigūpó'],
+        '媽媽的媽媽的哥哥': ['外舅公', '', 'wàijiùgōng'],
+        '媽媽的媽媽的弟弟': ['外舅公', '', 'wàijiùgōng'],
+        '媽媽的媽媽的姊姊': ['外姨婆', '', 'wàiyípó'],
+        '媽媽的媽媽的妹妹': ['外姨婆', '', 'wàiyípó'],
+
+        // === Spouse's grandparents ===
+        '丈夫的爸爸的爸爸': ['爺爺', '(丈夫的祖父)', 'yéye'],
+        '丈夫的爸爸的媽媽': ['奶奶', '(丈夫的祖母)', 'nǎinai'],
+        '丈夫的媽媽的爸爸': ['外公', '(丈夫的外祖父)', 'wàigōng'],
+        '丈夫的媽媽的媽媽': ['外婆', '(丈夫的外祖母)', 'wàipó'],
+        '太太的爸爸的爸爸': ['岳祖父', '(太太的祖父)', 'yuèzǔfù'],
+        '太太的爸爸的媽媽': ['岳祖母', '(太太的祖母)', 'yuèzǔmǔ'],
+
+        // === Nephews/Nieces' children ===
+        '哥哥的兒子的兒子': ['姪孫', '', 'zhísūn'],
+        '哥哥的兒子的女兒': ['姪孫女', '', 'zhísūnnǚ'],
+        '姊姊的兒子的兒子': ['外甥孫', '', 'wàishēngsūn'],
+        '姊姊的兒子的女兒': ['外甥孫女', '', 'wàishēngsūnnǚ'],
+
+        // === Uncle/Aunt's grandchildren perspectives ===
+        '爸爸的哥哥的兒子的兒子': ['堂姪', '', 'tángzhí'],
+        '爸爸的哥哥的兒子的女兒': ['堂姪女', '', 'tángzhínǚ'],
+        '爸爸的姊姊的兒子的兒子': ['表姪', '', 'biǎozhí'],
+        '媽媽的哥哥的兒子的兒子': ['表姪', '', 'biǎozhí'],
+    };
+
+    // ============================
+    // UI Logic
+    // ============================
+
+    function updateDisplay() {
+        const expr = document.getElementById('expression');
+
+        if (chain.length === 0 && !hasDe) {
+            expr.innerHTML = '<span class="placeholder">我的⋯</span>';
+            return;
+        }
+
+        let html = '我';
+        chain.forEach((rel, i) => {
+            html += '<span class="de">的</span>' + rel;
+        });
+        if (hasDe) {
+            html += '<span class="de">的</span>⋯';
+        }
+
+        expr.innerHTML = html;
+    }
+
+    function addRelation(rel) {
+        // Only add a relation if we're at the start or after 的
+        if (chain.length === 0 || hasDe) {
+            chain.push(rel);
+            hasDe = false;
+            updateDisplay();
+            clearResult();
+            speak(rel);
+        }
+    }
+
+    function addDe() {
+        if (chain.length > 0 && !hasDe) {
+            hasDe = true;
+            updateDisplay();
+            speak('的');
+        }
+    }
+
+    function backspace() {
+        if (hasDe) {
+            hasDe = false;
+        } else if (chain.length > 0) {
+            chain.pop();
+        }
+        updateDisplay();
+        clearResult();
+    }
+
+    function clearAll() {
+        chain = [];
+        hasDe = false;
+        updateDisplay();
+        clearResult();
+        hardStop();
+    }
+
+    function clearResult() {
+        document.getElementById('resultArea').innerHTML =
+            '<span class="label">按下「是」來查詢稱謂</span>';
+    }
+
+    function calculate() {
+        if (chain.length === 0) return;
+
+        const key = chain.join('的');
+        const result = RELATIONS[key];
+        const area = document.getElementById('resultArea');
+
+        if (result) {
+            const [title, note, pinyin] = result;
+            let html = '<div>';
+            html += `<div class="result">${title}</div>`;
+            if (pinyin) {
+                html += `<div class="result-pinyin">${pinyin}</div>`;
+            }
+            if (note) {
+                html += `<div class="result-note">${note}</div>`;
+            }
+            html += '</div>';
+            area.innerHTML = html;
+
+            // Speak "是" then the result title
+            speak('是').then(() => {
+                setTimeout(() => speak(title), 150);
+            });
+        } else {
+            area.innerHTML = `<span class="error">找不到此稱謂 — 組合可能太深或不常見</span>`;
+            speak('是').then(() => {
+                setTimeout(() => speak('找不到此稱謂'), 150);
+            });
+        }
+    }
+
+    // Initialize
+    updateDisplay();
+    </script>
+</body>
+</html>
