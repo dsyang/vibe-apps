@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Mobile currency converter for USD, NTD (Taiwan Dollar), and JPY (Japanese Yen) with live rates, math expressions, and conversion history." />
+  <title>Currency Converter</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface-alt: #222632;
+      --border: #2e3345;
+      --text: #e8eaf0;
+      --text-dim: #7a8199;
+      --usd: #4ade80;
+      --ntd: #f472b6;
+      --jpy: #60a5fa;
+      --active-glow: rgba(74, 222, 128, 0.12);
+      --radius: 14px;
+    }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Instrument Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.header-date {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 16px;
+}
+
+.rates-bar {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rate-chip {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.rate-chip .val { color: var(--text); font-weight: 500; }
+
+.rate-source {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 8px;
+  font-family: 'DM Mono', monospace;
+  opacity: 0.6;
+}
+
+.rate-source.live { color: var(--usd); opacity: 1; }
+
+/* Converter */
+.converter {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.currency-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+  position: relative;
+}
+
+.currency-row.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 24px var(--active-glow);
+  background: var(--surface-alt);
+}
+
+.currency-row[data-currency="USD"] { --accent: var(--usd); --active-glow: rgba(74,222,128,0.1); }
+.currency-row[data-currency="NTD"] { --accent: var(--ntd); --active-glow: rgba(244,114,182,0.1); }
+.currency-row[data-currency="JPY"] { --accent: var(--jpy); --active-glow: rgba(96,165,250,0.1); }
+
+.activate-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  min-height: 56px;
+  border: none;
+  border-radius: 10px;
+  background: var(--surface-alt);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.activate-btn::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--text-dim);
+  transition: all 0.25s;
+}
+
+.currency-row.active .activate-btn {
+  background: var(--accent);
+}
+
+.currency-row.active .activate-btn::after {
+  border-color: var(--bg);
+  background: var(--bg);
+  box-shadow: 0 0 0 3px var(--accent);
+}
+
+.input-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 4px;
+  min-width: 0;
+}
+
+.currency-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+
+.currency-row.active .currency-label { color: var(--accent); }
+
+.currency-input {
+  font-family: 'DM Mono', monospace;
+  font-size: 22px;
+  font-weight: 500;
+  background: none;
+  border: none;
+  color: var(--text);
+  outline: none;
+  width: 100%;
+  padding: 2px 0;
+}
+
+.currency-input::placeholder {
+  color: var(--text-dim);
+  opacity: 0.4;
+}
+
+.currency-input:not(:focus) {
+  color: var(--text-dim);
+}
+
+.currency-row.active .currency-input {
+  color: var(--text) !important;
+}
+
+.flag-area {
+  display: flex;
+  align-items: center;
+  padding-right: 12px;
+  font-size: 26px;
+  flex-shrink: 0;
+}
+
+/* History */
+.history-section h2 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.clear-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clear-btn:hover { border-color: var(--text-dim); color: var(--text); }
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-item {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  animation: slideIn 0.2s ease;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.history-item:active {
+  background: var(--surface-alt);
+  border-color: var(--text-dim);
+}
+
+.history-item .from { color: var(--text); font-weight: 500; }
+.history-item .arrow { color: var(--text-dim); margin: 0 4px; }
+.history-meta { font-size: 11px; opacity: 0.45; margin-top: 4px; }
+
+.history-empty {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  opacity: 0.4;
+  text-align: center;
+  padding: 20px;
+}
+
+.math-hint {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  margin-bottom: 24px;
+  opacity: 0.5;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Prevent zoom on iOS */
+@media screen and (max-width: 768px) {
+  .currency-input { font-size: 22px; }
+}
+
+@supports (-webkit-touch-callout: none) {
+  input { font-size: 22px !important; }
+}
+
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="header-date" id="todayDate"></div>
+      <h1>💱 Currency Converter</h1>
+      <div class="rates-bar" id="ratesBar">
+        <span class="rate-chip">$1 USD = <span class="val" id="rateNTD">—</span> NTD</span>
+        <span class="rate-chip">$1 USD = <span class="val" id="rateJPY">—</span> JPY</span>
+      </div>
+      <div class="rate-source" id="rateSource">Loading rates…</div>
+    </div>
+
+```
+<div class="converter">
+  <div class="currency-row active" data-currency="USD">
+    <button class="activate-btn" aria-label="Activate USD input"></button>
+    <div class="input-area">
+      <div class="currency-label">USD</div>
+      <input class="currency-input" type="text" inputmode="text" placeholder="0" data-currency="USD" />
+    </div>
+    <div class="flag-area">🇺🇸</div>
+  </div>
+
+  <div class="currency-row" data-currency="NTD">
+    <button class="activate-btn" aria-label="Activate NTD input"></button>
+    <div class="input-area">
+      <div class="currency-label">TWD (NTD)</div>
+      <input class="currency-input" type="text" inputmode="text" placeholder="0" data-currency="NTD" />
+    </div>
+    <div class="flag-area">🇹🇼</div>
+  </div>
+
+  <div class="currency-row" data-currency="JPY">
+    <button class="activate-btn" aria-label="Activate JPY input"></button>
+    <div class="input-area">
+      <div class="currency-label">JPY</div>
+      <input class="currency-input" type="text" inputmode="text" placeholder="0" data-currency="JPY" />
+    </div>
+    <div class="flag-area">🇯🇵</div>
+  </div>
+</div>
+
+<div class="math-hint">tip: type expressions like 1500+200 or 50*3</div>
+
+<div class="history-section">
+  <h2>
+    History
+    <button class="clear-btn" id="clearHistory">clear</button>
+  </h2>
+  <div class="history-list" id="historyList">
+    <div class="history-empty">No conversions yet</div>
+  </div>
+</div>
+```
+
+  </div>
+
+  <script>
+    // --- State ---
+    let rates = { USD: 1, NTD: 32.5, JPY: 150.0 }; // fallback rates
+    let activeCurrency = 'USD';
+    let history = JSON.parse(localStorage.getItem('fx_history') || '[]');
+    let liveRates = false;
+    let debounceTimer = null;
+
+    const CURRENCY_NAMES = { USD: 'USD', NTD: 'TWD', JPY: 'JPY' };
+    const SYMBOLS = { USD: '$', NTD: 'NT$', JPY: '¥' };
+
+    // --- DOM ---
+    const rows = document.querySelectorAll('.currency-row');
+    const inputs = document.querySelectorAll('.currency-input');
+    const ratesBar = document.getElementById('ratesBar');
+    const rateNTD = document.getElementById('rateNTD');
+    const rateJPY = document.getElementById('rateJPY');
+    const rateSource = document.getElementById('rateSource');
+    const historyList = document.getElementById('historyList');
+    const clearBtn = document.getElementById('clearHistory');
+
+    // --- Date ---
+    const now = new Date();
+    document.getElementById('todayDate').textContent = now.toLocaleDateString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    // --- Fetch live rates ---
+    async function fetchRates() {
+      // Try exchangerate-api (free, no key needed for open endpoint)
+      const apis = [
+        {
+          url: 'https://open.er-api.com/v6/latest/USD',
+          parse: (d) => ({ NTD: d.rates.TWD, JPY: d.rates.JPY, USD: 1 })
+        },
+        {
+          url: 'https://api.exchangerate-api.com/v4/latest/USD',
+          parse: (d) => ({ NTD: d.rates.TWD, JPY: d.rates.JPY, USD: 1 })
+        }
+      ];
+
+      for (const api of apis) {
+        try {
+          const res = await fetch(api.url);
+          if (!res.ok) continue;
+          const data = await res.json();
+          const parsed = api.parse(data);
+          if (parsed.NTD && parsed.JPY) {
+            rates = parsed;
+            liveRates = true;
+            updateRatesDisplay();
+            return;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+
+      // Fallback
+      updateRatesDisplay();
+    }
+
+    function updateRatesDisplay() {
+      rateNTD.textContent = rates.NTD.toFixed(2);
+      rateJPY.textContent = rates.JPY.toFixed(2);
+      if (liveRates) {
+        rateSource.textContent = '● Live rates';
+        rateSource.classList.add('live');
+      } else {
+        rateSource.textContent = 'Using fallback rates (offline)';
+      }
+    }
+
+    // --- Activation ---
+    rows.forEach(row => {
+      const btn = row.querySelector('.activate-btn');
+      const input = row.querySelector('.currency-input');
+      const currency = row.dataset.currency;
+
+      btn.addEventListener('click', () => activate(currency));
+      input.addEventListener('focus', () => activate(currency));
+    });
+
+    function activate(currency) {
+      activeCurrency = currency;
+      rows.forEach(r => {
+        const isActive = r.dataset.currency === currency;
+        r.classList.toggle('active', isActive);
+        const inp = r.querySelector('.currency-input');
+        inp.readOnly = !isActive;
+        if (isActive) inp.focus();
+      });
+    }
+
+    // --- Math expression evaluator (safe) ---
+    function evalExpr(str) {
+      const cleaned = str.replace(/[^0-9+\-*/().,%\s]/g, '');
+      if (!cleaned.trim()) return NaN;
+      // Replace % with /100
+      const withPercent = cleaned.replace(/(\d+(?:\.\d+)?)\s*%/g, '($1/100)');
+      // Replace commas used as thousands separators
+      const noCommas = withPercent.replace(/,/g, '');
+      try {
+        const result = Function('"use strict"; return (' + noCommas + ')')();
+        return typeof result === 'number' && isFinite(result) ? result : NaN;
+      } catch {
+        return NaN;
+      }
+    }
+
+    // --- Conversion ---
+    function convert(fromCurrency, value) {
+      const inUSD = value / rates[fromCurrency];
+      const results = {};
+      for (const c of ['USD', 'NTD', 'JPY']) {
+        if (c === fromCurrency) continue;
+        results[c] = inUSD * rates[c];
+      }
+      return results;
+    }
+
+    function formatValue(val, currency) {
+      if (currency === 'JPY') return Math.round(val).toLocaleString('en-US');
+      return val.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    // --- Input handling ---
+    inputs.forEach(input => {
+      input.addEventListener('input', () => {
+        const currency = input.dataset.currency;
+        if (currency !== activeCurrency) return;
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          const raw = input.value;
+          const val = evalExpr(raw);
+
+          if (isNaN(val) || val === 0) {
+            inputs.forEach(inp => {
+              if (inp.dataset.currency !== activeCurrency) inp.value = '';
+            });
+            return;
+          }
+
+          const converted = convert(currency, val);
+          inputs.forEach(inp => {
+            const c = inp.dataset.currency;
+            if (c !== activeCurrency && converted[c] !== undefined) {
+              inp.value = formatValue(converted[c], c);
+            }
+          });
+        }, 150);
+      });
+
+      // Log to history on blur or Enter
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.target.blur();
+          logConversion();
+        }
+      });
+
+      input.addEventListener('blur', () => {
+        if (input.dataset.currency === activeCurrency && input.value.trim()) {
+          logConversion();
+        }
+      });
+    });
+
+    // --- History ---
+    function logConversion() {
+      const activeInput = document.querySelector(`.currency-input[data-currency="${activeCurrency}"]`);
+      const raw = activeInput.value;
+      const val = evalExpr(raw);
+      if (isNaN(val) || val === 0) return;
+
+      const converted = convert(activeCurrency, val);
+      const others = Object.entries(converted)
+        .map(([c, v]) => `${SYMBOLS[c]}${formatValue(v, c)} ${c}`)
+        .join(' · ');
+
+      const entry = {
+        from: `${SYMBOLS[activeCurrency]}${formatValue(val, activeCurrency)} ${activeCurrency}`,
+        to: others,
+        expr: raw !== formatValue(val, activeCurrency) ? raw : null,
+        time: Date.now(),
+        sourceCurrency: activeCurrency,
+        sourceValue: raw,
+        rates: { ...rates },
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      };
+
+      // Deduplicate
+      if (history.length > 0 && history[0].from === entry.from && history[0].to === entry.to) return;
+
+      history.unshift(entry);
+      if (history.length > 30) history.pop();
+      localStorage.setItem('fx_history', JSON.stringify(history));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      if (history.length === 0) {
+        historyList.innerHTML = '<div class="history-empty">No conversions yet</div>';
+        return;
+      }
+
+      historyList.innerHTML = history.map((h, i) => {
+        const exprNote = h.expr ? `<span style="opacity:0.4"> (${h.expr})</span>` : '';
+        const rateInfo = h.rates
+          ? `<div class="history-meta">${h.date || ''} · $1 = NT$${h.rates.NTD.toFixed(2)} · ¥${h.rates.JPY.toFixed(2)}</div>`
+          : '';
+        return `<div class="history-item" data-index="${i}"><span class="from">${h.from}</span>${exprNote}<span class="arrow">→</span>${h.to}${rateInfo}</div>`;
+      }).join('');
+
+      historyList.querySelectorAll('.history-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const idx = parseInt(item.dataset.index);
+          const entry = history[idx];
+          if (!entry || !entry.sourceCurrency || !entry.sourceValue) return;
+          activate(entry.sourceCurrency);
+          const activeInput = document.querySelector(`.currency-input[data-currency="${entry.sourceCurrency}"]`);
+          activeInput.value = entry.sourceValue;
+          activeInput.dispatchEvent(new Event('input'));
+        });
+      });
+    }
+
+    clearBtn.addEventListener('click', () => {
+      history = [];
+      localStorage.setItem('fx_history', '[]');
+      renderHistory();
+    });
+
+    // --- Init ---
+    activate('USD');
+    renderHistory();
+    fetchRates();
+  </script>
+
+</body>
+</html>
