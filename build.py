@@ -79,11 +79,18 @@ def generate_index(tools):
     """Generate the index.html content."""
     tools_html = ""
     for tool in sorted(tools, key=lambda t: t["title"].lower()):
-        tools_html += f"""        <li class="tool-item">
-            <a href="{tool['path']}" class="tool-link">
-                <h2>{tool['title']}</h2>
-                <p>{tool['description']}</p>
-            </a>
+        tools_html += f"""        <li class="tool-item" data-path="{tool['path']}">
+            <div class="tool-card">
+                <a href="{tool['path']}" class="tool-link">
+                    <h2>{tool['title']}</h2>
+                    <p>{tool['description']}</p>
+                </a>
+                <button class="pin-btn" aria-label="Pin {tool['title']}" title="Pin to top">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/>
+                    </svg>
+                </button>
+            </div>
         </li>
 """
 
@@ -102,6 +109,11 @@ def generate_index(tools):
             --link-hover: #004499;
             --border: #e0e0e0;
             --card-bg: #ffffff;
+            --pin-color: #aaa;
+            --pin-active-color: #f59e0b;
+            --pinned-border: #f59e0b;
+            --pinned-bg: #fffbeb;
+            --section-label: #888;
         }}
         @media (prefers-color-scheme: dark) {{
             :root {{
@@ -111,6 +123,11 @@ def generate_index(tools):
                 --link-hover: #99ccff;
                 --border: #333333;
                 --card-bg: #252525;
+                --pin-color: #666;
+                --pin-active-color: #f59e0b;
+                --pinned-border: #92610a;
+                --pinned-bg: #2a2008;
+                --section-label: #666;
             }}
         }}
         * {{
@@ -137,6 +154,17 @@ def generate_index(tools):
                 color: #999;
             }}
         }}
+        .section-label {{
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--section-label);
+            margin: 1.5rem 0 0.5rem;
+        }}
+        .section-label:first-child {{
+            margin-top: 0;
+        }}
         .tools-list {{
             list-style: none;
             padding: 0;
@@ -153,16 +181,29 @@ def generate_index(tools):
             border-color: var(--link);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }}
+        .tool-item.pinned {{
+            border-color: var(--pinned-border);
+            background: var(--pinned-bg);
+        }}
+        .tool-item.pinned:hover {{
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+        }}
         @media (prefers-color-scheme: dark) {{
             .tool-item:hover {{
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
             }}
         }}
+        .tool-card {{
+            display: flex;
+            align-items: center;
+        }}
         .tool-link {{
             display: block;
+            flex: 1;
             padding: 1rem 1.25rem;
             color: inherit;
             text-decoration: none;
+            min-width: 0;
         }}
         .tool-item h2 {{
             margin: 0 0 0.5rem 0;
@@ -182,6 +223,31 @@ def generate_index(tools):
             .tool-item p {{
                 color: #999;
             }}
+        }}
+        .pin-btn {{
+            flex-shrink: 0;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.75rem 1rem;
+            color: var(--pin-color);
+            border-radius: 0 8px 8px 0;
+            transition: color 0.15s ease, background 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+        }}
+        .tool-item:hover .pin-btn,
+        .tool-item.pinned .pin-btn {{
+            opacity: 1;
+        }}
+        .pin-btn:hover {{
+            color: var(--pin-active-color);
+            background: rgba(245, 158, 11, 0.1);
+        }}
+        .pin-btn.active {{
+            color: var(--pin-active-color);
         }}
         .empty-state {{
             text-align: center;
@@ -216,7 +282,7 @@ def generate_index(tools):
     <h1>Small Tools</h1>
     <p class="subtitle">Small single-file HTML tools, built with AI assistance</p>
 
-    <ul class="tools-list">
+    <ul class="tools-list" id="tools-list">
 {tools_html if tools_html else '        <li class="empty-state">No tools yet. Add your first tool to the tools/ directory!</li>'}
     </ul>
 
@@ -227,6 +293,102 @@ def generate_index(tools):
             View source on <a href="https://github.com/dsyang/vibe-apps" target="_blank" rel="noopener">GitHub</a>.
         </p>
     </footer>
+
+    <script>
+        (function () {{
+            var STORAGE_KEY = 'pinnedTools';
+
+            function getPinned() {{
+                try {{
+                    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                }} catch (e) {{
+                    return [];
+                }}
+            }}
+
+            function setPinned(pinned) {{
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(pinned));
+            }}
+
+            function applyPinned() {{
+                var pinned = getPinned();
+                var list = document.getElementById('tools-list');
+                var items = Array.from(list.querySelectorAll('.tool-item[data-path]'));
+
+                // Remove any existing section labels
+                list.querySelectorAll('.section-label-item').forEach(function (el) {{
+                    el.remove();
+                }});
+
+                // Separate pinned and unpinned items
+                var pinnedItems = [];
+                var unpinnedItems = [];
+
+                items.forEach(function (item) {{
+                    var path = item.getAttribute('data-path');
+                    var btn = item.querySelector('.pin-btn');
+                    if (pinned.indexOf(path) !== -1) {{
+                        item.classList.add('pinned');
+                        btn.classList.add('active');
+                        btn.title = 'Unpin';
+                        pinnedItems.push(item);
+                    }} else {{
+                        item.classList.remove('pinned');
+                        btn.classList.remove('active');
+                        btn.title = 'Pin to top';
+                        unpinnedItems.push(item);
+                    }}
+                }});
+
+                // Re-insert items in order: pinned first, then the rest
+                var fragment = document.createDocumentFragment();
+
+                if (pinnedItems.length > 0) {{
+                    var pinnedLabel = document.createElement('li');
+                    pinnedLabel.className = 'section-label-item';
+                    pinnedLabel.innerHTML = '<p class="section-label">Pinned</p>';
+                    fragment.appendChild(pinnedLabel);
+                    pinnedItems.forEach(function (el) {{ fragment.appendChild(el); }});
+                }}
+
+                if (unpinnedItems.length > 0 && pinnedItems.length > 0) {{
+                    var allLabel = document.createElement('li');
+                    allLabel.className = 'section-label-item';
+                    allLabel.innerHTML = '<p class="section-label">All Tools</p>';
+                    fragment.appendChild(allLabel);
+                }}
+
+                unpinnedItems.forEach(function (el) {{ fragment.appendChild(el); }});
+                list.appendChild(fragment);
+            }}
+
+            function togglePin(path) {{
+                var pinned = getPinned();
+                var idx = pinned.indexOf(path);
+                if (idx === -1) {{
+                    pinned.push(path);
+                }} else {{
+                    pinned.splice(idx, 1);
+                }}
+                setPinned(pinned);
+                applyPinned();
+            }}
+
+            // Attach click handlers to all pin buttons
+            document.querySelectorAll('.pin-btn').forEach(function (btn) {{
+                btn.addEventListener('click', function (e) {{
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var item = btn.closest('.tool-item');
+                    var path = item.getAttribute('data-path');
+                    togglePin(path);
+                }});
+            }});
+
+            // Apply on load
+            applyPinned();
+        }})();
+    </script>
 </body>
 </html>
 """
