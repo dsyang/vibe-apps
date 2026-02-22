@@ -249,6 +249,11 @@ def generate_index(tools):
         .pin-btn.active {{
             color: var(--pin-active-color);
         }}
+        @media (hover: none) {{
+            .pin-btn {{
+                opacity: 1;
+            }}
+        }}
         .empty-state {{
             text-align: center;
             padding: 3rem 1rem;
