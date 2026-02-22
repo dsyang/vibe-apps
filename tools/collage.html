@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="A mobile-friendly 3x3 photo collage generator where users tap cells to upload photos with adjustable cropping" />
+  <title>How you see me collage</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5f2ed;
+  --cell-bg: #eae6df;
+  --cell-border: #d6d0c6;
+  --text: #3a352e;
+  --text-muted: #8a8379;
+  --accent: #c45d3e;
+  --overlay-bg: rgba(20, 18, 15, 0.92);
+  --gap: 3px;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100dvh;
+  padding: 0 12px;
+}
+
+header {
+  text-align: center;
+  padding: 28px 0 16px;
+  width: 100%;
+}
+
+header h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--text);
+}
+
+header p {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.grid-wrapper {
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 3 / 4;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: var(--gap);
+  width: 100%;
+  height: 100%;
+  background: var(--cell-border);
+}
+
+.cell {
+  position: relative;
+  background: var(--cell-bg);
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.cell:active { background: #ddd8cf; }
+
+.cell-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 1;
+  text-transform: lowercase;
+  letter-spacing: 0.3px;
+}
+
+.cell.has-image .cell-label {
+  position: absolute;
+  bottom: 6px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+
+.cell-photo {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.cell.has-image .cell-photo { opacity: 1; }
+
+.cell .plus-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+}
+
+.cell .plus-icon::before,
+.cell .plus-icon::after {
+  content: '';
+  position: absolute;
+  background: var(--text-muted);
+  border-radius: 1px;
+}
+.cell .plus-icon::before { width: 10px; height: 1.5px; }
+.cell .plus-icon::after { width: 1.5px; height: 10px; }
+
+.cell.has-image .plus-icon { display: none; }
+
+.cell.has-image::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 14L4 4h10'/%3E%3Cpath d='M20 10v10H10'/%3E%3C/svg%3E") center/contain no-repeat;
+  opacity: 0.7;
+  z-index: 2;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+}
+
+input[type="file"] { display: none; }
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding-bottom: 32px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.btn {
+  flex: 1;
+  padding: 14px 0;
+  border: none;
+  border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:active { background: #a84d32; transform: scale(0.97); }
+
+.btn-secondary { background: var(--cell-bg); color: var(--text); border: 1px solid var(--cell-border); }
+.btn-secondary:active { background: #ddd8cf; transform: scale(0.97); }
+
+/* ── Crop Overlay ── */
+.crop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--overlay-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.crop-overlay.active { opacity: 1; pointer-events: auto; }
+
+.crop-header {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  z-index: 2;
+}
+
+.crop-header button {
+  background: none; border: none; color: #fff;
+  font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+  cursor: pointer; padding: 8px 4px;
+}
+
+.crop-header .done-btn { color: var(--accent); font-weight: 700; }
+
+.crop-label {
+  font-size: 14px;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 600;
+}
+
+.crop-viewport {
+  width: min(80vw, 340px);
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  position: relative;
+  border-radius: 4px;
+  touch-action: none;
+  box-shadow: 0 0 0 2000px rgba(0,0,0,0.35);
+}
+
+.crop-viewport img {
+  position: absolute;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  will-change: left, top;
+}
+
+.crop-hint {
+  color: rgba(255,255,255,0.4);
+  font-size: 12px;
+  margin-top: 16px;
+  text-align: center;
+}
+
+.crop-viewport::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(to right, transparent 33.2%, rgba(255,255,255,0.15) 33.2%, rgba(255,255,255,0.15) 33.4%, transparent 33.4%,
+      transparent 66.5%, rgba(255,255,255,0.15) 66.5%, rgba(255,255,255,0.15) 66.7%, transparent 66.7%),
+    linear-gradient(to bottom, transparent 33.2%, rgba(255,255,255,0.15) 33.2%, rgba(255,255,255,0.15) 33.4%, transparent 33.4%,
+      transparent 66.5%, rgba(255,255,255,0.15) 66.5%, rgba(255,255,255,0.15) 66.7%, transparent 66.7%);
+}
+
+.crop-viewport::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 4px;
+}
+
+.crop-zoom-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  width: min(75vw, 340px);
+}
+
+.crop-zoom-bar span { color: rgba(255,255,255,0.4); font-size: 11px; flex-shrink: 0; }
+
+.crop-zoom-bar input[type="range"] {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 3px; background: rgba(255,255,255,0.15); border-radius: 2px; outline: none;
+}
+
+.crop-zoom-bar input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.3); cursor: pointer;
+}
+
+.crop-replace { margin-top: 20px; }
+
+.crop-replace button {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.7);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 500;
+  padding: 10px 24px; border-radius: 8px;
+  cursor: pointer; transition: background 0.15s;
+}
+
+.crop-replace button:active { background: rgba(255,255,255,0.2); }
+
+.toast {
+  position: fixed; bottom: 40px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--text); color: var(--bg);
+  padding: 12px 24px; border-radius: 10px;
+  font-size: 13px; font-weight: 500;
+  opacity: 0; transition: all 0.3s ease;
+  z-index: 200; pointer-events: none; white-space: nowrap;
+}
+
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>My Favourites</h1>
+  <p>Tap each cell to add a photo</p>
+</header>
+
+<div class="grid-wrapper">
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="actions">
+  <button class="btn btn-secondary" id="resetBtn">Reset All</button>
+  <button class="btn btn-primary" id="saveBtn">Save Collage</button>
+</div>
+
+<div class="crop-overlay" id="cropOverlay">
+  <div class="crop-header">
+    <button id="cropCancel">Cancel</button>
+    <span class="crop-label" id="cropTitle"></span>
+    <button class="done-btn" id="cropDone">Done</button>
+  </div>
+  <div class="crop-viewport" id="cropViewport">
+    <img id="cropImg" src="" alt="">
+  </div>
+  <p class="crop-hint">Drag to reposition · Pinch or slide to zoom</p>
+  <div class="crop-zoom-bar">
+    <span>−</span>
+    <input type="range" id="zoomSlider" min="1" max="3" step="0.01" value="1">
+    <span>+</span>
+  </div>
+  <div class="crop-replace">
+    <button id="replaceBtn">Replace Photo</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const LABELS = [
+  'animal', 'place', 'plant',
+  'character', 'season', 'hobby',
+  'food', 'colour', 'drink'
+];
+
+const cellData = LABELS.map(label => ({
+  label,
+  file: null,
+  objectURL: null,
+  cropX: 0,
+  cropY: 0,
+  cropScale: 1,
+  naturalW: 0,
+  naturalH: 0
+}));
+
+const grid = document.getElementById('grid');
+const cropOverlay = document.getElementById('cropOverlay');
+const cropViewport = document.getElementById('cropViewport');
+const cropImg = document.getElementById('cropImg');
+const cropTitle = document.getElementById('cropTitle');
+const zoomSlider = document.getElementById('zoomSlider');
+
+let activeCellIndex = -1;
+
+// ── Build grid ──
+LABELS.forEach((label, i) => {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cell.dataset.index = i;
+  cell.innerHTML = `
+    <div class="cell-photo"></div>
+    <span class="cell-label">${label}</span>
+    <div class="plus-icon"></div>
+  `;
+
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.id = `file-${i}`;
+  input.addEventListener('change', e => handleFile(e, i));
+  cell.appendChild(input);
+
+  cell.addEventListener('click', () => {
+    if (cellData[i].objectURL) {
+      openCropEditor(i);
+    } else {
+      input.click();
+    }
+  });
+
+  grid.appendChild(cell);
+});
+
+document.getElementById('replaceBtn').addEventListener('click', () => {
+  if (activeCellIndex < 0) return;
+  document.getElementById(`file-${activeCellIndex}`).click();
+});
+
+function handleFile(e, index) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (cellData[index].objectURL) {
+    URL.revokeObjectURL(cellData[index].objectURL);
+  }
+
+  // Read as data URL so it works reliably across all contexts
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const dataURL = ev.target.result;
+    cellData[index].file = file;
+    cellData[index].objectURL = dataURL;
+    cellData[index].cropX = 0;
+    cellData[index].cropY = 0;
+    cellData[index].cropScale = 1;
+
+    const img = new Image();
+    img.onload = () => {
+      cellData[index].naturalW = img.naturalWidth;
+      cellData[index].naturalH = img.naturalHeight;
+      applyCropToCell(index);
+      openCropEditor(index);
+    };
+    img.src = dataURL;
+  };
+  reader.readAsDataURL(file);
+
+  // Reset input so re-selecting same file triggers change
+  e.target.value = '';
+}
+
+function applyCropToCell(index) {
+  const cell = grid.children[index];
+  const photoDiv = cell.querySelector('.cell-photo');
+  const d = cellData[index];
+
+  if (!d.objectURL) return;
+
+  cell.classList.add('has-image');
+
+  const cellW = cell.clientWidth || 140;
+  const cellH = cell.clientHeight || 140;
+  const coverScale = Math.max(cellW / d.naturalW, cellH / d.naturalH);
+  const bgW = d.naturalW * coverScale * d.cropScale;
+  const bgH = d.naturalH * coverScale * d.cropScale;
+
+  const maxOffX = (bgW - cellW) / 2;
+  const maxOffY = (bgH - cellH) / 2;
+  const posX = (cellW - bgW) / 2 + (-d.cropX * maxOffX);
+  const posY = (cellH - bgH) / 2 + (-d.cropY * maxOffY);
+
+  photoDiv.style.backgroundImage = `url("${d.objectURL}")`;
+  photoDiv.style.backgroundSize = `${bgW}px ${bgH}px`;
+  photoDiv.style.backgroundPosition = `${posX}px ${posY}px`;
+}
+
+window.addEventListener('resize', () => {
+  cellData.forEach((d, i) => {
+    if (d.objectURL) applyCropToCell(i);
+  });
+});
+
+// ── Crop Editor ──
+let cropState = { dragging: false, startX: 0, startY: 0, imgX: 0, imgY: 0, scale: 1 };
+
+function openCropEditor(index) {
+  activeCellIndex = index;
+  const d = cellData[index];
+  cropTitle.textContent = d.label;
+  zoomSlider.value = d.cropScale;
+  cropState.scale = d.cropScale;
+
+  // Show overlay first so viewport has layout dimensions
+  cropOverlay.classList.add('active');
+
+  // Clear then set image
+  cropImg.onload = null;
+  cropImg.src = '';
+
+  requestAnimationFrame(() => {
+    const onReady = () => {
+      positionCropImage();
+    };
+    cropImg.onload = onReady;
+    cropImg.src = d.objectURL;
+    // In case browser considers it already loaded from cache
+    if (cropImg.complete && cropImg.naturalWidth > 0) {
+      onReady();
+    }
+  });
+}
+
+function positionCropImage() {
+  const d = cellData[activeCellIndex];
+  const vw = cropViewport.clientWidth;
+  const vh = cropViewport.clientHeight;
+  const nw = d.naturalW;
+  const nh = d.naturalH;
+  const scale = cropState.scale;
+
+  const coverScale = Math.max(vw / nw, vh / nh);
+  const imgW = nw * coverScale * scale;
+  const imgH = nh * coverScale * scale;
+
+  cropImg.style.width = imgW + 'px';
+  cropImg.style.height = imgH + 'px';
+
+  const maxOffX = (imgW - vw) / 2;
+  const maxOffY = (imgH - vh) / 2;
+
+  cropState.imgX = (vw - imgW) / 2 + (-d.cropX * maxOffX);
+  cropState.imgY = (vh - imgH) / 2 + (-d.cropY * maxOffY);
+
+  cropImg.style.left = cropState.imgX + 'px';
+  cropImg.style.top = cropState.imgY + 'px';
+}
+
+function clampPosition() {
+  const vw = cropViewport.clientWidth;
+  const vh = cropViewport.clientHeight;
+  const imgW = cropImg.offsetWidth;
+  const imgH = cropImg.offsetHeight;
+
+  cropState.imgX = Math.min(0, Math.max(vw - imgW, cropState.imgX));
+  cropState.imgY = Math.min(0, Math.max(vh - imgH, cropState.imgY));
+
+  cropImg.style.left = cropState.imgX + 'px';
+  cropImg.style.top = cropState.imgY + 'px';
+}
+
+// ── Drag ──
+cropViewport.addEventListener('pointerdown', e => {
+  cropState.dragging = true;
+  cropState.startX = e.clientX - cropState.imgX;
+  cropState.startY = e.clientY - cropState.imgY;
+  cropViewport.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+
+cropViewport.addEventListener('pointermove', e => {
+  if (!cropState.dragging) return;
+  cropState.imgX = e.clientX - cropState.startX;
+  cropState.imgY = e.clientY - cropState.startY;
+  clampPosition();
+  e.preventDefault();
+});
+
+cropViewport.addEventListener('pointerup', () => { cropState.dragging = false; });
+cropViewport.addEventListener('pointercancel', () => { cropState.dragging = false; });
+
+// ── Pinch zoom ──
+let pinchStartDist = 0, pinchStartScale = 1;
+
+cropViewport.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    pinchStartDist = Math.hypot(dx, dy);
+    pinchStartScale = cropState.scale;
+  }
+}, { passive: false });
+
+cropViewport.addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    let newScale = pinchStartScale * (Math.hypot(dx, dy) / pinchStartDist);
+    applyZoom(Math.min(3, Math.max(1, newScale)));
+  }
+}, { passive: false });
+
+// ── Zoom slider ──
+zoomSlider.addEventListener('input', () => applyZoom(parseFloat(zoomSlider.value)));
+
+function applyZoom(newScale) {
+  const d = cellData[activeCellIndex];
+  const vw = cropViewport.clientWidth;
+  const vh = cropViewport.clientHeight;
+  const coverScale = Math.max(vw / d.naturalW, vh / d.naturalH);
+
+  const oldImgW = d.naturalW * coverScale * cropState.scale;
+  const oldImgH = d.naturalH * coverScale * cropState.scale;
+  const imgCxBefore = (vw / 2 - cropState.imgX) / oldImgW;
+  const imgCyBefore = (vh / 2 - cropState.imgY) / oldImgH;
+
+  cropState.scale = newScale;
+  zoomSlider.value = newScale;
+
+  const newImgW = d.naturalW * coverScale * newScale;
+  const newImgH = d.naturalH * coverScale * newScale;
+
+  cropImg.style.width = newImgW + 'px';
+  cropImg.style.height = newImgH + 'px';
+
+  cropState.imgX = vw / 2 - imgCxBefore * newImgW;
+  cropState.imgY = vh / 2 - imgCyBefore * newImgH;
+
+  clampPosition();
+}
+
+function saveCropState() {
+  const d = cellData[activeCellIndex];
+  const vw = cropViewport.clientWidth;
+  const vh = cropViewport.clientHeight;
+  const coverScale = Math.max(vw / d.naturalW, vh / d.naturalH);
+  const imgW = d.naturalW * coverScale * cropState.scale;
+  const imgH = d.naturalH * coverScale * cropState.scale;
+
+  const maxOffX = (imgW - vw) / 2;
+  const maxOffY = (imgH - vh) / 2;
+
+  const cx = (vw - imgW) / 2;
+  d.cropX = maxOffX > 0 ? -(cropState.imgX - cx) / maxOffX : 0;
+  d.cropY = maxOffY > 0 ? -(cropState.imgY - (vh - imgH) / 2) / maxOffY : 0;
+  d.cropScale = cropState.scale;
+
+  d.cropX = Math.min(1, Math.max(-1, d.cropX));
+  d.cropY = Math.min(1, Math.max(-1, d.cropY));
+}
+
+document.getElementById('cropDone').addEventListener('click', () => {
+  saveCropState();
+  applyCropToCell(activeCellIndex);
+  cropOverlay.classList.remove('active');
+});
+
+document.getElementById('cropCancel').addEventListener('click', () => {
+  cropOverlay.classList.remove('active');
+});
+
+// ── Reset ──
+document.getElementById('resetBtn').addEventListener('click', () => {
+  cellData.forEach((d, i) => {
+    d.file = null;
+    d.objectURL = null;
+    d.cropX = 0; d.cropY = 0; d.cropScale = 1;
+    const cell = grid.children[i];
+    cell.classList.remove('has-image');
+    const photoDiv = cell.querySelector('.cell-photo');
+    photoDiv.style.backgroundImage = '';
+    photoDiv.style.backgroundSize = '';
+    photoDiv.style.backgroundPosition = '';
+  });
+  showToast('Collage cleared');
+});
+
+// ── Save PNG ──
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const filled = cellData.filter(d => d.objectURL).length;
+  if (filled === 0) { showToast('Add some photos first'); return; }
+
+  showToast('Generating…');
+
+  const GAP = 3;
+  const COLS = 3;
+  const ROWS = 3;
+  const CELL_W = 360;
+  const CELL_H = 480;  // 3:4 ratio
+  const W = COLS * CELL_W + (COLS - 1) * GAP;
+  const H = ROWS * CELL_H + (ROWS - 1) * GAP;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#d6d0c6';
+  ctx.fillRect(0, 0, W, H);
+
+  for (let i = 0; i < 9; i++) {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const cx = col * (CELL_W + GAP);
+    const cy = row * (CELL_H + GAP);
+    const d = cellData[i];
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(cx, cy, CELL_W, CELL_H);
+    ctx.clip();
+
+    if (d.objectURL) {
+      const img = await loadImage(d.objectURL);
+      const coverScale = Math.max(CELL_W / d.naturalW, CELL_H / d.naturalH) * d.cropScale;
+      const imgW = d.naturalW * coverScale;
+      const imgH = d.naturalH * coverScale;
+      const maxOffX = (imgW - CELL_W) / 2;
+      const maxOffY = (imgH - CELL_H) / 2;
+      ctx.drawImage(img,
+        cx + (CELL_W - imgW) / 2 + (-d.cropX * maxOffX),
+        cy + (CELL_H - imgH) / 2 + (-d.cropY * maxOffY),
+        imgW, imgH
+      );
+
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(cx, cy + CELL_H - 36, CELL_W, 36);
+      ctx.fillStyle = '#fff';
+      ctx.font = '600 16px "DM Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(d.label.toUpperCase(), cx + CELL_W / 2, cy + CELL_H - 18);
+    } else {
+      ctx.fillStyle = '#eae6df';
+      ctx.fillRect(cx, cy, CELL_W, CELL_H);
+      ctx.fillStyle = '#8a8379';
+      ctx.font = '500 22px "DM Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(d.label, cx + CELL_W / 2, cy + CELL_H / 2);
+    }
+
+    ctx.restore();
+  }
+
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'my-favourites-collage.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Saved!');
+  }, 'image/png');
+});
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+</script>
+
+</body>
+</html>
