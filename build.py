@@ -17,7 +17,6 @@ TOOLS_DIR = Path("tools")
 INDEX_FILE = Path("index.html")
 SITE_DIR = Path("_site")
 ASSETS_FILE = Path("assets.json")
-BASE_URL = "https://dsyang.github.io/vibe-apps"
 
 # Google Analytics GA4 tracking code
 ANALYTICS_SNIPPET = """    <!-- Google Analytics -->
@@ -72,15 +71,11 @@ def extract_metadata(html_path):
 
     description = desc_match.group(1) if desc_match else "A useful tool"
 
-    raw_bytes = html_path.read_bytes()
-    sha256 = hashlib.sha256(raw_bytes).hexdigest()
-
     return {
         "title": title,
         "description": description,
         "filename": html_path.name,
         "path": f"tools/{html_path.name}",
-        "sha256": sha256,
     }
 
 def generate_index(tools):
@@ -413,7 +408,7 @@ def generate_assets_json(tools):
         entries.append({
             "title": tool["title"],
             "description": tool["description"],
-            "url": f"{BASE_URL}/{tool['path']}",
+            "path": tool["path"],
             "sha256": tool["sha256"],
         })
     return json.dumps({"tools": entries}, indent=2)
@@ -439,6 +434,11 @@ def main():
 
             # Inject analytics
             tool_content_with_analytics = inject_analytics(tool_content)
+
+            # Hash the processed content — what clients actually download
+            metadata["sha256"] = hashlib.sha256(
+                tool_content_with_analytics.encode("utf-8")
+            ).hexdigest()
 
             # Write processed tool to _site/tools/
             output_path = SITE_DIR / "tools" / html_file.name
