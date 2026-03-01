@@ -7,6 +7,8 @@ Each tool should have:
 - A <meta name="description" content="..."> tag
 """
 
+import hashlib
+import json
 import re
 import shutil
 from pathlib import Path
@@ -14,6 +16,8 @@ from pathlib import Path
 TOOLS_DIR = Path("tools")
 INDEX_FILE = Path("index.html")
 SITE_DIR = Path("_site")
+ASSETS_FILE = Path("assets.json")
+BASE_URL = "https://dsyang.github.io/vibe-apps"
 
 # Google Analytics GA4 tracking code
 ANALYTICS_SNIPPET = """    <!-- Google Analytics -->
@@ -68,11 +72,15 @@ def extract_metadata(html_path):
 
     description = desc_match.group(1) if desc_match else "A useful tool"
 
+    raw_bytes = html_path.read_bytes()
+    sha256 = hashlib.sha256(raw_bytes).hexdigest()
+
     return {
         "title": title,
         "description": description,
         "filename": html_path.name,
-        "path": f"tools/{html_path.name}"
+        "path": f"tools/{html_path.name}",
+        "sha256": sha256,
     }
 
 def generate_index(tools):
@@ -398,6 +406,19 @@ def generate_index(tools):
 </html>
 """
 
+def generate_assets_json(tools):
+    """Generate assets.json listing all tools with their URL and content hash."""
+    entries = []
+    for tool in sorted(tools, key=lambda t: t["title"].lower()):
+        entries.append({
+            "title": tool["title"],
+            "description": tool["description"],
+            "url": f"{BASE_URL}/{tool['path']}",
+            "sha256": tool["sha256"],
+        })
+    return json.dumps({"tools": entries}, indent=2)
+
+
 def main():
     tools = []
 
@@ -435,6 +456,15 @@ def main():
     site_index = SITE_DIR / "index.html"
     site_index.write_text(index_content, encoding="utf-8")
     print(f"Generated {site_index}")
+
+    # Generate assets.json
+    print("Generating assets.json...")
+    assets_content = generate_assets_json(tools)
+    ASSETS_FILE.write_text(assets_content, encoding="utf-8")
+    print(f"Generated {ASSETS_FILE}")
+    site_assets = SITE_DIR / "assets.json"
+    site_assets.write_text(assets_content, encoding="utf-8")
+    print(f"Generated {site_assets}")
 
 if __name__ == "__main__":
     main()
