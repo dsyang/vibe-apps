@@ -209,7 +209,7 @@ function renderResults(items) {
   // Find best image URL from the response
   const imgUrl = item.displayUrl || item.imageUrl || item.thumbnailUrl || '';
   if (imgUrl) {
-    imgContainer.innerHTML = `<img src="${escapeAttr(imgUrl)}" alt="Reel thumbnail">`;
+    imgContainer.innerHTML = `<img src="${escapeAttr(imgUrl)}" alt="Reel thumbnail" referrerpolicy="no-referrer" onerror="this.parentElement.innerHTML='<div style=\\'padding:40px;text-align:center;color:#555\\'>Thumbnail unavailable (CDN link expired)</div>'">`;
   } else {
     imgContainer.innerHTML = '<div style="padding:40px;text-align:center;color:#555">No image available</div>';
   }
