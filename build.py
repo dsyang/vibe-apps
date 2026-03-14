@@ -410,6 +410,7 @@ def generate_assets_json(tools):
             "description": tool["description"],
             "path": tool["path"],
             "sha256": tool["sha256"],
+            "file_size_bytes": tool["file_size_bytes"],
         })
     return json.dumps({"tools": entries}, indent=2)
 
@@ -435,10 +436,10 @@ def main():
             # Inject analytics
             tool_content_with_analytics = inject_analytics(tool_content)
 
-            # Hash the processed content — what clients actually download
-            metadata["sha256"] = hashlib.sha256(
-                tool_content_with_analytics.encode("utf-8")
-            ).hexdigest()
+            # Hash and measure the processed content — what clients actually download
+            encoded = tool_content_with_analytics.encode("utf-8")
+            metadata["sha256"] = hashlib.sha256(encoded).hexdigest()
+            metadata["file_size_bytes"] = len(encoded)
 
             # Write processed tool to _site/tools/
             output_path = SITE_DIR / "tools" / html_file.name
