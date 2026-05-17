@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0" />
+<meta name="description" content="EU allergen card for Portugal travel, Portuguese and English" />
+<title>My Allergy Card / Cartão de Alergias</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Plus+Jakarta+Sans:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    background: #4a4a4a;
+    padding: 16px;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  .card {
+    background: #ffd91a;
+    border: 5px solid #d32028;
+    border-radius: 6px;
+    max-width: 420px;
+    width: 100%;
+    padding: 0;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+    overflow: hidden;
+  }
+  .header {
+    padding: 14px 16px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .header-text {
+    font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+    color: #d32028;
+    font-weight: 900;
+    font-size: 22px;
+    line-height: 1.05;
+    letter-spacing: -0.5px;
+    text-shadow: 1px 1px 0 #fff;
+    white-space: nowrap;
+  }
+  .header-text small {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+    font-style: italic;
+    margin-top: 2px;
+    letter-spacing: 0;
+  }
+  .warning-icon {
+    position: relative;
+    flex-shrink: 0;
+  }
+  .face {
+    width: 58px;
+    height: 58px;
+    background: #d32028;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 900;
+    font-size: 22px;
+    letter-spacing: 4px;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+  }
+  .face::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: repeating-linear-gradient(
+      45deg,
+      transparent 0 4px,
+      rgba(255,255,255,0.08) 4px 6px
+    );
+  }
+  .burst {
+    position: absolute;
+    top: -8px;
+    right: -16px;
+    background: #fff;
+    color: #d32028;
+    font-weight: 900;
+    font-size: 9px;
+    transform: rotate(12deg);
+    clip-path: polygon(
+      0% 30%, 10% 0%, 20% 25%, 35% 5%, 45% 30%,
+      60% 0%, 70% 30%, 85% 10%, 100% 35%,
+      90% 55%, 100% 75%, 80% 80%, 90% 100%,
+      65% 85%, 50% 100%, 35% 80%, 20% 100%,
+      10% 75%, 0% 60%, 8% 45%
+    );
+    padding: 8px 10px;
+    z-index: 2;
+  }
+  .body {
+    background: #fff;
+    margin: 0 10px;
+    padding: 14px 14px 10px;
+  }
+  .title {
+    text-align: center;
+    font-size: 15px;
+    line-height: 1.35;
+    margin-bottom: 12px;
+    color: #000;
+  }
+  .title .pt {
+    font-family: "Plus Jakarta Sans", "Atkinson Hyperlegible", sans-serif;
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 17px;
+    display: block;
+    margin: 2px 0;
+    letter-spacing: 0.3px;
+    color: #000;
+  }
+  .title .en {
+    font-style: italic;
+    font-size: 14px;
+    color: #333;
+    display: block;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 14px;
+    margin-bottom: 8px;
+  }
+  .item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13.5px;
+    line-height: 1.25;
+    color: #000;
+  }
+  .checkbox {
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid #000;
+    flex-shrink: 0;
+    margin-top: 1px;
+    background: #fff;
+    border-radius: 2px;
+  }
+  .label {
+    flex: 1;
+  }
+  .label .pt {
+    font-weight: 700;
+    display: block;
+  }
+  .label .en {
+    color: #333;
+    font-size: 12.5px;
+    display: block;
+    font-style: italic;
+  }
+  .note {
+    font-size: 10px;
+    color: #555;
+    margin-top: -4px;
+    margin-bottom: 8px;
+    padding-left: 26px;
+    width: 50%;
+    padding-right: 7px;
+    line-height: 1.25;
+  }
+  .divider {
+    border-top: 1.5px dashed #888;
+    margin: 10px 0 10px;
+  }
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.35;
+    color: #000;
+  }
+  .footer-text {
+    flex: 1;
+  }
+  .footer-text .pt {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+  .footer-text .en {
+    display: block;
+    font-size: 12px;
+    font-style: italic;
+    color: #333;
+  }
+  .yesno {
+    font-weight: 900;
+    font-size: 20px;
+    white-space: nowrap;
+  }
+  .yes-text { color: #000; }
+  .no-text { color: #000; margin-left: 4px; }
+  .spacer { height: 10px; }
+  @media (max-width: 360px) {
+    .header-text { font-size: 18px; }
+    .header-text small { font-size: 12px; }
+    .item { font-size: 12px; }
+    .label .en { font-size: 11px; }
+  }
+
+@media print {
+@page {
+size: 3in 4in;
+margin: 0;
+}
+html, body {
+width: 3in;
+height: 4in;
+background: #fff;
+padding: 0;
+margin: 0;
+}
+body {
+display: block;
+}
+.card {
+width: 3in;
+height: 4in;
+max-width: none;
+box-shadow: none;
+border-radius: 0;
+border-width: 3px;
+page-break-inside: avoid;
+-webkit-print-color-adjust: exact;
+print-color-adjust: exact;
+}
+.header { padding: 8px 10px 6px; }
+.header-text { font-size: 15px; }
+.header-text small { font-size: 10px; }
+.face { width: 42px; height: 42px; font-size: 16px; }
+.burst { font-size: 7px; padding: 5px 7px; top: -5px; right: -10px; }
+.body { margin: 0 6px; padding: 8px 8px 6px; }
+.title { font-size: 12px; margin-bottom: 8px; }
+.title .en { font-size: 13px; }
+.title .pt { font-size: 11px; }
+.grid { gap: 5px 10px; margin-bottom: 5px; }
+.item { font-size: 9.5px; gap: 5px; }
+.label .en { font-size: 8.5px; }
+.checkbox { width: 12px; height: 12px; }
+.divider { margin: 6px 0; }
+.footer { font-size: 9px; line-height: 1.25; }
+.footer-text .pt { font-size: 9.5px; margin-bottom: 2px; }
+.footer-text .en { font-size: 8.5px; }
+.yesno { font-size: 14px; }
+.spacer { height: 4px; }
+}
+</style>
+
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="header-text">
+        TENHO ALERGIAS!
+        <small>I have allergies!</small>
+      </div>
+      <div class="warning-icon">
+        <div class="face">× ×</div>
+        <div class="burst">ATENÇÃO!</div>
+      </div>
+    </div>
+
+<div class="body">
+  <div class="title">
+    <span class="pt">Sou alérgico(a) a:</span>
+    <span class="en">I am allergic to:</span>
+  </div>
+
+  <div class="grid">
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Glúten / Trigo</span><span class="en">(Gluten / Wheat — rye, barley, oats)</span></div>
+    </div>
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Crustáceos</span><span class="en">(Crustaceans — shrimp, crab, lobster)</span></div>
+    </div>
+
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Ovos</span><span class="en">(Egg)</span></div>
+    </div>
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Peixe</span><span class="en">(Fish)</span></div>
+    </div>
+
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Amendoim</span><span class="en">(Peanut)</span></div>
+    </div>
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Moluscos</span><span class="en">(Molluscs — clams, mussels, octopus)</span></div>
+    </div>
+
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Leite</span><span class="en">(Milk &amp; dairy)</span></div>
+    </div>
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Frutos secos / nozes</span><span class="en">(Tree nuts)</span></div>
+    </div>
+
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Soja</span><span class="en">(Soy)</span></div>
+    </div>
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Coco</span><span class="en">(Coconut)</span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Aipo</span><span class="en">(Celery &amp; celeriac)</span></div>
+    </div>
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Mostarda</span><span class="en">(Mustard)</span></div>
+    </div>
+
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Sésamo / Gergelim</span><span class="en">(Sesame)</span></div>
+    </div>
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Sulfitos / Dióxido de enxofre</span><span class="en">(Sulphites / Sulphur dioxide)</span></div>
+    </div>
+
+    <div class="item">
+      <div class="checkbox"></div>
+      <div class="label"><span class="pt">Tremoço</span><span class="en">(Lupine)</span></div>
+    </div>
+    <div></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="footer">
+    <div class="footer-text">
+      <span class="pt">Posso comer alimentos preparados em superfícies ou com utensílios que tocaram nestes alergénios?</span>
+      <span class="en">Can I eat food prepared on surfaces or with utensils that have touched these allergens?</span>
+    </div>
+    <div class="yesno">
+      <span class="yes-text">SIM</span><span class="no-text">/ NÃO</span>
+    </div>
+  </div>
+  <div class="spacer"></div>
+</div>
+
+  </div>
+</body>
+</html>
