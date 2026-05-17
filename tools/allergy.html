@@ -137,7 +137,9 @@
   }
   .grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* minmax(0, 1fr) instead of 1fr so long words in one column can't
+       push the column wider than 50% and misalign the two grids. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 8px 14px;
     margin-bottom: 8px;
   }
