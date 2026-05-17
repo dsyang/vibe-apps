@@ -145,7 +145,7 @@
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    font-size: 13.5px;
+    font-size: 15px;
     line-height: 1.25;
     color: #000;
     cursor: pointer;
@@ -217,7 +217,7 @@
   }
   .footer-text .pt {
     display: block;
-    font-size: 13.5px;
+    font-size: 15px;
     font-weight: 700;
     margin-bottom: 3px;
   }
@@ -272,12 +272,12 @@
 
   @media print {
     @page {
-      size: 3in 4in;
+      size: 2.75in 3.75in;
       margin: 0;
     }
     html, body {
-      width: 3in;
-      height: 4in;
+      width: 2.75in;
+      height: 3.75in;
       background: #fff;
       padding: 0;
       margin: 0;
@@ -286,8 +286,8 @@
       display: block;
     }
     .card {
-      width: 3in;
-      height: 4in;
+      width: 2.75in;
+      height: 3.75in;
       max-width: none;
       box-shadow: none;
       border-radius: 0;
@@ -296,25 +296,25 @@
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .header { padding: 8px 10px 6px; }
-    .header-text { font-size: 17px; }
-    .header-text small { font-size: 11px; }
-    .face { width: 42px; height: 42px; font-size: 16px; }
-    .burst { font-size: 7px; padding: 5px 7px; top: -5px; right: -10px; }
-    .body { margin: 0 6px; padding: 8px 8px 6px; }
-    .title { font-size: 12px; margin-bottom: 6px; }
+    .header { padding: 6px 9px 5px; }
+    .header-text { font-size: 16px; }
+    .header-text small { font-size: 10px; }
+    .face { width: 38px; height: 38px; font-size: 14px; }
+    .burst { font-size: 6.5px; padding: 4px 6px; top: -4px; right: -9px; }
+    .body { margin: 0 5px; padding: 7px 7px 5px; }
+    .title { font-size: 13px; margin-bottom: 5px; }
     .title .pt { font-size: 14px; }
-    .title .en { font-size: 11px; }
-    .grid { gap: 4px 10px; margin-bottom: 4px; }
-    .item { font-size: 11px; gap: 5px; }
-    .label .en { font-size: 10px; }
-    .checkbox { width: 13px; height: 13px; }
+    .grid { gap: 4px 8px; margin-bottom: 4px; }
+    .item { font-size: 13.5px; gap: 5px; line-height: 1.2; }
+    .label .en { font-size: 10.5px; }
+    .checkbox { width: 14px; height: 14px; }
+    .item.checked .checkbox::after { left: 2px; top: -4px; width: 8px; height: 14px; border-width: 0 2.5px 2.5px 0; }
     .divider { margin: 5px 0; }
     .footer { font-size: 10px; line-height: 1.25; }
-    .footer-text .pt { font-size: 10.5px; margin-bottom: 2px; }
-    .footer-text .en { font-size: 9px; }
-    .yesno { font-size: 15px; }
+    .footer-text .pt { font-size: 12.5px; margin-bottom: 2px; }
+    .footer-text .en { font-size: 9.5px; }
     .spacer { height: 2px; }
+  }
   }
 </style>
 </head>
@@ -334,7 +334,6 @@
     <div class="body">
       <div class="title">
         <span class="pt">Sou alérgica a:</span>
-        <span class="en">I am allergic to:</span>
       </div>
 
       <div class="grid">
