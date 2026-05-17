@@ -10,6 +10,31 @@
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Plus+Jakarta+Sans:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* Default palette is black-and-white so the card stays legible when
+     printed on a B&W printer. Adding ?color to the URL switches to the
+     original red/yellow/blue scheme via the body.color override below. */
+  :root {
+    --card-bg: #fff;
+    --border-color: #000;
+    --border-width: 8px;
+    --accent: #000;
+    --check: #000;
+    --face-border: transparent;
+    --burst-bg: #000;
+    --burst-color: #fff;
+    --header-shadow: none;
+  }
+  body.color {
+    --card-bg: #ffd91a;
+    --border-color: #d32028;
+    --border-width: 5px;
+    --accent: #d32028;
+    --check: #1a4dbf;
+    --face-border: #fff;
+    --burst-bg: #fff;
+    --burst-color: #d32028;
+    --header-shadow: 1px 1px 0 #fff;
+  }
   body {
     font-family: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
     background: #4a4a4a;
@@ -22,8 +47,8 @@
     -moz-osx-font-smoothing: grayscale;
   }
   .card {
-    background: #ffd91a;
-    border: 5px solid #d32028;
+    background: var(--card-bg);
+    border: var(--border-width) solid var(--border-color);
     border-radius: 6px;
     max-width: 420px;
     width: 100%;
@@ -40,12 +65,12 @@
   }
   .header-text {
     font-family: "Plus Jakarta Sans", "Inter", sans-serif;
-    color: #d32028;
+    color: var(--accent);
     font-weight: 900;
     font-size: 22px;
     line-height: 1.05;
     letter-spacing: -0.5px;
-    text-shadow: 1px 1px 0 #fff;
+    text-shadow: var(--header-shadow);
     white-space: nowrap;
   }
   .header-text small {
@@ -63,9 +88,9 @@
   .face {
     width: 58px;
     height: 58px;
-    background: #d32028;
+    background: var(--accent);
     border-radius: 50%;
-    border: 2px solid #fff;
+    border: 2px solid var(--face-border);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -92,8 +117,8 @@
     position: absolute;
     top: -8px;
     right: -16px;
-    background: #fff;
-    color: #d32028;
+    background: var(--burst-bg);
+    color: var(--burst-color);
     font-weight: 900;
     font-size: 9px;
     transform: rotate(12deg);
@@ -155,7 +180,7 @@
     -webkit-tap-highlight-color: transparent;
   }
   .item:hover .checkbox {
-    border-color: #1a4dbf;
+    border-color: var(--check);
   }
   .checkbox {
     width: 18px;
@@ -175,7 +200,7 @@
     top: -5px;
     width: 9px;
     height: 17px;
-    border: solid #1a4dbf;
+    border: solid var(--check);
     border-width: 0 3px 3px 0;
     transform: rotate(40deg);
   }
@@ -247,16 +272,16 @@
     transition: color 0.15s;
   }
   .yes-text:hover, .no-text:hover {
-    color: #1a4dbf;
+    color: var(--check);
   }
   .yes-text.circled, .no-text.circled {
-    color: #1a4dbf;
+    color: var(--check);
   }
   .yes-text.circled::before, .no-text.circled::before {
     content: "";
     position: absolute;
     inset: -2px -2px;
-    border: 2.5px solid #1a4dbf;
+    border: 2.5px solid var(--check);
     border-radius: 50%;
     transform: rotate(-3deg);
   }
@@ -409,6 +434,12 @@
     </div>
   </div>
   <script>
+    // Opt in to the colorful palette with ?color in the URL; default
+    // is B&W so the card prints legibly on a monochrome printer.
+    if (new URLSearchParams(location.search).has('color')) {
+      document.body.classList.add('color');
+    }
+
     // Toggle allergen checkboxes
     document.querySelectorAll('.item').forEach(function(item) {
       item.addEventListener('click', function() {
