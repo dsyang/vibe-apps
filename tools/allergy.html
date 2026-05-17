@@ -172,7 +172,7 @@
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    font-size: 17px;
+    font-size: 19px;
     line-height: 1.25;
     color: #000;
     cursor: pointer;
@@ -212,9 +212,8 @@
   }
   .label .en {
     color: #333;
-    font-size: 12.5px;
+    font-size: 16px;
     font-style: italic;
-    margin-left: 3px;
   }
   .note {
     font-size: 10px;
@@ -250,7 +249,7 @@
   }
   .footer-text .en {
     display: block;
-    font-size: 12px;
+    font-size: 15px;
     font-style: italic;
     color: #333;
   }
@@ -299,12 +298,12 @@
 
   @media print {
     @page {
-      size: 2.85in 3.85in;
+      size: 2.85in 3.95in;
       margin: 0;
     }
     html, body {
       width: 2.85in;
-      height: 3.85in;
+      height: 3.95in;
       background: #fff;
       padding: 0;
       margin: 0;
@@ -314,7 +313,7 @@
       display: block;
     }
     /* Render the card at its natural on-screen size, then scale the
-       whole thing down to fit the 2.85 x 3.85in page. Width-fit alone
+       whole thing down to fit the 2.85 x 3.95in page. Width-fit alone
        is 273.6/420 ≈ 0.6514, but the card is tall enough that the
        bottom border clips at that scale, so use a slightly smaller
        factor with headroom proportional to the prior 2.75 x 3.75 fit. */
@@ -346,18 +345,14 @@
     </div>
 
     <div class="body">
-      <div class="title">
-        <span class="pt">Sou alérgica a:</span>
-      </div>
-
       <div class="grid">
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Leite</span><span class="en">(Milk &amp; dairy)</span></div>
+          <div class="label"><span class="pt">Leite</span><br><span class="en">(Milk &amp; dairy)</span></div>
         </div>
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Ovos</span><span class="en">(Egg)</span></div>
+          <div class="label"><span class="pt">Ovos</span><br><span class="en">(Egg)</span></div>
         </div>
 
         <div class="item">
@@ -366,21 +361,21 @@
         </div>
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Amendoim</span><span class="en">(Peanut)</span></div>
+          <div class="label"><span class="pt">Amendoim</span><br><span class="en">(Peanut)</span></div>
         </div>
 
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Frutos secos / nozes</span><span class="en">(Tree nuts)</span></div>
+          <div class="label"><span class="pt">Frutos secos / nozes</span><br><span class="en">(Tree nuts)</span></div>
         </div>
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Sésamo / Gergelim</span><span class="en">(Sesame)</span></div>
+          <div class="label"><span class="pt">Sésamo / Gergelim</span><br><span class="en">(Sesame)</span></div>
         </div>
 
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Coco</span><span class="en">(Coconut)</span></div>
+          <div class="label"><span class="pt">Coco</span><br><span class="en">(Coconut)</span></div>
         </div>
         <div class="item">
           <div class="checkbox"></div>
@@ -389,38 +384,21 @@
 
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Moluscos</span><span class="en">(Molluscs)</span></div>
+          <div class="label"><span class="pt">Moluscos</span><br><span class="en">(Molluscs)</span></div>
         </div>
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Peixe</span><span class="en">(Fish)</span></div>
+          <div class="label"><span class="pt">Peixe</span><br><span class="en">(Fish)</span></div>
         </div>
 
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Soja</span><span class="en">(Soy)</span></div>
+          <div class="label"><span class="pt">Soja</span><br><span class="en">(Soy)</span></div>
         </div>
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Tremoço</span><span class="en">(Lupine)</span></div>
+          <div class="label"><span class="pt">Tremoço</span><br><span class="en">(Lupine)</span></div>
         </div>
-      </div>
-
-      <div class="grid">
-        <div class="item">
-          <div class="checkbox"></div>
-          <div class="label"><span class="pt">Aipo</span><br><span class="en">(Celery &amp; celeriac)</span></div>
-        </div>
-        <div class="item">
-          <div class="checkbox"></div>
-          <div class="label"><span class="pt">Mostarda</span><span class="en">(Mustard)</span></div>
-        </div>
-
-        <div class="item">
-          <div class="checkbox"></div>
-          <div class="label"><span class="pt">Sulfitos</span><span class="en">(Sulphites)</span></div>
-        </div>
-        <div></div>
       </div>
 
       <div class="divider"></div>
