@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0" />
 <meta name="description" content="EU allergen card for Portugal travel, Portuguese and English" />
-<title>Jackie Portuguese Allergy Card</title>
+<title>Jackie Allergy Card - Portuguese</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Plus+Jakarta+Sans:wght@700;800;900&display=swap" rel="stylesheet">
@@ -148,6 +148,12 @@
     font-size: 13.5px;
     line-height: 1.25;
     color: #000;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .item:hover .checkbox {
+    border-color: #1a4dbf;
   }
   .checkbox {
     width: 18px;
@@ -157,19 +163,31 @@
     margin-top: 1px;
     background: #fff;
     border-radius: 2px;
+    position: relative;
+    transition: border-color 0.15s;
+  }
+  .item.checked .checkbox::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: -5px;
+    width: 9px;
+    height: 17px;
+    border: solid #1a4dbf;
+    border-width: 0 3px 3px 0;
+    transform: rotate(40deg);
   }
   .label {
     flex: 1;
   }
   .label .pt {
     font-weight: 700;
-    display: block;
   }
   .label .en {
     color: #333;
     font-size: 12.5px;
-    display: block;
     font-style: italic;
+    margin-left: 3px;
   }
   .note {
     font-size: 10px;
@@ -213,9 +231,37 @@
     font-weight: 900;
     font-size: 20px;
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
-  .yes-text { color: #000; }
-  .no-text { color: #000; margin-left: 4px; }
+  .yes-text, .no-text {
+    color: #000;
+    cursor: pointer;
+    padding: 4px 10px;
+    position: relative;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.15s;
+  }
+  .yes-text:hover, .no-text:hover {
+    color: #1a4dbf;
+  }
+  .yes-text.circled, .no-text.circled {
+    color: #1a4dbf;
+  }
+  .yes-text.circled::before, .no-text.circled::before {
+    content: "";
+    position: absolute;
+    inset: -2px -2px;
+    border: 2.5px solid #1a4dbf;
+    border-radius: 50%;
+    transform: rotate(-3deg);
+  }
+  .slash {
+    color: #000;
+    font-weight: 900;
+  }
   .spacer { height: 10px; }
   @media (max-width: 360px) {
     .header-text { font-size: 18px; }
@@ -251,24 +297,24 @@
       print-color-adjust: exact;
     }
     .header { padding: 8px 10px 6px; }
-    .header-text { font-size: 15px; }
-    .header-text small { font-size: 10px; }
+    .header-text { font-size: 17px; }
+    .header-text small { font-size: 11px; }
     .face { width: 42px; height: 42px; font-size: 16px; }
     .burst { font-size: 7px; padding: 5px 7px; top: -5px; right: -10px; }
     .body { margin: 0 6px; padding: 8px 8px 6px; }
-    .title { font-size: 12px; margin-bottom: 8px; }
-    .title .en { font-size: 13px; }
-    .title .pt { font-size: 11px; }
-    .grid { gap: 5px 10px; margin-bottom: 5px; }
-    .item { font-size: 9.5px; gap: 5px; }
-    .label .en { font-size: 8.5px; }
-    .checkbox { width: 12px; height: 12px; }
-    .divider { margin: 6px 0; }
-    .footer { font-size: 9px; line-height: 1.25; }
-    .footer-text .pt { font-size: 9.5px; margin-bottom: 2px; }
-    .footer-text .en { font-size: 8.5px; }
-    .yesno { font-size: 14px; }
-    .spacer { height: 4px; }
+    .title { font-size: 12px; margin-bottom: 6px; }
+    .title .pt { font-size: 14px; }
+    .title .en { font-size: 11px; }
+    .grid { gap: 4px 10px; margin-bottom: 4px; }
+    .item { font-size: 11px; gap: 5px; }
+    .label .en { font-size: 10px; }
+    .checkbox { width: 13px; height: 13px; }
+    .divider { margin: 5px 0; }
+    .footer { font-size: 10px; line-height: 1.25; }
+    .footer-text .pt { font-size: 10.5px; margin-bottom: 2px; }
+    .footer-text .en { font-size: 9px; }
+    .yesno { font-size: 15px; }
+    .spacer { height: 2px; }
   }
 </style>
 </head>
@@ -294,11 +340,11 @@
       <div class="grid">
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Glúten / Trigo</span><span class="en">(Gluten / Wheat — rye, barley, oats)</span></div>
+          <div class="label"><span class="pt">Glúten / Trigo</span><span class="en">(Gluten / Wheat)</span></div>
         </div>
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Crustáceos</span><span class="en">(Crustaceans — shrimp, crab, lobster)</span></div>
+          <div class="label"><span class="pt">Crustáceos</span><span class="en">(Crustaceans)</span></div>
         </div>
 
         <div class="item">
@@ -316,7 +362,7 @@
         </div>
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Moluscos</span><span class="en">(Molluscs — clams, mussels, octopus)</span></div>
+          <div class="label"><span class="pt">Moluscos</span><span class="en">(Molluscs)</span></div>
         </div>
 
         <div class="item">
@@ -368,15 +414,20 @@
 
       <div class="footer">
         <div class="footer-text">
-          <span class="pt">Posso comer alimentos preparados em superfícies ou com utensílios que tocaram nestes alergénios?</span>
-          <span class="en">Can I eat food prepared on surfaces or with utensils that have touched these allergens?</span>
-        </div>
-        <div class="yesno">
-          <span class="yes-text">SIM</span><span class="no-text">/ NÃO</span>
+          <span class="pt">Posso comer alimentos preparados na mesma cozinha que estes alergénios.</span>
+          <span class="en">I can eat food prepared in the same kitchen with these allergens.</span>
         </div>
       </div>
       <div class="spacer"></div>
     </div>
   </div>
+  <script>
+    // Toggle allergen checkboxes
+    document.querySelectorAll('.item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        item.classList.toggle('checked');
+      });
+    });
+  </script>
 </body>
 </html>
