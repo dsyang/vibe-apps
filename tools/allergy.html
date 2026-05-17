@@ -299,12 +299,12 @@
 
   @media print {
     @page {
-      size: 2.75in 3.75in;
+      size: 2.85in 3.85in;
       margin: 0;
     }
     html, body {
-      width: 2.75in;
-      height: 3.75in;
+      width: 2.85in;
+      height: 3.85in;
       background: #fff;
       padding: 0;
       margin: 0;
@@ -314,15 +314,16 @@
       display: block;
     }
     /* Render the card at its natural on-screen size, then scale the
-       whole thing down to fit the 2.75 x 3.75in page. Width-fit alone
-       is 264/420 ≈ 0.6286, but the card is tall enough that the bottom
-       border clips at that scale, so use a slightly smaller factor. */
+       whole thing down to fit the 2.85 x 3.85in page. Width-fit alone
+       is 273.6/420 ≈ 0.6514, but the card is tall enough that the
+       bottom border clips at that scale, so use a slightly smaller
+       factor with headroom proportional to the prior 2.75 x 3.75 fit. */
     .card {
       width: 420px;
       max-width: none;
       box-shadow: none;
       border-radius: 0;
-      transform: scale(0.58);
+      transform: scale(0.60);
       transform-origin: top left;
       page-break-inside: avoid;
       -webkit-print-color-adjust: exact;
