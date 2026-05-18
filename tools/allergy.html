@@ -20,8 +20,6 @@
     --accent: #000;
     --check: #000;
     --face-border: transparent;
-    --burst-bg: #000;
-    --burst-color: #fff;
     --header-shadow: none;
   }
   body.color {
@@ -31,8 +29,6 @@
     --accent: #d32028;
     --check: #1a4dbf;
     --face-border: #fff;
-    --burst-bg: #fff;
-    --burst-color: #d32028;
     --header-shadow: 1px 1px 0 #fff;
   }
   body {
@@ -82,55 +78,23 @@
     letter-spacing: 0;
   }
   .warning-icon {
-    position: relative;
     flex-shrink: 0;
   }
   .face {
     width: 58px;
     height: 58px;
-    background: var(--accent);
-    border-radius: 50%;
-    border: 2px solid var(--face-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-weight: 900;
-    font-size: 22px;
-    letter-spacing: 4px;
-    line-height: 1;
+    flex-shrink: 0;
     position: relative;
     z-index: 1;
+    display: block;
   }
-  .face::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: repeating-linear-gradient(
-      45deg,
-      transparent 0 4px,
-      rgba(255,255,255,0.08) 4px 6px
-    );
+  .face .triangle {
+    fill: var(--accent);
+    stroke: var(--face-border);
+    stroke-width: 2;
   }
-  .burst {
-    position: absolute;
-    top: -8px;
-    right: -16px;
-    background: var(--burst-bg);
-    color: var(--burst-color);
-    font-weight: 900;
-    font-size: 9px;
-    transform: rotate(12deg);
-    clip-path: polygon(
-      0% 30%, 10% 0%, 20% 25%, 35% 5%, 45% 30%,
-      60% 0%, 70% 30%, 85% 10%, 100% 35%,
-      90% 55%, 100% 75%, 80% 80%, 90% 100%,
-      65% 85%, 50% 100%, 35% 80%, 20% 100%,
-      10% 75%, 0% 60%, 8% 45%
-    );
-    padding: 8px 10px;
-    z-index: 2;
+  .face .mark {
+    fill: #fff;
   }
   .body {
     background: #fff;
@@ -139,7 +103,6 @@
   }
   .title {
     text-align: center;
-    font-size: 15px;
     line-height: 1.35;
     margin-bottom: 12px;
     color: #000;
@@ -148,9 +111,7 @@
     font-family: "Plus Jakarta Sans", "Atkinson Hyperlegible", sans-serif;
     font-weight: 800;
     text-transform: uppercase;
-    font-size: 17px;
-    display: block;
-    margin: 2px 0;
+    font-size: 20px;
     letter-spacing: 0.3px;
     color: #000;
   }
@@ -164,15 +125,15 @@
     display: grid;
     /* minmax(0, 1fr) instead of 1fr so long words in one column can't
        push the column wider than 50% and misalign the two grids. */
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 4px 14px;
+    grid-template-columns: 1fr;
+    gap: 6px;
     margin-bottom: 8px;
   }
   .item {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 8px;
-    font-size: 19px;
+    font-size: 20px;
     line-height: 1.25;
     color: #000;
     cursor: pointer;
@@ -181,6 +142,13 @@
   }
   .item:hover .checkbox {
     border-color: var(--check);
+  }
+  .icon {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    object-fit: contain;
+    order: 1;
   }
   .checkbox {
     width: 18px;
@@ -214,16 +182,7 @@
     color: #333;
     font-size: 16px;
     font-style: italic;
-  }
-  .note {
-    font-size: 10px;
-    color: #555;
-    margin-top: -4px;
-    margin-bottom: 8px;
-    padding-left: 26px;
-    width: 50%;
-    padding-right: 7px;
-    line-height: 1.25;
+    margin-left: 6px;
   }
   .divider {
     border-top: 1.5px dashed #888;
@@ -234,7 +193,6 @@
     justify-content: space-between;
     align-items: center;
     gap: 10px;
-    font-size: 13px;
     line-height: 1.35;
     color: #000;
   }
@@ -243,13 +201,13 @@
   }
   .footer-text .pt {
     display: block;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 700;
     margin-bottom: 3px;
   }
   .footer-text .en {
     display: block;
-    font-size: 15px;
+    font-size: 14px;
     font-style: italic;
     color: #333;
   }
@@ -290,9 +248,9 @@
   }
   .spacer { height: 10px; }
   @media (max-width: 360px) {
-    .header-text { font-size: 18px; }
-    .header-text small { font-size: 12px; }
-    .item { font-size: 12px; }
+    .header-text { font-size: 16px; }
+    .header-text small { font-size: 11px; }
+    .item { font-size: 14px; }
     .label .en { font-size: 11px; }
   }
 
@@ -339,65 +297,51 @@
         <small>I have allergies!</small>
       </div>
       <div class="warning-icon">
-        <div class="face">× ×</div>
-        <div class="burst">ATENÇÃO!</div>
+        <svg class="face" viewBox="0 0 64 64" aria-hidden="true">
+          <path class="triangle" d="M32 6 L60 56 H4 Z" stroke-linejoin="round"/>
+          <rect class="mark" x="29" y="22" width="6" height="18" rx="3"/>
+          <circle class="mark" cx="32" cy="48" r="3.5"/>
+        </svg>
       </div>
     </div>
 
     <div class="body">
+      <div class="title">
+        <span class="pt">Sou alérgica a:</span><span class="en">(I'm allergic to:)</span>
+      </div>
+
       <div class="grid">
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Leite</span><br><span class="en">(Milk &amp; dairy)</span></div>
+          <img class="icon" src="allergy-icons/milk.png" alt="">
+          <div class="label"><span class="pt">Leite</span><span class="en">(Milk &amp; dairy)</span></div>
         </div>
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Ovos</span><br><span class="en">(Egg)</span></div>
-        </div>
-
-        <div class="item">
-          <div class="checkbox"></div>
-          <div class="label"><span class="pt">Glúten / Trigo</span><br><span class="en">(Gluten / Wheat)</span></div>
-        </div>
-        <div class="item">
-          <div class="checkbox"></div>
-          <div class="label"><span class="pt">Amendoim</span><br><span class="en">(Peanut)</span></div>
+          <img class="icon" src="allergy-icons/egg.png" alt="">
+          <div class="label"><span class="pt">Ovos</span><span class="en">(Egg)</span></div>
         </div>
 
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Frutos secos / nozes</span><br><span class="en">(Tree nuts)</span></div>
+          <img class="icon" src="allergy-icons/peanut.png" alt="">
+          <div class="label"><span class="pt">Amendoim</span><span class="en">(Peanut)</span></div>
         </div>
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Sésamo / Gergelim</span><br><span class="en">(Sesame)</span></div>
-        </div>
-
-        <div class="item">
-          <div class="checkbox"></div>
-          <div class="label"><span class="pt">Coco</span><br><span class="en">(Coconut)</span></div>
-        </div>
-        <div class="item">
-          <div class="checkbox"></div>
-          <div class="label"><span class="pt">Crustáceos</span><br><span class="en">(Crustaceans)</span></div>
+          <img class="icon" src="allergy-icons/treenuts.png" alt="">
+          <div class="label"><span class="pt">Frutos secos / nozes</span><span class="en">(Tree nuts)</span></div>
         </div>
 
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Moluscos</span><br><span class="en">(Molluscs)</span></div>
+          <img class="icon" src="allergy-icons/gluten.png" alt="">
+          <div class="label"><span class="pt">Glúten / Trigo</span><span class="en">(Gluten / Wheat)</span></div>
         </div>
         <div class="item">
           <div class="checkbox"></div>
-          <div class="label"><span class="pt">Peixe</span><br><span class="en">(Fish)</span></div>
-        </div>
-
-        <div class="item">
-          <div class="checkbox"></div>
-          <div class="label"><span class="pt">Soja</span><br><span class="en">(Soy)</span></div>
-        </div>
-        <div class="item">
-          <div class="checkbox"></div>
-          <div class="label"><span class="pt">Tremoço</span><br><span class="en">(Lupine)</span></div>
+          <img class="icon" src="allergy-icons/soy.png" alt="">
+          <div class="label"><span class="pt">Soja</span><span class="en">(Soy)</span></div>
         </div>
       </div>
 
