@@ -2,6 +2,7 @@
 index.html
 assets.json
 _site/
+__pycache__/
 
 # Editor directories and files
 .vscode/

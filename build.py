@@ -42,6 +42,39 @@ def inject_analytics(html_content):
 
     return html_content
 
+_LOCAL_ASSET_ATTR_RE = re.compile(
+    r"""(?:src|href|poster|data)\s*=\s*["']([^"']+)["']""",
+    re.IGNORECASE,
+)
+_REMOTE_PREFIXES = ("http://", "https://", "data:", "//", "/", "#", "mailto:", "javascript:", "?")
+
+def find_local_assets(html_content, tool_path):
+    """Return a sorted list of local files referenced by relative URLs in the HTML.
+
+    Looks for src/href/poster/data attributes pointing at paths that resolve
+    to existing files inside TOOLS_DIR. Used both to copy assets into _site/
+    and to advertise them in assets.json.
+    """
+    tool_dir = tool_path.parent.resolve()
+    tools_root = TOOLS_DIR.resolve()
+    found = {}
+    for match in _LOCAL_ASSET_ATTR_RE.finditer(html_content):
+        ref = match.group(1).strip()
+        if not ref or ref.startswith(_REMOTE_PREFIXES):
+            continue
+        # Strip any query string or fragment before resolving
+        clean = ref.split("?", 1)[0].split("#", 1)[0]
+        if not clean:
+            continue
+        candidate = (tool_dir / clean).resolve()
+        try:
+            candidate.relative_to(tools_root)
+        except ValueError:
+            continue
+        if candidate.is_file():
+            found[candidate] = None
+    return sorted(found.keys())
+
 def extract_metadata(html_path):
     """Extract title and description from an HTML file."""
     content = html_path.read_text(encoding="utf-8")
@@ -411,6 +444,7 @@ def generate_assets_json(tools):
             "path": tool["path"],
             "sha256": tool["sha256"],
             "file_size_bytes": tool["file_size_bytes"],
+            "assets": tool["assets"],
         })
     return json.dumps({"tools": entries}, indent=2)
 
@@ -424,6 +458,8 @@ def main():
     (SITE_DIR / "tools").mkdir(exist_ok=True)
 
     # Process tool files
+    tools_root = TOOLS_DIR.resolve()
+    site_tools = (SITE_DIR / "tools").resolve()
     if TOOLS_DIR.exists():
         for html_file in TOOLS_DIR.glob("*.html"):
             print(f"Found tool: {html_file.name}")
@@ -445,6 +481,25 @@ def main():
             output_path = SITE_DIR / "tools" / html_file.name
             output_path.write_text(tool_content_with_analytics, encoding="utf-8")
             print(f"  Processed {html_file.name} -> {output_path}")
+
+            # Copy companion assets (e.g. images referenced by <img src="...">)
+            # into _site/ at the same relative location, and record them in
+            # the manifest so assets.json clients can fetch them too.
+            asset_entries = []
+            for asset in find_local_assets(tool_content, html_file):
+                rel = asset.relative_to(tools_root)
+                dest = site_tools / rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(asset, dest)
+                asset_bytes = asset.read_bytes()
+                asset_entries.append({
+                    "path": f"tools/{rel.as_posix()}",
+                    "sha256": hashlib.sha256(asset_bytes).hexdigest(),
+                    "file_size_bytes": len(asset_bytes),
+                })
+                print(f"  Copied asset {rel} -> {dest}")
+            asset_entries.sort(key=lambda a: a["path"])
+            metadata["assets"] = asset_entries
 
     # Generate index.html with analytics
     print(f"Building index with {len(tools)} tool(s)...")

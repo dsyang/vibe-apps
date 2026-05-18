@@ -48,6 +48,15 @@ The build script (`build.py`) automatically:
 - Generates `index.html` with all tools listed alphabetically
 - Injects Google Analytics tracking code into all pages (index and tools)
 - Creates a `_site/` directory with processed files ready for deployment
+- Copies companion assets (any local file referenced from a tool via
+  `<img src>`, `<link href>`, `<script src>`, etc.) into `_site/` at the
+  same relative path, and lists them in each tool's `assets` array in
+  `assets.json` so downloaders can fetch and verify them
+
+After building, run `python3 verify.py` to sanity-check the output: it
+confirms every file in `assets.json` exists on disk with a matching size and
+sha256, every local reference in a deployed HTML resolves, and `index.html`
+links every tool.
 
 ## Analytics
 
