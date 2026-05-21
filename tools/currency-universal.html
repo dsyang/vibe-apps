@@ -107,7 +107,7 @@
       border: 2px solid var(--border);
       border-radius: var(--radius);
       padding: 4px;
-      transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+      transition: border-color 0.25s, box-shadow 0.25s, background 0.25s, opacity 0.25s, transform 0.25s;
     }
 
     .currency-row.active {
@@ -209,28 +209,24 @@
     .flag-area {
       display: flex;
       align-items: center;
-      padding-right: 4px;
+      padding-right: 12px;
       font-size: 26px;
       flex-shrink: 0;
     }
 
-    .remove-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 10px 0 4px;
-      border: none;
-      background: none;
-      color: var(--text-dim);
+    /* Flag is tappable on swappable rows to open the currency picker */
+    .currency-row:not([data-currency="USD"]) .flag-area {
       cursor: pointer;
-      font-size: 20px;
-      flex-shrink: 0;
-      opacity: 0.4;
-      transition: opacity 0.2s;
-      line-height: 1;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
-    .remove-btn:hover { opacity: 1; }
+    /* Long-press feedback on removable row */
+    .currency-row.row-pressing {
+      opacity: 0.45;
+      transform: scale(0.97);
+      transition: opacity 0.08s, transform 0.08s !important;
+    }
 
     /* Add currency button */
     .add-currency-btn {
@@ -511,9 +507,7 @@
         return `<option value="${c.code}"${c.code === code ? ' selected' : ''}${inUse ? ' disabled' : ''}>${c.label} ${c.flag}</option>`;
       }).join('');
 
-      const removeBtnHTML = canRemove
-        ? `<button class="remove-btn" aria-label="Remove currency">×</button>`
-        : '';
+      if (canRemove) row.dataset.removable = 'true';
 
       row.innerHTML = `
         <button class="activate-btn" aria-label="Activate ${cfg.label} input"></button>
@@ -522,7 +516,6 @@
           <input class="currency-input" type="text" inputmode="text" placeholder="0" data-currency="${code}" />
         </div>
         <div class="flag-area">${cfg.flag}</div>
-        ${removeBtnHTML}
       `;
       return row;
     }
@@ -533,7 +526,6 @@
         const activateBtn = row.querySelector('.activate-btn');
         const input = row.querySelector('.currency-input');
         const sel = row.querySelector('.currency-select');
-        const removeBtn = row.querySelector('.remove-btn');
 
         activateBtn.addEventListener('click', () => activate(currency));
         input.addEventListener('focus', () => setActive(currency));
@@ -571,10 +563,45 @@
           sel.addEventListener('change', () => {
             onSlotChange(parseInt(sel.dataset.slot), sel.value);
           });
+
+          // Tapping the flag opens the currency picker
+          const flagArea = row.querySelector('.flag-area');
+          if (flagArea) {
+            flagArea.addEventListener('click', () => {
+              setActive(currency);
+              try { sel.showPicker(); } catch { sel.click(); }
+            });
+          }
         }
 
-        if (removeBtn) {
-          removeBtn.addEventListener('click', () => removeSlot());
+        // Long-press on the removable (3rd) row to remove it
+        if (row.dataset.removable) {
+          let pressTimer = null;
+          let pressOrigin = null;
+
+          row.addEventListener('pointerdown', (e) => {
+            pressOrigin = { x: e.clientX, y: e.clientY };
+            row.classList.add('row-pressing');
+            pressTimer = setTimeout(() => {
+              row.classList.remove('row-pressing');
+              removeSlot();
+            }, 600);
+          });
+
+          const cancelPress = () => {
+            clearTimeout(pressTimer);
+            row.classList.remove('row-pressing');
+            pressOrigin = null;
+          };
+
+          row.addEventListener('pointerup', cancelPress);
+          row.addEventListener('pointercancel', cancelPress);
+          row.addEventListener('pointermove', (e) => {
+            if (!pressOrigin) return;
+            const d = Math.hypot(e.clientX - pressOrigin.x, e.clientY - pressOrigin.y);
+            if (d > 8) cancelPress();
+          });
+          row.addEventListener('contextmenu', e => e.preventDefault());
         }
       });
     }
