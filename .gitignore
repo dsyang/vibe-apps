@@ -12,3 +12,8 @@ _site/
 # Environment
 .env
 .env.local
+
+# Node
+node_modules/
+package.json
+package-lock.json
