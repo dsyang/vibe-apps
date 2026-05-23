@@ -36,6 +36,9 @@ jobs:
           # Copy .nojekyll to _site (build.py creates _site and processes files)
           cp .nojekyll _site/
 
+      - name: Verify build output
+        run: python3 verify.py
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
