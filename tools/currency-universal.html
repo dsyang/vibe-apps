@@ -364,11 +364,14 @@
     const CURRENCIES = [
       { code: 'USD', label: 'USD',       symbol: '$',   flag: '🇺🇸', decimals: 2, chipDecimals: 2 },
       { code: 'EUR', label: 'EUR',       symbol: '€',   flag: '🇪🇺', decimals: 2, chipDecimals: 4 },
+      { code: 'GBP', label: 'GBP',       symbol: '£',   flag: '🇬🇧', decimals: 2, chipDecimals: 4 },
       { code: 'NTD', label: 'TWD (NTD)', symbol: 'NT$', flag: '🇹🇼', decimals: 2, chipDecimals: 2 },
       { code: 'JPY', label: 'JPY',       symbol: '¥',   flag: '🇯🇵', decimals: 0, chipDecimals: 0 },
+      { code: 'CNY', label: 'CNY (RMB)', symbol: 'CN¥', flag: '🇨🇳', decimals: 2, chipDecimals: 2 },
+      { code: 'CAD', label: 'CAD',       symbol: 'C$',  flag: '🇨🇦', decimals: 2, chipDecimals: 2 },
     ];
     const CURRENCY_MAP = Object.fromEntries(CURRENCIES.map(c => [c.code, c]));
-    const FALLBACK_RATES = { USD: 1, EUR: 0.92, NTD: 32.5, JPY: 150.0 };
+    const FALLBACK_RATES = { USD: 1, EUR: 0.92, GBP: 0.79, NTD: 32.5, JPY: 150.0, CNY: 7.2, CAD: 1.37 };
 
     // --- State ---
     let slots = (() => {
@@ -429,11 +432,11 @@
       const apis = [
         {
           url: 'https://open.er-api.com/v6/latest/USD',
-          parse: d => ({ USD: 1, EUR: d.rates.EUR, NTD: d.rates.TWD, JPY: d.rates.JPY })
+          parse: d => ({ USD: 1, EUR: d.rates.EUR, GBP: d.rates.GBP, NTD: d.rates.TWD, JPY: d.rates.JPY, CNY: d.rates.CNY, CAD: d.rates.CAD })
         },
         {
           url: 'https://api.exchangerate-api.com/v4/latest/USD',
-          parse: d => ({ USD: 1, EUR: d.rates.EUR, NTD: d.rates.TWD, JPY: d.rates.JPY })
+          parse: d => ({ USD: 1, EUR: d.rates.EUR, GBP: d.rates.GBP, NTD: d.rates.TWD, JPY: d.rates.JPY, CNY: d.rates.CNY, CAD: d.rates.CAD })
         }
       ];
 
@@ -443,7 +446,7 @@
           if (!res.ok) continue;
           const data = await res.json();
           const parsed = api.parse(data);
-          if (parsed.EUR && parsed.NTD && parsed.JPY) {
+          if (parsed.EUR && parsed.GBP && parsed.NTD && parsed.JPY && parsed.CNY && parsed.CAD) {
             rates = parsed;
             liveRates = true;
             renderRateChips();
