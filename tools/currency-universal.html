@@ -364,11 +364,14 @@
     const CURRENCIES = [
       { code: 'USD', label: 'USD',       symbol: '$',   flag: '🇺🇸', decimals: 2, chipDecimals: 2 },
       { code: 'EUR', label: 'EUR',       symbol: '€',   flag: '🇪🇺', decimals: 2, chipDecimals: 4 },
+      { code: 'GBP', label: 'GBP',       symbol: '£',   flag: '🇬🇧', decimals: 2, chipDecimals: 4 },
       { code: 'NTD', label: 'TWD (NTD)', symbol: 'NT$', flag: '🇹🇼', decimals: 2, chipDecimals: 2 },
       { code: 'JPY', label: 'JPY',       symbol: '¥',   flag: '🇯🇵', decimals: 0, chipDecimals: 0 },
+      { code: 'CNY', label: 'CNY (RMB)', symbol: 'CN¥', flag: '🇨🇳', decimals: 2, chipDecimals: 2 },
+      { code: 'CAD', label: 'CAD',       symbol: 'C$',  flag: '🇨🇦', decimals: 2, chipDecimals: 2 },
     ];
     const CURRENCY_MAP = Object.fromEntries(CURRENCIES.map(c => [c.code, c]));
-    const FALLBACK_RATES = { USD: 1, EUR: 0.92, NTD: 32.5, JPY: 150.0 };
+    const FALLBACK_RATES = { USD: 1, EUR: 0.92, GBP: 0.79, NTD: 32.5, JPY: 150.0, CNY: 7.2, CAD: 1.37 };
 
     // --- State ---
     let slots = (() => {
@@ -400,10 +403,23 @@
 
     // --- Rate chips (reactive to slots) ---
     function renderRateChips() {
+      const usdCfg = CURRENCY_MAP['USD'];
       const nonUSD = slots.filter(c => c !== 'USD');
       ratesBar.innerHTML = nonUSD.map(code => {
         const cfg = CURRENCY_MAP[code];
         const val = rates[code];
+
+        // For currencies stronger than the dollar (where $1 buys less than 1
+        // unit), invert the rate so it reads "1 EUR = $1.09 USD" instead of
+        // the harder-to-grok "$1 USD = 0.92 EUR".
+        if (val < 1) {
+          const inverted = 1 / val;
+          const formatted = usdCfg.chipDecimals === 0
+            ? Math.round(inverted).toLocaleString('en-US')
+            : inverted.toFixed(usdCfg.chipDecimals);
+          return `<span class="rate-chip">1 ${cfg.label} = <span class="val">${usdCfg.symbol}${formatted}</span> USD</span>`;
+        }
+
         const formatted = cfg.chipDecimals === 0
           ? Math.round(val).toLocaleString('en-US')
           : val.toFixed(cfg.chipDecimals);
@@ -416,11 +432,11 @@
       const apis = [
         {
           url: 'https://open.er-api.com/v6/latest/USD',
-          parse: d => ({ USD: 1, EUR: d.rates.EUR, NTD: d.rates.TWD, JPY: d.rates.JPY })
+          parse: d => ({ USD: 1, EUR: d.rates.EUR, GBP: d.rates.GBP, NTD: d.rates.TWD, JPY: d.rates.JPY, CNY: d.rates.CNY, CAD: d.rates.CAD })
         },
         {
           url: 'https://api.exchangerate-api.com/v4/latest/USD',
-          parse: d => ({ USD: 1, EUR: d.rates.EUR, NTD: d.rates.TWD, JPY: d.rates.JPY })
+          parse: d => ({ USD: 1, EUR: d.rates.EUR, GBP: d.rates.GBP, NTD: d.rates.TWD, JPY: d.rates.JPY, CNY: d.rates.CNY, CAD: d.rates.CAD })
         }
       ];
 
@@ -430,7 +446,7 @@
           if (!res.ok) continue;
           const data = await res.json();
           const parsed = api.parse(data);
-          if (parsed.EUR && parsed.NTD && parsed.JPY) {
+          if (parsed.EUR && parsed.GBP && parsed.NTD && parsed.JPY && parsed.CNY && parsed.CAD) {
             rates = parsed;
             liveRates = true;
             renderRateChips();
