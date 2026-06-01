@@ -400,10 +400,23 @@
 
     // --- Rate chips (reactive to slots) ---
     function renderRateChips() {
+      const usdCfg = CURRENCY_MAP['USD'];
       const nonUSD = slots.filter(c => c !== 'USD');
       ratesBar.innerHTML = nonUSD.map(code => {
         const cfg = CURRENCY_MAP[code];
         const val = rates[code];
+
+        // For currencies stronger than the dollar (where $1 buys less than 1
+        // unit), invert the rate so it reads "1 EUR = $1.09 USD" instead of
+        // the harder-to-grok "$1 USD = 0.92 EUR".
+        if (val < 1) {
+          const inverted = 1 / val;
+          const formatted = usdCfg.chipDecimals === 0
+            ? Math.round(inverted).toLocaleString('en-US')
+            : inverted.toFixed(usdCfg.chipDecimals);
+          return `<span class="rate-chip">1 ${cfg.label} = <span class="val">${usdCfg.symbol}${formatted}</span> USD</span>`;
+        }
+
         const formatted = cfg.chipDecimals === 0
           ? Math.round(val).toLocaleString('en-US')
           : val.toFixed(cfg.chipDecimals);
