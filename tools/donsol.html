@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="description" content="Play Donsol, the solo dungeon card game, on phone." />
+<title>Donsol — a dungeon in 54 cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#15232a; --bg2:#1b2f36; --felt:#214140; --felt2:#19302f;
+    --panel:#2b4047; --panel-hi:#385259; --edge:#0b161b;
+    --text:#eef5f5; --muted:#92a9af; --muted2:#6f898f;
+    --red:#fe5f55; --red-deep:#b1372e;
+    --blue:#2fa9ff; --blue-deep:#13639f;
+    --gold:#ffc24b; --gold-deep:#a9760f;
+    --green:#57c06b; --green-deep:#2c8741;
+    --cardface:#fbf4e4; --cardface2:#efe4ca; --ink:#1b2a2a; --cardedge:#0e1c22;
+    --hi:#ffd84a;
+    --font:"Baloo 2", ui-rounded, "Segoe UI", system-ui, sans-serif;
+    --font-card: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  html{height:100%}
+  body{
+    background:radial-gradient(130% 100% at 50% 0%, #203a3f 0%, var(--bg2) 45%, var(--bg) 100%), var(--bg);
+    color:var(--text); font-family:var(--font);
+    height:100vh; height:100dvh; overflow:hidden; position:relative;
+  }
+  body::before{ content:""; position:fixed; inset:-20%; pointer-events:none; z-index:0;
+    background:
+      radial-gradient(38% 30% at 28% 22%, rgba(47,169,255,.16), transparent 70%),
+      radial-gradient(40% 32% at 76% 30%, rgba(254,95,85,.14), transparent 70%),
+      radial-gradient(55% 45% at 50% 105%, rgba(0,0,0,.45), transparent 70%);
+    animation:drift 22s ease-in-out infinite;
+  }
+  @keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(2%,-2%) scale(1.06)}}
+
+  .wrap{position:relative; z-index:1; max-width:540px; margin:0 auto; height:100vh; height:100dvh;
+    padding:10px 12px 12px; display:flex; flex-direction:column; gap:8px}
+  .wrap.shake{animation:shake .32s ease}
+  @keyframes shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-4px,2px)}40%{transform:translate(4px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,-1px)}}
+
+  header{display:flex; align-items:center; justify-content:space-between; gap:8px}
+  .title{font-family:var(--font); font-weight:700; font-size:1.35rem; line-height:1; color:#fff;
+    text-shadow:0 2px 0 var(--edge), 0 0 14px rgba(47,169,255,.25); letter-spacing:.02em}
+  .title small{display:block; font-weight:500; font-size:.5rem; color:var(--muted); margin-top:3px; text-shadow:none; letter-spacing:.06em}
+  .hbtns{display:flex; gap:6px}
+  .icon-btn{font-family:var(--font); font-weight:600; font-size:.62rem; color:var(--text);
+    background:var(--panel); border:2px solid var(--edge); border-radius:9px; padding:8px 9px; cursor:pointer; box-shadow:0 4px 0 var(--edge)}
+  .icon-btn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--edge)}
+  .icon-btn:focus-visible{outline:2px solid var(--hi); outline-offset:2px}
+
+  /* status */
+  .status{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .panel{position:relative; background:linear-gradient(180deg, var(--panel-hi), var(--panel));
+    border:2px solid var(--edge); border-radius:12px; padding:8px 10px;
+    box-shadow:0 4px 0 var(--edge), inset 0 2px 0 rgba(255,255,255,.05)}
+  .panel--hp{background:linear-gradient(180deg,#7a2e2a,#5e211d); border-color:#2a0f0d; box-shadow:0 4px 0 #2a0f0d, inset 0 2px 0 rgba(255,255,255,.07)}
+  .panel--wpn{background:linear-gradient(180deg,#1d5c86,#134563); border-color:#08222f; box-shadow:0 4px 0 #08222f, inset 0 2px 0 rgba(255,255,255,.07)}
+  .panel.bump{animation:bump .3s ease}
+  @keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+  .lbl{font-size:.5rem; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.7); font-weight:500}
+  .hp-top,.wpn-row{display:flex; align-items:baseline; justify-content:space-between; gap:6px}
+  .hp-num,.wpn-num{font-weight:700; font-size:1.5rem; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.4)}
+  .hp-num .max{font-size:.62rem; color:rgba(255,255,255,.6); font-weight:500}
+  .bar{height:8px; margin-top:6px; border-radius:6px; background:rgba(0,0,0,.35); border:1px solid rgba(0,0,0,.5); overflow:hidden}
+  .bar>i{display:block; height:100%; width:100%; background:linear-gradient(90deg,#ff8a7e,#fe5f55); transition:width .35s ease}
+  .wpn-note{font-size:.56rem; color:rgba(255,255,255,.72); margin-top:6px; min-height:1em; line-height:1.25; font-weight:500}
+  .wpn-note b{color:#fff}
+
+  .meta-row{display:flex; align-items:center; justify-content:space-between; font-size:.56rem; color:var(--muted); padding:0 2px; font-weight:500}
+  .meta-row b{color:#fff; font-weight:700}
+  .seed-chip{font-family:var(--font); font-weight:600; font-size:.56rem; letter-spacing:.06em; color:var(--muted);
+    background:var(--panel); border:2px solid var(--edge); border-radius:8px; padding:5px 8px; cursor:pointer; box-shadow:0 3px 0 var(--edge)}
+  .seed-chip b{color:var(--gold); font-weight:800; letter-spacing:.14em; margin-left:4px}
+  .seed-chip:active{transform:translateY(2px); box-shadow:0 1px 0 var(--edge)}
+  .seed-chip:focus-visible{outline:2px solid var(--hi); outline-offset:2px}
+  .seed-display{font-family:var(--font); font-weight:800; font-size:2.3rem; letter-spacing:.2em; color:var(--gold);
+    text-align:center; background:rgba(0,0,0,.28); border:2px solid var(--edge); border-radius:12px; padding:14px 10px; margin:6px 0 6px}
+  .seed-input{width:100%; font-family:var(--font); font-weight:800; font-size:1.6rem; letter-spacing:.2em; text-align:center; text-transform:uppercase;
+    color:#fff; background:rgba(0,0,0,.32); border:2px solid var(--edge); border-radius:12px; padding:12px; margin:0 0 10px; outline:none}
+  .seed-input:focus{border-color:var(--blue)}
+  .seed-input::placeholder{color:var(--muted2); letter-spacing:.2em}
+  .copied{font-weight:700; font-size:.64rem; text-align:center; margin:2px 0 12px; min-height:1em; color:var(--green)}
+
+  /* room */
+  .room-label{font-size:.54rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted2); text-align:center; position:relative}
+  .room-label::before,.room-label::after{content:""; position:absolute; top:50%; width:24%; height:2px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.12))}
+  .room-label::before{left:0; transform:scaleX(-1)} .room-label::after{right:0}
+
+  .room{flex:1; display:grid; grid-template-columns:repeat(4,1fr); gap:7px; align-content:center;
+    background:linear-gradient(180deg, var(--felt), var(--felt2)); border:2px solid var(--edge); border-radius:14px;
+    padding:10px 8px; box-shadow:inset 0 2px 10px rgba(0,0,0,.4)}
+
+  .card{position:relative; aspect-ratio:5/7; border-radius:9px; cursor:pointer; color:var(--ink);
+    background:linear-gradient(165deg, var(--cardface), var(--cardface2));
+    border:2px solid var(--cardedge); box-shadow:0 4px 0 var(--cardedge), 0 7px 12px rgba(0,0,0,.45);
+    padding:5px 4px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;
+    animation:deal .34s cubic-bezier(.2,1.3,.4,1) both; transition:transform .12s ease, box-shadow .12s ease}
+  @keyframes deal{0%{opacity:0; transform:translateY(14px) scale(.9) rotate(-3deg)}100%{opacity:1; transform:none}}
+  .card:hover{transform:translateY(-5px) rotate(-1.2deg); box-shadow:0 9px 0 var(--cardedge), 0 14px 18px rgba(0,0,0,.5)}
+  .card:active{transform:translateY(-1px) scale(.97)}
+  .card:focus-visible{outline:3px solid var(--hi); outline-offset:2px}
+  .card .ribbon{align-self:center; font-family:var(--font); font-weight:700; font-size:.42rem; letter-spacing:.06em;
+    padding:2px 5px; border-radius:5px; color:#fff; border:1px solid rgba(0,0,0,.35); line-height:1}
+  .card.monster .ribbon{background:var(--red-deep)}
+  .card.shield .ribbon{background:var(--blue-deep)}
+  .card.potion .ribbon{background:var(--green-deep)}
+  .card .pip{text-align:center; line-height:1}
+  .card .rank{font-family:var(--font-card); font-weight:800; font-size:clamp(1rem,5.4vw,1.7rem); color:var(--ink)}
+  .card .suit{font-size:clamp(.85rem,4.4vw,1.35rem); line-height:1}
+  .card.monster .suit{color:#1a2730}
+  .card.shield .suit{color:#cf3b34}
+  .card.potion .suit{color:#cf3b34}
+  .card .effect{font-family:var(--font); font-weight:500; font-size:.44rem; letter-spacing:.04em; text-transform:uppercase; text-align:center; color:#6b7a78; line-height:1.1}
+  .card .effect b{display:block; color:var(--ink); font-size:.72rem; font-weight:700}
+  .card .corner{position:absolute; font-family:var(--font-card); font-weight:800; font-size:.52rem; color:#7a8886}
+  .card .corner.tl{left:5px; top:4px} .card .corner.br{right:5px; bottom:4px; transform:rotate(180deg)}
+
+  /* controls */
+  .controls{display:flex; flex-direction:column; gap:7px}
+  .avoid-btn{width:100%; font-family:var(--font); font-weight:700; font-size:.78rem; color:#fff;
+    background:linear-gradient(180deg,#46707a,#33555d); border:2px solid var(--edge); border-radius:11px; padding:12px; cursor:pointer; box-shadow:0 5px 0 var(--edge)}
+  .avoid-btn:active{transform:translateY(3px); box-shadow:0 2px 0 var(--edge)}
+  .avoid-btn:focus-visible{outline:2px solid var(--hi); outline-offset:2px}
+  .avoid-btn[disabled]{opacity:.4; cursor:not-allowed}
+  .chronicle{min-height:2.2em; text-align:center; color:var(--text); font-size:.62rem; line-height:1.3; font-weight:500; padding:0 4px}
+  .chronicle .hint{display:block; color:var(--muted); font-size:.52rem; margin-top:2px}
+
+  /* floating numbers */
+  #floatLayer{position:fixed; inset:0; pointer-events:none; z-index:26}
+  .float{position:fixed; transform:translate(-50%,0); font-family:var(--font); font-weight:700; font-size:1.55rem;
+    text-shadow:0 2px 0 #000, 0 0 8px rgba(0,0,0,.5); animation:floatUp .95s ease-out forwards}
+  .float.dmg{color:var(--red)} .float.heal{color:var(--green)} .float.safe{color:var(--blue)} .float.muted{color:var(--muted)}
+  @keyframes floatUp{0%{opacity:0; transform:translate(-50%,8px) scale(.7)}18%{opacity:1; transform:translate(-50%,-2px) scale(1.15)}100%{opacity:0; transform:translate(-50%,-52px) scale(1)}}
+
+  .toast{position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom)); transform:translate(-50%,20px);
+    background:var(--panel); color:#fff; border:2px solid var(--edge); border-radius:11px; padding:10px 16px;
+    font-family:var(--font); font-weight:700; font-size:.72rem; box-shadow:0 5px 0 var(--edge); z-index:40;
+    opacity:0; pointer-events:none; transition:opacity .2s ease, transform .2s ease; max-width:80%; text-align:center}
+  .toast.show{opacity:1; transform:translate(-50%,0)}
+
+  /* monster action sheet */
+  .sheet-scrim{position:fixed; inset:0; background:rgba(4,10,12,.6); z-index:20; opacity:0; pointer-events:none; transition:opacity .2s}
+  .sheet-scrim.open{opacity:1; pointer-events:auto}
+  .sheet{position:fixed; left:0; right:0; bottom:0; z-index:21; transform:translateY(115%); transition:transform .26s cubic-bezier(.2,.9,.3,1);
+    background:linear-gradient(180deg,#243a41,#172a30); border-top:3px solid var(--edge); border-radius:18px 18px 0 0;
+    padding:16px 14px calc(16px + env(safe-area-inset-bottom)); max-width:540px; margin:0 auto; box-shadow:0 -10px 30px rgba(0,0,0,.5)}
+  .sheet.open{transform:none}
+  .sheet h3{margin:0 0 3px; font-family:var(--font); font-weight:700; font-size:.95rem; color:#fff}
+  .sheet p{margin:0 0 14px; color:var(--muted); font-size:.64rem; font-weight:500}
+  .choice{width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:10px; color:#fff;
+    border:2px solid var(--edge); border-radius:12px; padding:13px 14px; margin-bottom:10px; cursor:pointer; font-family:var(--font); font-weight:600; font-size:.78rem}
+  #choiceBare{background:linear-gradient(180deg,#d2493f,#a8362d); box-shadow:0 5px 0 #5e1c16}
+  #choiceWeapon{background:linear-gradient(180deg,#2f95d8,#1c6ba6); box-shadow:0 5px 0 #0c3a5c}
+  .choice:active{transform:translateY(3px)}
+  #choiceBare:active{box-shadow:0 2px 0 #5e1c16} #choiceWeapon:active{box-shadow:0 2px 0 #0c3a5c}
+  .choice:focus-visible{outline:2px solid var(--hi); outline-offset:2px}
+  .choice .dmg{font-family:var(--font); font-weight:700; font-size:1.1rem}
+  .choice small{display:block; color:rgba(255,255,255,.78); font-size:.54rem; font-weight:500; margin-top:2px}
+  .choice[disabled]{opacity:.45; cursor:not-allowed; filter:grayscale(.4)}
+  .choice[disabled]:active{transform:none}
+  .sheet .cancel{width:100%; background:transparent; border:2px solid var(--edge); color:var(--muted);
+    padding:10px; border-radius:10px; font-family:var(--font); font-weight:600; font-size:.66rem; cursor:pointer; margin-top:2px}
+
+  /* modal */
+  .modal-scrim{position:fixed; inset:0; background:rgba(4,10,12,.78); z-index:30; display:none; align-items:center; justify-content:center; padding:18px}
+  .modal-scrim.open{display:flex}
+  .modal{background:linear-gradient(180deg,#243a41,#162a30); border:3px solid var(--edge); border-radius:18px;
+    max-width:430px; width:100%; max-height:86vh; overflow-y:auto; padding:20px 18px; box-shadow:0 10px 0 var(--edge), 0 18px 40px rgba(0,0,0,.6)}
+  .modal h2{font-family:var(--font); font-weight:700; color:#fff; margin:0 0 4px; font-size:1.25rem}
+  .modal h2.win{color:var(--gold)} .modal h2.lose{color:var(--red)}
+  .modal .score{font-family:var(--font); font-size:2.7rem; font-weight:700; margin:6px 0 2px; color:#fff; text-shadow:0 3px 0 rgba(0,0,0,.4)}
+  .modal .score-note{color:var(--muted); font-size:.62rem; margin-bottom:16px; font-weight:500}
+  .modal p{color:var(--text); font-size:.72rem; line-height:1.6; margin:0 0 10px; font-weight:500}
+  .modal h3{font-family:var(--font); color:var(--gold); font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; margin:14px 0 6px; font-weight:700}
+  .modal ul{margin:0 0 10px; padding-left:16px; color:var(--text); font-size:.72rem; line-height:1.6; font-weight:500}
+  .modal li{margin-bottom:5px}
+  .modal .glyph{color:#fff; font-weight:700}
+  .primary{width:100%; font-family:var(--font); font-weight:700; font-size:.82rem; color:#fff;
+    background:linear-gradient(180deg,#2f95d8,#1c6ba6); border:2px solid var(--edge); border-radius:11px; padding:13px; cursor:pointer; margin-top:8px; box-shadow:0 5px 0 #0c3a5c}
+  .primary:active{transform:translateY(3px); box-shadow:0 2px 0 #0c3a5c}
+  .primary:focus-visible{outline:2px solid var(--hi); outline-offset:2px}
+  .ghost{width:100%; background:transparent; border:2px solid var(--edge); color:var(--muted); padding:11px; border-radius:10px;
+    font-family:var(--font); font-weight:600; font-size:.66rem; cursor:pointer; margin-top:8px}
+
+  /* tutorial */
+  .tut-overlay{position:fixed; inset:0; background:rgba(4,10,12,.66); z-index:15; pointer-events:none; opacity:0; transition:opacity .25s}
+  .tut-overlay.on{opacity:1}
+  .tut-target{position:relative; z-index:16 !important; animation:tutpulse 1.3s ease-in-out infinite}
+  .card.tut-target{box-shadow:0 0 0 3px var(--hi), 0 0 22px rgba(255,216,74,.7), 0 7px 12px rgba(0,0,0,.5) !important}
+  .avoid-btn.tut-target{box-shadow:0 0 0 3px var(--hi), 0 0 20px rgba(255,216,74,.55), 0 5px 0 var(--edge) !important; opacity:1 !important}
+  @keyframes tutpulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.18)}}
+  .tut-bubble{position:fixed; left:0; right:0; bottom:0; z-index:18; max-width:540px; margin:0 auto;
+    background:linear-gradient(180deg,#243a41,#152a30); border-top:3px solid var(--hi);
+    border-radius:18px 18px 0 0; padding:14px 16px calc(16px + env(safe-area-inset-bottom));
+    box-shadow:0 -12px 32px rgba(0,0,0,.55); transform:translateY(118%); transition:transform .28s cubic-bezier(.2,.9,.3,1)}
+  .tut-bubble.on{transform:none}
+  .tut-step{font-family:var(--font); font-size:.54rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); font-weight:700}
+  .tut-bubble h3{font-family:var(--font); color:#fff; margin:3px 0 5px; font-size:1rem; font-weight:700}
+  .tut-bubble p{margin:0 0 10px; color:var(--text); font-size:.7rem; line-height:1.5; font-weight:500}
+  .tut-nudge{color:var(--red); font-size:.66rem; margin:-3px 0 10px; font-weight:600}
+  .tut-actions{display:flex; gap:8px; align-items:center}
+  .tut-skip{background:transparent; border:2px solid var(--edge); color:var(--muted); padding:11px 13px; border-radius:10px;
+    font-family:var(--font); font-weight:600; font-size:.62rem; cursor:pointer}
+  .tut-skip:active{transform:translateY(2px)}
+  .tut-bubble .primary{margin-top:0} .tut-bubble .ghost{margin-top:8px}
+  body.tut{height:auto; min-height:100dvh; overflow-y:auto}
+  body.tut .wrap{height:auto; min-height:100dvh; padding-bottom:210px}
+
+  @media (prefers-reduced-motion: reduce){
+    body::before{animation:none}
+    *{animation:none !important; transition:none !important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title">Donsol<small>a dungeon in 54 cards</small></div>
+    <div class="hbtns">
+      <button class="icon-btn" id="learnBtn">Learn</button>
+      <button class="icon-btn" id="rulesBtn">Rules</button>
+      <button class="icon-btn" id="newBtn">New</button>
+    </div>
+  </header>
+
+  <div class="status">
+    <div class="panel panel--hp" id="hpPanel">
+      <div class="hp-top"><span class="lbl">Health</span>
+        <span class="hp-num" id="hpNum">20<span class="max"> / 20</span></span></div>
+      <div class="bar"><i id="hpBar" style="width:100%"></i></div>
+    </div>
+    <div class="panel panel--wpn" id="wpnPanel">
+      <div class="wpn-row"><span class="lbl">Shield</span><span class="wpn-num" id="wpnNum">—</span></div>
+      <div class="wpn-note" id="wpnNote">No shield</div>
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <span>Dungeon <b id="deckCount">44</b> &middot; Cleared <b id="roomsCleared">0</b></span>
+    <button class="seed-chip" id="seedChip" aria-label="Seed — tap to view, copy, or replay">SEED <b id="seedVal">—</b></button>
+  </div>
+
+  <div class="room-label">The Room</div>
+  <div class="room" id="room" aria-label="Current room of cards"></div>
+
+  <div class="controls">
+    <button class="avoid-btn" id="avoidBtn">Escape this room</button>
+    <div class="chronicle" id="chronicle">You enter the dungeon. Four cards lie before you.
+      <span class="hint">Tap a card to deal with it.</span></div>
+  </div>
+</div>
+
+<!-- tutorial overlay + coach bubble -->
+<div class="tut-overlay" id="tutOverlay"></div>
+<div class="tut-bubble" id="tutBubble" role="dialog" aria-live="polite"></div>
+
+<!-- flying combat numbers -->
+<div id="floatLayer"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- rules / game over modal -->
+<div class="modal-scrim" id="modalScrim">
+  <div class="modal" id="modal" role="dialog" aria-modal="true"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var MAX_HP = 21;
+  var SUIT = { spade:"\u2660", club:"\u2663", diamond:"\u2666", heart:"\u2665", joker:"\uD83C\uDCCF" };
+  var state = null;
+
+  var el = {
+    room: document.getElementById('room'),
+    hpNum: document.getElementById('hpNum'),
+    hpBar: document.getElementById('hpBar'),
+    wpnNum: document.getElementById('wpnNum'),
+    wpnNote: document.getElementById('wpnNote'),
+    deckCount: document.getElementById('deckCount'),
+    roomsCleared: document.getElementById('roomsCleared'),
+    avoidBtn: document.getElementById('avoidBtn'),
+    chronicle: document.getElementById('chronicle'),
+    modalScrim: document.getElementById('modalScrim'),
+    modal: document.getElementById('modal'),
+    rulesBtn: document.getElementById('rulesBtn'),
+    newBtn: document.getElementById('newBtn'),
+    learnBtn: document.getElementById('learnBtn'),
+    tutOverlay: document.getElementById('tutOverlay'),
+    tutBubble: document.getElementById('tutBubble'),
+    hpPanel: document.getElementById('hpPanel'),
+    wpnPanel: document.getElementById('wpnPanel'),
+    floatLayer: document.getElementById('floatLayer'),
+    wrap: document.querySelector('.wrap'),
+    seedChip: document.getElementById('seedChip'),
+    seedVal: document.getElementById('seedVal'),
+    toast: document.getElementById('toast')
+  };
+
+  var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function bump(elm){ if(!elm) return; elm.classList.remove('bump'); void elm.offsetWidth; elm.classList.add('bump'); }
+  function shake(){ if(reducedMotion || !el.wrap) return; el.wrap.classList.remove('shake'); void el.wrap.offsetWidth; el.wrap.classList.add('shake'); }
+  function spawnFloat(text, kind, anchor){
+    if(!el.floatLayer || !anchor) return;
+    var r = anchor.getBoundingClientRect();
+    var d = document.createElement('div');
+    d.className = 'float ' + (kind || '');
+    d.textContent = text;
+    d.style.left = (r.left + r.width/2) + 'px';
+    d.style.top  = (r.top + 10) + 'px';
+    el.floatLayer.appendChild(d);
+    setTimeout(function(){ if(d.parentNode) d.parentNode.removeChild(d); }, 1000);
+  }
+
+  // ---- seeded randomness ----
+  var SEED_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  function makeSeed(){ var s=''; for(var i=0;i<5;i++){ s+=SEED_ALPHABET.charAt(Math.floor(Math.random()*SEED_ALPHABET.length)); } return s; }
+  function sanitizeSeed(s){ if(typeof s!=='string') return ''; return s.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5); }
+  function hashSeed(str){ var h=2166136261>>>0; for(var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+  function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; var t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+  function rngFromSeed(str){ return mulberry32(hashSeed(str)); }
+  function shuffle(a, rnd){ rnd=rnd||Math.random; for(var i=a.length-1;i>0;i--){ var j=Math.floor(rnd()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; } return a; }
+
+  // ---- deck ----
+  function cardValue(suit, rank){
+    if(suit === 'heart' || suit === 'diamond') return rank <= 10 ? rank : 11;  // potions & shields: faces = 11
+    return rank <= 10 ? rank : ({11:11, 12:13, 13:15, 14:17})[rank];           // monsters: J11 Q13 K15 A17
+  }
+  function buildDeck(){
+    var d = [], id = 0, r;
+    var defs = [['heart','potion'],['diamond','shield'],['spade','monster'],['club','monster']];
+    for(var s=0;s<defs.length;s++){
+      for(r=2;r<=14;r++){ d.push({ suit:defs[s][0], type:defs[s][1], rank:r, value:cardValue(defs[s][0],r), id:id++ }); }
+    }
+    d.push({ suit:'joker', type:'monster', rank:0, value:21, id:id++ });
+    d.push({ suit:'joker', type:'monster', rank:0, value:21, id:id++ });
+    return d; // 52 + 2 = 54
+  }
+  function cardName(card){ return card.suit==='joker' ? 'Donsol (21)' : SUIT[card.suit] + ' ' + card.value; }
+
+  // ---- game lifecycle ----
+  function newGame(seed){
+    var sd = sanitizeSeed(seed);
+    if(!sd) sd = makeSeed();
+    var rnd = rngFromSeed(sd);
+    state = {
+      seed: sd,
+      rng: rnd,
+      dungeon: shuffle(buildDeck(), rnd),
+      room: [],
+      hp: MAX_HP,
+      shield: null,
+      lastBlocked: null,        // value of last monster this shield blocked (descending)
+      potionStreak: false,      // was the last folded card a potion?
+      escapedLastRoom: false,
+      roomsCleared: 0,
+      over: false,
+      tutorial: false, tutStep: 0, _nudge: null
+    };
+    syncURL(sd);
+    dealUpTo();
+    closeModal();
+    setChronicle('You enter the dungeon. Four cards lie before you.', 'New here? Tap Learn for a quick tutorial.');
+    render(); renderBubble();
+  }
+
+  function dealUpTo(){
+    while(state.room.length < 4 && state.dungeon.length > 0){ state.room.push(state.dungeon.shift()); }
+  }
+  function roomHasMonsters(){ return state.room.some(function(c){ return c.type === 'monster'; }); }
+
+  // Easy-mode escape: allowed unless you escaped the previous room AND monsters remain here.
+  function canEscape(){
+    return !state.over && state.room.length > 0 && (!state.escapedLastRoom || !roomHasMonsters());
+  }
+  function escapeRoom(){
+    if(state && state.tutorial){
+      var se = TUT[state.tutStep];
+      if(!se || se.kind !== 'action' || se.expect.action !== 'escape'){ tutNudge('Not yet — follow the glowing guide.'); return; }
+    }
+    if(!canEscape()) return;
+    for(var i=0;i<state.room.length;i++){ state.dungeon.push(state.room[i]); }
+    state.room = [];
+    shuffle(state.dungeon, state.rng);
+    state.escapedLastRoom = true;
+    spawnFloat('ESCAPE', 'safe', el.wpnPanel);
+    setChronicle('You slip out and shuffle the room back into the dungeon.', 'You cannot escape the next room in a row.');
+    dealUpTo();
+    render();
+    if(state.tutorial) advanceTut();
+  }
+
+  function afterResolve(){
+    if(state.hp <= 0){ endGame(false); return; }
+    if(state.room.length === 0){
+      if(state.dungeon.length === 0){ endGame(true); return; }
+      state.roomsCleared++;
+      state.escapedLastRoom = false;   // a freshly dealt room (not via escape) is escapable again
+      dealUpTo();
+    }
+    render();
+  }
+
+  // ---- card interactions ----
+  function monsterOutcome(value){
+    if(state.shield === null) return { dmg: value, broke: false };
+    if(state.lastBlocked === null || value < state.lastBlocked) return { dmg: Math.max(0, value - state.shield), broke: false };
+    return { dmg: value, broke: true };
+  }
+
+  function tapCard(idx){
+    if(state.over) return;
+    var card = state.room[idx];
+    if(!card) return;
+
+    if(state.tutorial){
+      var st = TUT[state.tutStep];
+      if(!st || st.kind !== 'action'){
+        tutNudge(st && st.kind === 'finish' ? 'Tutorial complete — choose below.' : 'Finish reading, then tap Continue.');
+        return;
+      }
+      var ex = st.expect, t = st.target;
+      if(ex.action === 'escape'){ tutNudge('Use the Escape button below.'); return; }
+      if(!(t && card.suit === t.suit && card.value === t.value)){ tutNudge('Tap the glowing card.'); return; }
+      if(ex.action === 'potion'  && card.type === 'potion'){ resolvePotion(idx); afterTutAction(); return; }
+      if(ex.action === 'shield'  && card.type === 'shield'){ resolveShield(idx); afterTutAction(); return; }
+      if(ex.action === 'monster' && card.type === 'monster'){ resolveMonster(idx); afterTutAction(); return; }
+      tutNudge('Tap the glowing card.');
+      return;
+    }
+
+    if(card.type === 'potion') resolvePotion(idx);
+    else if(card.type === 'shield') resolveShield(idx);
+    else resolveMonster(idx);
+  }
+
+  function resolvePotion(idx){
+    var card = state.room.splice(idx,1)[0];
+    if(!state.potionStreak){
+      var before = state.hp;
+      state.hp = Math.min(MAX_HP, state.hp + card.value);
+      var gained = state.hp - before;
+      state.potionStreak = true;
+      if(gained > 0){ spawnFloat('+'+gained, 'heal', el.hpPanel); bump(el.hpPanel); }
+      else { spawnFloat('FULL', 'muted', el.hpPanel); }
+      setChronicle('You drink the '+cardName(card)+' potion. +'+gained+' health.',
+                   gained < card.value ? 'Already near full — the rest spills.' : '');
+    } else {
+      spawnFloat('SICK', 'muted', el.hpPanel);
+      setChronicle('Two potions in a row — you feel sick. The '+cardName(card)+' does nothing.',
+                   'Fold a monster or shield before drinking again.');
+    }
+    afterResolve();
+  }
+
+  function resolveShield(idx){
+    var card = state.room.splice(idx,1)[0];
+    state.shield = card.value;
+    state.lastBlocked = null;
+    state.potionStreak = false;
+    spawnFloat('+'+card.value, 'safe', el.wpnPanel); bump(el.wpnPanel);
+    setChronicle('You raise the '+cardName(card)+' shield.', 'It blocks foes you face in descending order.');
+    afterResolve();
+  }
+
+  function resolveMonster(idx){
+    var card = state.room.splice(idx,1)[0];
+    var o = monsterOutcome(card.value);
+    var line, hint = '';
+    if(state.shield === null){
+      line = 'You face the '+cardName(card)+' unguarded. \u2212'+o.dmg+'.';
+    } else if(o.broke){
+      state.shield = null; state.lastBlocked = null;
+      line = 'The '+cardName(card)+' is too strong — your shield breaks! Full \u2212'+o.dmg+'.';
+      spawnFloat('BREAK', 'dmg', el.wpnPanel); bump(el.wpnPanel);
+    } else {
+      state.lastBlocked = card.value;
+      line = 'Your shield turns the '+cardName(card)+'. ' + (o.dmg===0 ? 'No damage.' : '\u2212'+o.dmg+'.');
+      hint = 'Next foe must be below '+card.value+'.';
+    }
+    state.hp -= o.dmg;
+    state.potionStreak = false;
+    if(o.dmg > 0){ spawnFloat('-'+o.dmg, 'dmg', el.hpPanel); bump(el.hpPanel); shake(); }
+    else { spawnFloat('BLOCK', 'safe', el.hpPanel); }
+    setChronicle(line, hint);
+    afterResolve();
+  }
+
+  // ---- end game ----
+  function endGame(won){
+    state.over = true;
+    render();
+    var score, note;
+    if(won){
+      score = state.hp;
+      note = 'Your score is the health you escaped with.';
+    } else {
+      var remain = 0, all = state.dungeon.concat(state.room);
+      for(var i=0;i<all.length;i++){ if(all[i].type === 'monster') remain += all[i].value; }
+      score = -remain;
+      note = 'Your score is the negative sum of the monsters left unfought.';
+    }
+    openEndModal(won, score, note);
+  }
+
+  // ---- rendering ----
+  function render(){
+    el.hpNum.innerHTML = Math.max(0,state.hp) + '<span class="max"> / '+MAX_HP+'</span>';
+    el.hpBar.style.width = (Math.max(0,state.hp)/MAX_HP*100) + '%';
+    el.wpnNum.textContent = state.shield === null ? '\u2014' : state.shield;
+    if(state.shield === null){ el.wpnNote.textContent = 'No shield'; }
+    else if(state.lastBlocked === null){ el.wpnNote.innerHTML = 'Blocks any foe'; }
+    else { el.wpnNote.innerHTML = 'Next foe must be <b>below '+state.lastBlocked+'</b>'; }
+    el.deckCount.textContent = state.dungeon.length;
+    el.roomsCleared.textContent = state.roomsCleared;
+    el.seedVal.textContent = state.seed || '\u2014';
+
+    if(state.tutorial){
+      var _st = TUT[state.tutStep];
+      var allow = _st && _st.kind === 'action' && _st.expect.action === 'escape' && canEscape();
+      el.avoidBtn.disabled = !allow;
+      el.avoidBtn.textContent = 'Escape this room';
+    } else {
+      var ce = canEscape();
+      el.avoidBtn.disabled = !ce;
+      el.avoidBtn.textContent = ce ? 'Escape this room' : 'No escaping twice in a row';
+    }
+
+    el.room.innerHTML = '';
+    for(var i=0;i<state.room.length;i++){ el.room.appendChild(cardNode(state.room[i], i)); }
+    if(state.tutorial) applyTutHighlight();
+  }
+
+  function cardNode(card, idx){
+    var node = document.createElement('button');
+    node.className = 'card ' + card.type;
+    node.setAttribute('data-suit', card.suit);
+    node.setAttribute('data-value', card.value);
+    node.setAttribute('aria-label', cardAria(card));
+    var suit = SUIT[card.suit];
+    var ribbon = card.type === 'monster' ? 'FOE' : card.type === 'shield' ? 'SHIELD' : 'POTION';
+    var eff;
+    if(card.type === 'potion'){
+      eff = '<b style="color:#2c8741">+'+card.value+'</b> heal';
+    } else if(card.type === 'shield'){
+      eff = '<b style="color:#13639f">'+card.value+'</b> def';
+    } else {
+      var o = monsterOutcome(card.value);
+      if(state.shield === null) eff = '<b style="color:#b1372e">\u2212'+card.value+'</b>';
+      else if(o.broke) eff = '<b style="color:#b1372e">break</b>';
+      else if(o.dmg === 0) eff = '<b style="color:#2c8741">block</b>';
+      else eff = '<b style="color:#b1372e">\u2212'+o.dmg+'</b>';
+    }
+    node.innerHTML =
+      '<span class="corner tl">'+card.value+'</span>'+
+      '<span class="ribbon">'+ribbon+'</span>'+
+      '<div class="pip"><div class="rank">'+card.value+'</div><div class="suit">'+suit+'</div></div>'+
+      '<div class="effect">'+eff+'</div>'+
+      '<span class="corner br">'+card.value+'</span>';
+    node.addEventListener('click', function(){ tapCard(idx); });
+    return node;
+  }
+
+  function cardAria(card){
+    var t = card.type === 'monster' ? (card.suit==='joker' ? 'Donsol monster, attack 21' : 'Monster, attack '+card.value)
+          : card.type === 'shield' ? 'Shield, value '+card.value
+          : 'Potion, heal '+card.value;
+    return t + '.';
+  }
+
+  function setChronicle(main, hint){
+    el.chronicle.innerHTML = main + (hint ? '<span class="hint">'+hint+'</span>' : '');
+  }
+
+  // ---- modals ----
+  function openEndModal(won, score, note){
+    var monstersLeft = state.dungeon.concat(state.room).filter(function(c){return c.type==='monster';}).length;
+    var sd = state.seed;
+    var html =
+      '<h2 class="'+(won?'win':'lose')+'">'+(won?'You escape the dungeon':'The dungeon claims you')+'</h2>'+
+      '<p>'+(won
+        ? 'Every card is dealt with and the deck is empty. You made it out alive.'
+        : 'Your health runs out among the cards. The dungeon keeps you.')+'</p>'+
+      '<div class="score">'+(score>0?'+':'')+score+'</div>'+
+      '<div class="score-note">'+note+'</div>'+
+      (won?'':'<p style="font-size:.72rem;color:var(--muted)">'+monstersLeft+' foes were left unfought.</p>')+
+      '<p style="font-size:.66rem;color:var(--muted)">Seed <b style="color:var(--gold);letter-spacing:.12em">'+sd+'</b></p>'+
+      '<button class="primary" id="againBtn">Enter again</button>'+
+      '<button class="ghost" id="shareResultBtn">Share result</button>'+
+      '<button class="ghost" id="replaySeedBtn">Replay this seed</button>'+
+      '<button class="ghost" id="rulesFromEnd">Read the rules</button>';
+    el.modal.innerHTML = html;
+    el.modalScrim.classList.add('open');
+    document.getElementById('againBtn').addEventListener('click', function(){ newGame(); });
+    document.getElementById('shareResultBtn').addEventListener('click', function(){ shareResult(won, score, sd); });
+    document.getElementById('replaySeedBtn').addEventListener('click', function(){ newGame(sd); });
+    document.getElementById('rulesFromEnd').addEventListener('click', openRules);
+  }
+
+  function openRules(){
+    var html =
+      '<h2>How to play</h2>'+
+      '<p>You explore a dungeon of 54 cards, four at a time. Clear the whole deck alive and you win.</p>'+
+      '<h3>The cards</h3>'+
+      '<ul>'+
+        '<li><span class="glyph">\u2660 \u2663</span> &nbsp;<b>Monsters</b> — deal damage equal to their value. Faces: J=11, Q=13, K=15, A=17. The two Jokers are <b>Donsols</b>, worth 21.</li>'+
+        '<li><span class="glyph">\u2666</span> &nbsp;<b>Shields</b> — absorb damage. Faces are worth 11.</li>'+
+        '<li><span class="glyph">\u2665</span> &nbsp;<b>Potions</b> — heal up to 21. Faces are worth 11.</li>'+
+      '</ul>'+
+      '<h3>Shields</h3>'+
+      '<ul>'+
+        '<li>A shield reduces a monster\u2019s hit to <b>monster \u2212 shield</b> (never below 0).</li>'+
+        '<li>It only blocks foes in <b>descending value</b>. Fight one that is not weaker than the last it blocked and the shield <b>breaks</b> — you take the full hit and lose the shield.</li>'+
+        '<li>Equipping a new shield replaces the old one.</li>'+
+      '</ul>'+
+      '<h3>Potions</h3>'+
+      '<ul><li>Drinking two or more in a row makes you <b>sick</b> — only the first heals. Fold a monster or shield in between to drink again.</li></ul>'+
+      '<h3>Rooms &amp; escaping</h3>'+
+      '<ul>'+
+        '<li>A room is 4 cards. Fold all four, then a new room is dealt.</li>'+
+        '<li><b>Escape</b> shuffles the room back into the dungeon. You can escape unless you escaped the previous room and monsters still remain here.</li>'+
+      '</ul>'+
+      '<h3>Score</h3>'+
+      '<ul>'+
+        '<li>Survive: your score is the health you finish with (out of 21).</li>'+
+        '<li>Fall: your score is the negative total of the monsters you never fought.</li>'+
+      '</ul>'+
+      '<button class="primary" id="closeRules">Begin</button>';
+    el.modal.innerHTML = html;
+    el.modalScrim.classList.add('open');
+    document.getElementById('closeRules').addEventListener('click', closeModal);
+  }
+
+  function closeModal(){ el.modalScrim.classList.remove('open'); }
+
+  // ---- share / seed ----
+  var _toastTimer = null;
+  function toast(msg){
+    if(!el.toast) return;
+    el.toast.textContent = msg; el.toast.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function(){ el.toast.classList.remove('show'); }, 1800);
+  }
+  function fallbackCopy(text){
+    try{
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly','');
+      ta.style.position='fixed'; ta.style.top='-1000px'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta); return ok;
+    }catch(e){ return false; }
+  }
+  function copyToClipboard(text, okMsg){
+    var done = function(ok){ toast(ok ? (okMsg||'Copied') : 'Copy failed — long-press to select'); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ done(fallbackCopy(text)); });
+    } else { done(fallbackCopy(text)); }
+  }
+  function shareVia(payload){
+    if(navigator.share){
+      navigator.share(payload).then(function(){}, function(err){
+        if(err && err.name === 'AbortError') return;
+        copyToClipboard(payload.text, 'Copied to clipboard');
+      });
+    } else { copyToClipboard(payload.text, 'Copied to clipboard'); }
+  }
+  function copySeed(seed){ copyToClipboard(seed, 'Copied ' + seed); }
+  function isWebHosted(){ return location.protocol === 'http:' || location.protocol === 'https:'; }
+  function shareURL(seed){ return location.origin + location.pathname + '?seed=' + seed; }
+  function seedFromURL(){ try{ return sanitizeSeed(new URLSearchParams(location.search).get('seed') || ''); }catch(e){ return ''; } }
+  function syncURL(seed){
+    try{ if(window.history && history.replaceState){ history.replaceState(null, '', location.pathname + '?seed=' + seed + location.hash); } }catch(e){}
+  }
+  function buildShare(core, seed){
+    var p = { title:'Donsol', text:core };
+    if(isWebHosted()){ var url = shareURL(seed); p.url = url; p.text = core + '\nPlay this seed: ' + url; }
+    else { p.text = core + '\nSeed: ' + seed; }
+    return p;
+  }
+  function shareSeed(seed){ shareVia(buildShare('Donsol — a solo dungeon in 54 cards. Take on my seed and see if you survive.', seed)); }
+  function shareResult(won, score, seed){
+    var line = won ? 'I escaped the Donsol dungeon with ' + (score>0?'+':'') + score + ' health left!'
+                   : 'The Donsol dungeon got me — score ' + (score>0?'+':'') + score + '.';
+    shareVia(buildShare(line + ' Think you can do better?', seed));
+  }
+
+  function openSeedModal(){
+    var s = (state && state.seed) ? state.seed : '\u2014';
+    el.modal.innerHTML =
+      '<h2>Seed</h2>'+
+      '<p>Every run is dealt from a seed. The same seed builds the same dungeon — share it, or enter one to replay.</p>'+
+      '<div class="seed-display">'+s+'</div>'+
+      '<div class="copied" id="copied"></div>'+
+      '<button class="primary" id="shareSeedBtn">Share seed</button>'+
+      (isWebHosted() ? '<button class="ghost" id="copyLinkBtn">Copy link</button>' : '')+
+      '<button class="ghost" id="copySeedBtn">Copy seed</button>'+
+      '<h3>Play a seed</h3>'+
+      '<input class="seed-input" id="seedInput" maxlength="5" placeholder="'+(s==='\u2014'?'ABC12':s)+'" '+
+        'inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" />'+
+      '<button class="primary" id="playSeedBtn">Play this seed</button>'+
+      '<button class="ghost" id="randomSeedBtn">Random run</button>';
+    el.modalScrim.classList.add('open');
+    var inp = document.getElementById('seedInput');
+    if(inp){ inp.addEventListener('input', function(){ this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g,''); }); }
+    document.getElementById('shareSeedBtn').onclick = function(){ if(s !== '\u2014') shareSeed(s); };
+    document.getElementById('copySeedBtn').onclick = function(){ if(s !== '\u2014') copySeed(s); };
+    var clb = document.getElementById('copyLinkBtn');
+    if(clb){ clb.onclick = function(){ if(s !== '\u2014') copyToClipboard(shareURL(s), 'Link copied'); }; }
+    document.getElementById('playSeedBtn').onclick = function(){
+      var v = sanitizeSeed(inp ? inp.value : '');
+      if(!v){ var c = document.getElementById('copied'); if(c){ c.style.color = 'var(--red)'; c.textContent = 'Enter a seed first.'; } return; }
+      closeModal(); newGame(v);
+    };
+    document.getElementById('randomSeedBtn').onclick = function(){ closeModal(); newGame(); };
+  }
+
+  // ===== TUTORIAL =====
+  var TUT = [
+    {kind:'info', title:'Welcome to Donsol', target:null,
+     text:"You\u2019ll work through a 54-card dungeon, four cards at a time. Survive the whole deck to win. Let\u2019s cover your moves."},
+    {kind:'action', expect:{action:'monster'}, target:{suit:'club',value:6},
+     title:'Monsters bite',
+     text:"\u2660 and \u2663 are monsters. With no shield you take their full value. Tap the glowing 6 to fight it."},
+    {kind:'action', expect:{action:'shield'}, target:{suit:'diamond',value:8},
+     title:'Raise a shield',
+     text:"\u2666 cards are shields. Tap the 8 to equip it \u2014 it soaks up monster damage."},
+    {kind:'action', expect:{action:'monster'}, target:{suit:'spade',value:5},
+     title:'Block with the shield',
+     text:"A shield cuts damage to foe minus shield. Tap the 5 \u2014 your 8 shield absorbs it completely."},
+    {kind:'action', expect:{action:'monster'}, target:{suit:'club',value:7},
+     title:'Shields can break',
+     text:"A shield only blocks foes weaker than the last it blocked. The 7 isn\u2019t weaker than the 5, so it shatters and you take the full hit. Tap the 7."},
+    {kind:'action', expect:{action:'potion'}, target:{suit:'heart',value:9},
+     title:'Drink a potion',
+     text:"Four cards cleared; a fresh room. \u2665 cards heal you, up to 21. Tap the 9 to drink."},
+    {kind:'action', expect:{action:'potion'}, target:{suit:'heart',value:4},
+     title:'Don\u2019t gulp two',
+     text:"Two potions in a row makes you sick \u2014 only the first heals. Tap the 4 to watch it fizzle."},
+    {kind:'action', expect:{action:'escape'}, target:'escape',
+     title:'Run when it\u2019s wise',
+     text:"You don\u2019t have to clear a room. Tap Escape to shuffle the rest back \u2014 just not two rooms in a row."},
+    {kind:'finish', title:"You\u2019re ready", target:null,
+     text:"Block foes in descending order, space out your potions, and escape rooms you can\u2019t win. Clear the deck to survive. Good luck!"}
+  ];
+  function tutDeck(){
+    var i = 0;
+    function c(suit,value){ var t = suit==='heart'?'potion':suit==='diamond'?'shield':'monster'; return {suit:suit, type:t, rank:value, value:value, id:i++}; }
+    return [ c('club',6), c('diamond',8), c('spade',5), c('club',7),    // room A
+             c('heart',9), c('heart',4), c('spade',3), c('diamond',5),  // room B
+             c('heart',5), c('diamond',7), c('spade',4), c('club',3) ]; // filler
+  }
+  function startTutorial(){
+    state = {
+      seed: 'LEARN', rng: mulberry32(12345),
+      dungeon: tutDeck(), room: [], hp: MAX_HP, shield: null, lastBlocked: null,
+      potionStreak: false, escapedLastRoom: false, roomsCleared: 0, over: false,
+      tutorial: true, tutStep: 0, _nudge: null
+    };
+    dealUpTo();
+    closeModal();
+    setChronicle('A guided descent \u2014 follow the glowing prompts.', '');
+    render(); renderBubble();
+  }
+  function finishTutorial(start){ if(state) state.tutorial = false; renderBubble(); if(start) newGame(); }
+  function advanceTut(){ state._nudge = null; state.tutStep++; render(); renderBubble(); }
+  function afterTutAction(){ if(state.tutorial) advanceTut(); }
+  function tutNudge(msg){ if(!state.tutorial) return; state._nudge = msg; renderBubble(); }
+
+  function applyTutHighlight(){
+    el.avoidBtn.classList.remove('tut-target');
+    var st = TUT[state.tutStep];
+    if(!st) return;
+    if(st.target === 'escape'){ el.avoidBtn.classList.add('tut-target'); return; }
+    if(st.target && st.target.suit){
+      var nodes = el.room.querySelectorAll('.card');
+      for(var k=0;k<nodes.length;k++){
+        var n = nodes[k];
+        if(n.getAttribute('data-suit') === st.target.suit && +n.getAttribute('data-value') === st.target.value){ n.classList.add('tut-target'); }
+      }
+    }
+  }
+  function renderBubble(){
+    if(!state || !state.tutorial){
+      el.tutOverlay.classList.remove('on'); el.tutBubble.classList.remove('on'); document.body.classList.remove('tut'); return;
+    }
+    document.body.classList.add('tut'); el.tutOverlay.classList.add('on'); el.tutBubble.classList.add('on');
+    var st = TUT[state.tutStep], actions;
+    if(st.kind === 'info'){
+      actions = '<div class="tut-actions"><button class="primary" id="tutNext" style="flex:1">Continue</button>'+
+                '<button class="tut-skip" id="tutSkip">Skip</button></div>';
+    } else if(st.kind === 'finish'){
+      actions = '<button class="primary" id="tutStart">Start playing</button>'+
+                '<button class="ghost" id="tutReplay">Replay tutorial</button>';
+    } else {
+      actions = '<div class="tut-actions" style="justify-content:flex-end"><button class="tut-skip" id="tutSkip">Skip tutorial</button></div>';
+    }
+    el.tutBubble.innerHTML =
+      '<div class="tut-step">Step '+(state.tutStep+1)+' of '+TUT.length+'</div>'+
+      '<h3>'+st.title+'</h3>'+
+      '<p>'+st.text+'</p>'+
+      (state._nudge ? '<div class="tut-nudge">'+state._nudge+'</div>' : '')+
+      actions;
+    var b;
+    if((b=document.getElementById('tutNext')))   b.onclick = advanceTut;
+    if((b=document.getElementById('tutSkip')))   b.onclick = function(){ finishTutorial(true); };
+    if((b=document.getElementById('tutStart')))  b.onclick = function(){ finishTutorial(true); };
+    if((b=document.getElementById('tutReplay'))) b.onclick = startTutorial;
+  }
+
+  // ---- wire up ----
+  el.avoidBtn.addEventListener('click', escapeRoom);
+  el.newBtn.addEventListener('click', function(){ newGame(); });
+  el.learnBtn.addEventListener('click', startTutorial);
+  el.rulesBtn.addEventListener('click', openRules);
+  el.seedChip.addEventListener('click', openSeedModal);
+  el.modalScrim.addEventListener('click', function(e){ if(e.target === el.modalScrim) closeModal(); });
+
+  newGame(seedFromURL());
+})();
+</script>
+</body>
+</html>
