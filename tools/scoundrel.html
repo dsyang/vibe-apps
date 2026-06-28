@@ -74,6 +74,18 @@
 
   .meta-row{display:flex; align-items:center; justify-content:space-between; font-size:.56rem; color:var(--muted); padding:0 2px; font-weight:500}
   .meta-row b{color:#fff; font-weight:700}
+  .seed-chip{font-family:var(--font); font-weight:600; font-size:.56rem; letter-spacing:.06em; color:var(--muted);
+    background:var(--panel); border:2px solid var(--edge); border-radius:8px; padding:5px 8px; cursor:pointer; box-shadow:0 3px 0 var(--edge)}
+  .seed-chip b{color:var(--gold); font-weight:800; letter-spacing:.14em; margin-left:4px}
+  .seed-chip:active{transform:translateY(2px); box-shadow:0 1px 0 var(--edge)}
+  .seed-chip:focus-visible{outline:2px solid var(--hi); outline-offset:2px}
+  .seed-display{font-family:var(--font); font-weight:800; font-size:2.3rem; letter-spacing:.2em; color:var(--gold);
+    text-align:center; background:rgba(0,0,0,.28); border:2px solid var(--edge); border-radius:12px; padding:14px 10px; margin:6px 0 6px}
+  .seed-input{width:100%; font-family:var(--font); font-weight:800; font-size:1.6rem; letter-spacing:.2em; text-align:center; text-transform:uppercase;
+    color:#fff; background:rgba(0,0,0,.32); border:2px solid var(--edge); border-radius:12px; padding:12px; margin:0 0 10px; outline:none}
+  .seed-input:focus{border-color:var(--blue)}
+  .seed-input::placeholder{color:var(--muted2); letter-spacing:.2em}
+  .copied{font-weight:700; font-size:.64rem; text-align:center; margin:2px 0 12px; min-height:1em; color:var(--green)}
 
   /* room */
   .room-label{font-size:.54rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted2); text-align:center; position:relative}
@@ -125,6 +137,12 @@
     text-shadow:0 2px 0 #000, 0 0 8px rgba(0,0,0,.5); animation:floatUp .95s ease-out forwards}
   .float.dmg{color:var(--red)} .float.heal{color:var(--green)} .float.safe{color:var(--blue)} .float.muted{color:var(--muted)}
   @keyframes floatUp{0%{opacity:0; transform:translate(-50%,8px) scale(.7)}18%{opacity:1; transform:translate(-50%,-2px) scale(1.15)}100%{opacity:0; transform:translate(-50%,-52px) scale(1)}}
+
+  .toast{position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom)); transform:translate(-50%,20px);
+    background:var(--panel); color:#fff; border:2px solid var(--edge); border-radius:11px; padding:10px 16px;
+    font-family:var(--font); font-weight:700; font-size:.72rem; box-shadow:0 5px 0 var(--edge); z-index:40;
+    opacity:0; pointer-events:none; transition:opacity .2s ease, transform .2s ease; max-width:80%; text-align:center}
+  .toast.show{opacity:1; transform:translate(-50%,0)}
 
   /* monster action sheet */
   .sheet-scrim{position:fixed; inset:0; background:rgba(4,10,12,.6); z-index:20; opacity:0; pointer-events:none; transition:opacity .2s}
@@ -224,8 +242,8 @@
   </div>
 
   <div class="meta-row">
-    <span>Dungeon: <b id="deckCount">44</b> cards left</span>
-    <span>Rooms cleared: <b id="roomsCleared">0</b></span>
+    <span>Dungeon <b id="deckCount">44</b> &middot; Cleared <b id="roomsCleared">0</b></span>
+    <button class="seed-chip" id="seedChip" aria-label="Seed — tap to view, copy, or replay">SEED <b id="seedVal">—</b></button>
   </div>
 
   <div class="room-label">The Room</div>
@@ -244,6 +262,7 @@
 
 <!-- flying combat numbers -->
 <div id="floatLayer"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- monster action sheet -->
 <div class="sheet-scrim" id="sheetScrim"></div>
@@ -305,7 +324,10 @@
     hpPanel: document.getElementById('hpPanel'),
     wpnPanel: document.getElementById('wpnPanel'),
     floatLayer: document.getElementById('floatLayer'),
-    wrap: document.querySelector('.wrap')
+    wrap: document.querySelector('.wrap'),
+    seedChip: document.getElementById('seedChip'),
+    seedVal: document.getElementById('seedVal'),
+    toast: document.getElementById('toast')
   };
 
   var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -338,15 +360,44 @@
     for(r=2;r<=10;r++){ d.push({suit:'heart',  value:r,type:'potion',id:id++}); }
     return d; // 26 + 9 + 9 = 44
   }
-  function shuffle(a){
-    for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; }
+  // ---- seeded randomness ----
+  var SEED_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  function makeSeed(){
+    var s = '';
+    for(var i=0;i<5;i++){ s += SEED_ALPHABET.charAt(Math.floor(Math.random()*SEED_ALPHABET.length)); }
+    return s;
+  }
+  function sanitizeSeed(s){ if(typeof s !== 'string') return ''; return s.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5); }
+  function hashSeed(str){
+    var h = 2166136261 >>> 0;
+    for(var i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+  function mulberry32(a){
+    return function(){
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function rngFromSeed(str){ return mulberry32(hashSeed(str)); }
+
+  function shuffle(a, rnd){
+    rnd = rnd || Math.random;
+    for(var i=a.length-1;i>0;i--){ var j=Math.floor(rnd()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; }
     return a;
   }
 
   // ---- game lifecycle ----
-  function newGame(){
+  function newGame(seed){
+    var sd = sanitizeSeed(seed);
+    if(!sd) sd = makeSeed();
+    var rnd = rngFromSeed(sd);
+    syncURL(sd);
     state = {
-      dungeon: shuffle(buildDeck()),
+      seed: sd,
+      dungeon: shuffle(buildDeck(), rnd),
       room: [],
       hp: MAX_HP,
       weapon: null,
@@ -599,6 +650,7 @@
     }
     el.deckCount.textContent = state.dungeon.length;
     el.roomsCleared.textContent = state.roomsCleared;
+    el.seedVal.textContent = state.seed || '—';
 
     // avoid
     if(state.tutorial){
@@ -655,6 +707,7 @@
   // ---- modals ----
   function openEndModal(won, score, note){
     var monstersLeft = state.dungeon.concat(state.room).filter(function(c){return c.type==='monster';}).length;
+    var sd = state.seed;
     var html =
       '<h2 class="'+(won?'win':'lose')+'">'+(won?'You climb out alive':'You fall in the dark')+'</h2>'+
       '<p>'+(won
@@ -662,12 +715,17 @@
         : 'Your health runs out. The dungeon keeps what it takes.')+'</p>'+
       '<div class="score">'+(score>0?'+':'')+score+'</div>'+
       '<div class="score-note">'+note+'</div>'+
-      (won?'':'<p style="font-size:.85rem;color:var(--muted)">'+monstersLeft+' foes were left unfought.</p>')+
+      (won?'':'<p style="font-size:.72rem;color:var(--muted)">'+monstersLeft+' foes were left unfought.</p>')+
+      '<p style="font-size:.66rem;color:var(--muted)">Seed <b style="color:var(--gold);letter-spacing:.12em">'+sd+'</b></p>'+
       '<button class="primary" id="againBtn">Descend again</button>'+
+      '<button class="ghost" id="shareResultBtn">Share result</button>'+
+      '<button class="ghost" id="replaySeedBtn">Replay this seed</button>'+
       '<button class="ghost" id="rulesFromEnd">Read the rules</button>';
     el.modal.innerHTML = html;
     el.modalScrim.classList.add('open');
-    document.getElementById('againBtn').addEventListener('click', newGame);
+    document.getElementById('againBtn').addEventListener('click', function(){ newGame(); });
+    document.getElementById('shareResultBtn').addEventListener('click', function(){ shareResult(won, score, sd); });
+    document.getElementById('replaySeedBtn').addEventListener('click', function(){ newGame(sd); });
     document.getElementById('rulesFromEnd').addEventListener('click', openRules);
   }
 
@@ -707,6 +765,117 @@
   }
 
   function closeModal(){ el.modalScrim.classList.remove('open'); }
+
+  // ---- seed ----
+  var _toastTimer = null;
+  function toast(msg){
+    if(!el.toast) return;
+    el.toast.textContent = msg;
+    el.toast.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function(){ el.toast.classList.remove('show'); }, 1800);
+  }
+  function fallbackCopy(text){
+    try{
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly','');
+      ta.style.position = 'fixed'; ta.style.top = '-1000px'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    }catch(e){ return false; }
+  }
+  function copyToClipboard(text, okMsg){
+    var done = function(ok){ toast(ok ? (okMsg || 'Copied') : 'Copy failed — long-press to select'); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ done(fallbackCopy(text)); });
+    } else {
+      done(fallbackCopy(text));
+    }
+  }
+  function shareVia(payload, okMsg){
+    if(navigator.share){
+      navigator.share(payload).then(function(){}, function(err){
+        if(err && err.name === 'AbortError') return;   // user dismissed the share sheet
+        copyToClipboard(payload.text, 'Copied to clipboard');
+      });
+    } else {
+      copyToClipboard(payload.text, 'Copied to clipboard');
+    }
+  }
+  function copySeed(seed){ copyToClipboard(seed, 'Copied ' + seed); }
+
+  // ---- seed in the URL ----
+  function isWebHosted(){ return location.protocol === 'http:' || location.protocol === 'https:'; }
+  function shareURL(seed){ return location.origin + location.pathname + '?seed=' + seed; }
+  function seedFromURL(){
+    try{ return sanitizeSeed(new URLSearchParams(location.search).get('seed') || ''); }
+    catch(e){ return ''; }
+  }
+  function syncURL(seed){
+    try{
+      if(window.history && history.replaceState){
+        history.replaceState(null, '', location.pathname + '?seed=' + seed + location.hash);
+      }
+    }catch(e){}
+  }
+  function buildShare(core, seed){
+    var p = { title: 'Scoundrel', text: core };
+    if(isWebHosted()){
+      var url = shareURL(seed);
+      p.url = url;
+      p.text = core + '\nPlay this seed: ' + url;
+    } else {
+      p.text = core + '\nSeed: ' + seed;
+    }
+    return p;
+  }
+  function shareSeed(seed){
+    shareVia(buildShare('Scoundrel — a solo dungeon in 44 cards. Take on my seed and see if you survive.', seed));
+  }
+  function shareResult(won, score, seed){
+    var line = won
+      ? 'I cleared the Scoundrel dungeon with ' + (score>0?'+':'') + score + ' health left!'
+      : 'The Scoundrel dungeon got me — score ' + (score>0?'+':'') + score + '.';
+    shareVia(buildShare(line + ' Think you can do better?', seed));
+  }
+
+  function openSeedModal(){
+    var s = (state && state.seed) ? state.seed : '—';
+    el.modal.innerHTML =
+      '<h2>Seed</h2>'+
+      '<p>Every run is dealt from a seed. The same seed always builds the same dungeon — share it, or enter one to replay.</p>'+
+      '<div class="seed-display">'+s+'</div>'+
+      '<div class="copied" id="copied"></div>'+
+      '<button class="primary" id="shareSeedBtn">Share seed</button>'+
+      (isWebHosted() ? '<button class="ghost" id="copyLinkBtn">Copy link</button>' : '')+
+      '<button class="ghost" id="copySeedBtn">Copy seed</button>'+
+      '<h3>Play a seed</h3>'+
+      '<input class="seed-input" id="seedInput" maxlength="5" placeholder="'+(s==='—'?'ABC12':s)+'" '+
+        'inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" />'+
+      '<button class="primary" id="playSeedBtn">Play this seed</button>'+
+      '<button class="ghost" id="randomSeedBtn">Random run</button>';
+    el.modalScrim.classList.add('open');
+    var inp = document.getElementById('seedInput');
+    if(inp){
+      inp.addEventListener('input', function(){ this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
+    }
+    document.getElementById('shareSeedBtn').onclick = function(){ if(s !== '—') shareSeed(s); };
+    document.getElementById('copySeedBtn').onclick = function(){ if(s !== '—') copySeed(s); };
+    var clb = document.getElementById('copyLinkBtn');
+    if(clb){ clb.onclick = function(){ if(s !== '—') copyToClipboard(shareURL(s), 'Link copied'); }; }
+    document.getElementById('playSeedBtn').onclick = function(){
+      var v = sanitizeSeed(inp ? inp.value : '');
+      if(!v){
+        var c = document.getElementById('copied');
+        if(c){ c.style.color = 'var(--red)'; c.textContent = 'Enter a seed first.'; }
+        return;
+      }
+      closeModal(); newGame(v);
+    };
+    document.getElementById('randomSeedBtn').onclick = function(){ closeModal(); newGame(); };
+  }
 
   // ===== TUTORIAL =====
   var TUT = [
@@ -820,16 +989,17 @@
 
   // ---- wire up ----
   el.avoidBtn.addEventListener('click', avoidRoom);
-  el.newBtn.addEventListener('click', newGame);
+  el.newBtn.addEventListener('click', function(){ newGame(); });
   el.learnBtn.addEventListener('click', startTutorial);
   el.rulesBtn.addEventListener('click', openRules);
+  el.seedChip.addEventListener('click', openSeedModal);
   el.choiceBare.addEventListener('click', function(){ if(state.pending!==null) fight(state.pending,false); });
   el.choiceWeapon.addEventListener('click', function(){ if(state.pending!==null && !el.choiceWeapon.disabled) fight(state.pending,true); });
   el.choiceCancel.addEventListener('click', closeSheet);
   el.sheetScrim.addEventListener('click', closeSheet);
   el.modalScrim.addEventListener('click', function(e){ if(e.target===el.modalScrim) closeModal(); });
 
-  newGame();
+  newGame(seedFromURL());
 })();
 </script>
 </body>
