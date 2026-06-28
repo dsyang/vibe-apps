@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="description" content="Play Scoundrel, the solo dungeon card game, on phone." />
+<title>Scoundrel — a dungeon in 44 cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#15232a; --bg2:#1b2f36; --felt:#214140; --felt2:#19302f;
+    --panel:#2b4047; --panel-hi:#385259; --edge:#0b161b;
+    --text:#eef5f5; --muted:#92a9af; --muted2:#6f898f;
+    --red:#fe5f55; --red-deep:#b1372e;
+    --blue:#2fa9ff; --blue-deep:#13639f;
+    --gold:#ffc24b; --gold-deep:#a9760f;
+    --green:#57c06b; --green-deep:#2c8741;
+    --cardface:#fbf4e4; --cardface2:#efe4ca; --ink:#1b2a2a; --cardedge:#0e1c22;
+    --hi:#ffd84a;
+    --font:"Baloo 2", ui-rounded, "Segoe UI", system-ui, sans-serif;
+    --font-card: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  html{height:100%}
+  body{
+    background:radial-gradient(130% 100% at 50% 0%, #203a3f 0%, var(--bg2) 45%, var(--bg) 100%), var(--bg);
+    color:var(--text); font-family:var(--font);
+    height:100vh; height:100dvh; overflow:hidden; position:relative;
+  }
+  body::before{ content:""; position:fixed; inset:-20%; pointer-events:none; z-index:0;
+    background:
+      radial-gradient(38% 30% at 28% 22%, rgba(47,169,255,.16), transparent 70%),
+      radial-gradient(40% 32% at 76% 30%, rgba(254,95,85,.14), transparent 70%),
+      radial-gradient(55% 45% at 50% 105%, rgba(0,0,0,.45), transparent 70%);
+    animation:drift 22s ease-in-out infinite;
+  }
+  @keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(2%,-2%) scale(1.06)}}
+
+  .wrap{position:relative; z-index:1; max-width:540px; margin:0 auto; height:100vh; height:100dvh;
+    padding:10px 12px 12px; display:flex; flex-direction:column; gap:8px}
+  .wrap.shake{animation:shake .32s ease}
+  @keyframes shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-4px,2px)}40%{transform:translate(4px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,-1px)}}
+
+  header{display:flex; align-items:center; justify-content:space-between; gap:8px}
+  .title{font-family:var(--font); font-weight:700; font-size:1.35rem; line-height:1; color:#fff;
+    text-shadow:0 2px 0 var(--edge), 0 0 14px rgba(47,169,255,.25); letter-spacing:.02em}
+  .title small{display:block; font-weight:500; font-size:.5rem; color:var(--muted); margin-top:3px; text-shadow:none; letter-spacing:.06em}
+  .hbtns{display:flex; gap:6px}
+  .icon-btn{font-family:var(--font); font-weight:600; font-size:.62rem; color:var(--text);
+    background:var(--panel); border:2px solid var(--edge); border-radius:9px; padding:8px 9px; cursor:pointer; box-shadow:0 4px 0 var(--edge)}
+  .icon-btn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--edge)}
+  .icon-btn:focus-visible{outline:2px solid var(--hi); outline-offset:2px}
+
+  /* status */
+  .status{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .panel{position:relative; background:linear-gradient(180deg, var(--panel-hi), var(--panel));
+    border:2px solid var(--edge); border-radius:12px; padding:8px 10px;
+    box-shadow:0 4px 0 var(--edge), inset 0 2px 0 rgba(255,255,255,.05)}
+  .panel--hp{background:linear-gradient(180deg,#7a2e2a,#5e211d); border-color:#2a0f0d; box-shadow:0 4px 0 #2a0f0d, inset 0 2px 0 rgba(255,255,255,.07)}
+  .panel--wpn{background:linear-gradient(180deg,#1d5c86,#134563); border-color:#08222f; box-shadow:0 4px 0 #08222f, inset 0 2px 0 rgba(255,255,255,.07)}
+  .panel.bump{animation:bump .3s ease}
+  @keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+  .lbl{font-size:.5rem; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.7); font-weight:500}
+  .hp-top,.wpn-row{display:flex; align-items:baseline; justify-content:space-between; gap:6px}
+  .hp-num,.wpn-num{font-weight:700; font-size:1.5rem; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.4)}
+  .hp-num .max{font-size:.62rem; color:rgba(255,255,255,.6); font-weight:500}
+  .bar{height:8px; margin-top:6px; border-radius:6px; background:rgba(0,0,0,.35); border:1px solid rgba(0,0,0,.5); overflow:hidden}
+  .bar>i{display:block; height:100%; width:100%; background:linear-gradient(90deg,#ff8a7e,#fe5f55); transition:width .35s ease}
+  .wpn-note{font-size:.56rem; color:rgba(255,255,255,.72); margin-top:6px; min-height:1em; line-height:1.25; font-weight:500}
+  .wpn-note b{color:#fff}
+
+  .meta-row{display:flex; align-items:center; justify-content:space-between; font-size:.56rem; color:var(--muted); padding:0 2px; font-weight:500}
+  .meta-row b{color:#fff; font-weight:700}
+
+  /* room */
+  .room-label{font-size:.54rem; letter-spacing:.16em; text-transform:uppercase; color:var(--muted2); text-align:center; position:relative}
+  .room-label::before,.room-label::after{content:""; position:absolute; top:50%; width:24%; height:2px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.12))}
+  .room-label::before{left:0; transform:scaleX(-1)} .room-label::after{right:0}
+
+  .room{flex:1; display:grid; grid-template-columns:repeat(4,1fr); gap:7px; align-content:center;
+    background:linear-gradient(180deg, var(--felt), var(--felt2)); border:2px solid var(--edge); border-radius:14px;
+    padding:10px 8px; box-shadow:inset 0 2px 10px rgba(0,0,0,.4)}
+
+  .card{position:relative; aspect-ratio:5/7; border-radius:9px; cursor:pointer; color:var(--ink);
+    background:linear-gradient(165deg, var(--cardface), var(--cardface2));
+    border:2px solid var(--cardedge); box-shadow:0 4px 0 var(--cardedge), 0 7px 12px rgba(0,0,0,.45);
+    padding:5px 4px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;
+    animation:deal .34s cubic-bezier(.2,1.3,.4,1) both; transition:transform .12s ease, box-shadow .12s ease}
+  @keyframes deal{0%{opacity:0; transform:translateY(14px) scale(.9) rotate(-3deg)}100%{opacity:1; transform:none}}
+  .card:hover{transform:translateY(-5px) rotate(-1.2deg); box-shadow:0 9px 0 var(--cardedge), 0 14px 18px rgba(0,0,0,.5)}
+  .card:active{transform:translateY(-1px) scale(.97)}
+  .card:focus-visible{outline:3px solid var(--hi); outline-offset:2px}
+  .card .ribbon{align-self:center; font-family:var(--font); font-weight:700; font-size:.42rem; letter-spacing:.06em;
+    padding:2px 5px; border-radius:5px; color:#fff; border:1px solid rgba(0,0,0,.35); line-height:1}
+  .card.monster .ribbon{background:var(--red-deep)}
+  .card.weapon .ribbon{background:var(--blue-deep)}
+  .card.potion .ribbon{background:var(--green-deep)}
+  .card .pip{text-align:center; line-height:1}
+  .card .rank{font-family:var(--font-card); font-weight:800; font-size:clamp(1rem,5.4vw,1.7rem); color:var(--ink)}
+  .card .suit{font-size:clamp(.85rem,4.4vw,1.35rem); line-height:1}
+  .card.monster .suit{color:#1a2730}
+  .card.weapon .suit{color:#cf3b34}
+  .card.potion .suit{color:#cf3b34}
+  .card .effect{font-family:var(--font); font-weight:500; font-size:.44rem; letter-spacing:.04em; text-transform:uppercase; text-align:center; color:#6b7a78; line-height:1.1}
+  .card .effect b{display:block; color:var(--ink); font-size:.72rem; font-weight:700}
+  .card .corner{position:absolute; font-family:var(--font-card); font-weight:800; font-size:.52rem; color:#7a8886}
+  .card .corner.tl{left:5px; top:4px} .card .corner.br{right:5px; bottom:4px; transform:rotate(180deg)}
+
+  /* controls */
+  .controls{display:flex; flex-direction:column; gap:7px}
+  .avoid-btn{width:100%; font-family:var(--font); font-weight:700; font-size:.78rem; color:#fff;
+    background:linear-gradient(180deg,#46707a,#33555d); border:2px solid var(--edge); border-radius:11px; padding:12px; cursor:pointer; box-shadow:0 5px 0 var(--edge)}
+  .avoid-btn:active{transform:translateY(3px); box-shadow:0 2px 0 var(--edge)}
+  .avoid-btn:focus-visible{outline:2px solid var(--hi); outline-offset:2px}
+  .avoid-btn[disabled]{opacity:.4; cursor:not-allowed}
+  .chronicle{min-height:2.2em; text-align:center; color:var(--text); font-size:.62rem; line-height:1.3; font-weight:500; padding:0 4px}
+  .chronicle .hint{display:block; color:var(--muted); font-size:.52rem; margin-top:2px}
+
+  /* floating numbers */
+  #floatLayer{position:fixed; inset:0; pointer-events:none; z-index:26}
+  .float{position:fixed; transform:translate(-50%,0); font-family:var(--font); font-weight:700; font-size:1.55rem;
+    text-shadow:0 2px 0 #000, 0 0 8px rgba(0,0,0,.5); animation:floatUp .95s ease-out forwards}
+  .float.dmg{color:var(--red)} .float.heal{color:var(--green)} .float.safe{color:var(--blue)} .float.muted{color:var(--muted)}
+  @keyframes floatUp{0%{opacity:0; transform:translate(-50%,8px) scale(.7)}18%{opacity:1; transform:translate(-50%,-2px) scale(1.15)}100%{opacity:0; transform:translate(-50%,-52px) scale(1)}}
+
+  /* monster action sheet */
+  .sheet-scrim{position:fixed; inset:0; background:rgba(4,10,12,.6); z-index:20; opacity:0; pointer-events:none; transition:opacity .2s}
+  .sheet-scrim.open{opacity:1; pointer-events:auto}
+  .sheet{position:fixed; left:0; right:0; bottom:0; z-index:21; transform:translateY(115%); transition:transform .26s cubic-bezier(.2,.9,.3,1);
+    background:linear-gradient(180deg,#243a41,#172a30); border-top:3px solid var(--edge); border-radius:18px 18px 0 0;
+    padding:16px 14px calc(16px + env(safe-area-inset-bottom)); max-width:540px; margin:0 auto; box-shadow:0 -10px 30px rgba(0,0,0,.5)}
+  .sheet.open{transform:none}
+  .sheet h3{margin:0 0 3px; font-family:var(--font); font-weight:700; font-size:.95rem; color:#fff}
+  .sheet p{margin:0 0 14px; color:var(--muted); font-size:.64rem; font-weight:500}
+  .choice{width:100%; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:10px; color:#fff;
+    border:2px solid var(--edge); border-radius:12px; padding:13px 14px; margin-bottom:10px; cursor:pointer; font-family:var(--font); font-weight:600; font-size:.78rem}
+  #choiceBare{background:linear-gradient(180deg,#d2493f,#a8362d); box-shadow:0 5px 0 #5e1c16}
+  #choiceWeapon{background:linear-gradient(180deg,#2f95d8,#1c6ba6); box-shadow:0 5px 0 #0c3a5c}
+  .choice:active{transform:translateY(3px)}
+  #choiceBare:active{box-shadow:0 2px 0 #5e1c16} #choiceWeapon:active{box-shadow:0 2px 0 #0c3a5c}
+  .choice:focus-visible{outline:2px solid var(--hi); outline-offset:2px}
+  .choice .dmg{font-family:var(--font); font-weight:700; font-size:1.1rem}
+  .choice small{display:block; color:rgba(255,255,255,.78); font-size:.54rem; font-weight:500; margin-top:2px}
+  .choice[disabled]{opacity:.45; cursor:not-allowed; filter:grayscale(.4)}
+  .choice[disabled]:active{transform:none}
+  .sheet .cancel{width:100%; background:transparent; border:2px solid var(--edge); color:var(--muted);
+    padding:10px; border-radius:10px; font-family:var(--font); font-weight:600; font-size:.66rem; cursor:pointer; margin-top:2px}
+
+  /* modal */
+  .modal-scrim{position:fixed; inset:0; background:rgba(4,10,12,.78); z-index:30; display:none; align-items:center; justify-content:center; padding:18px}
+  .modal-scrim.open{display:flex}
+  .modal{background:linear-gradient(180deg,#243a41,#162a30); border:3px solid var(--edge); border-radius:18px;
+    max-width:430px; width:100%; max-height:86vh; overflow-y:auto; padding:20px 18px; box-shadow:0 10px 0 var(--edge), 0 18px 40px rgba(0,0,0,.6)}
+  .modal h2{font-family:var(--font); font-weight:700; color:#fff; margin:0 0 4px; font-size:1.25rem}
+  .modal h2.win{color:var(--gold)} .modal h2.lose{color:var(--red)}
+  .modal .score{font-family:var(--font); font-size:2.7rem; font-weight:700; margin:6px 0 2px; color:#fff; text-shadow:0 3px 0 rgba(0,0,0,.4)}
+  .modal .score-note{color:var(--muted); font-size:.62rem; margin-bottom:16px; font-weight:500}
+  .modal p{color:var(--text); font-size:.72rem; line-height:1.6; margin:0 0 10px; font-weight:500}
+  .modal h3{font-family:var(--font); color:var(--gold); font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; margin:14px 0 6px; font-weight:700}
+  .modal ul{margin:0 0 10px; padding-left:16px; color:var(--text); font-size:.72rem; line-height:1.6; font-weight:500}
+  .modal li{margin-bottom:5px}
+  .modal .glyph{color:#fff; font-weight:700}
+  .primary{width:100%; font-family:var(--font); font-weight:700; font-size:.82rem; color:#fff;
+    background:linear-gradient(180deg,#2f95d8,#1c6ba6); border:2px solid var(--edge); border-radius:11px; padding:13px; cursor:pointer; margin-top:8px; box-shadow:0 5px 0 #0c3a5c}
+  .primary:active{transform:translateY(3px); box-shadow:0 2px 0 #0c3a5c}
+  .primary:focus-visible{outline:2px solid var(--hi); outline-offset:2px}
+  .ghost{width:100%; background:transparent; border:2px solid var(--edge); color:var(--muted); padding:11px; border-radius:10px;
+    font-family:var(--font); font-weight:600; font-size:.66rem; cursor:pointer; margin-top:8px}
+
+  /* tutorial */
+  .tut-overlay{position:fixed; inset:0; background:rgba(4,10,12,.66); z-index:15; pointer-events:none; opacity:0; transition:opacity .25s}
+  .tut-overlay.on{opacity:1}
+  .tut-target{position:relative; z-index:16 !important; animation:tutpulse 1.3s ease-in-out infinite}
+  .card.tut-target{box-shadow:0 0 0 3px var(--hi), 0 0 22px rgba(255,216,74,.7), 0 7px 12px rgba(0,0,0,.5) !important}
+  .avoid-btn.tut-target{box-shadow:0 0 0 3px var(--hi), 0 0 20px rgba(255,216,74,.55), 0 5px 0 var(--edge) !important; opacity:1 !important}
+  @keyframes tutpulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.18)}}
+  .tut-bubble{position:fixed; left:0; right:0; bottom:0; z-index:18; max-width:540px; margin:0 auto;
+    background:linear-gradient(180deg,#243a41,#152a30); border-top:3px solid var(--hi);
+    border-radius:18px 18px 0 0; padding:14px 16px calc(16px + env(safe-area-inset-bottom));
+    box-shadow:0 -12px 32px rgba(0,0,0,.55); transform:translateY(118%); transition:transform .28s cubic-bezier(.2,.9,.3,1)}
+  .tut-bubble.on{transform:none}
+  .tut-step{font-family:var(--font); font-size:.54rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); font-weight:700}
+  .tut-bubble h3{font-family:var(--font); color:#fff; margin:3px 0 5px; font-size:1rem; font-weight:700}
+  .tut-bubble p{margin:0 0 10px; color:var(--text); font-size:.7rem; line-height:1.5; font-weight:500}
+  .tut-nudge{color:var(--red); font-size:.66rem; margin:-3px 0 10px; font-weight:600}
+  .tut-actions{display:flex; gap:8px; align-items:center}
+  .tut-skip{background:transparent; border:2px solid var(--edge); color:var(--muted); padding:11px 13px; border-radius:10px;
+    font-family:var(--font); font-weight:600; font-size:.62rem; cursor:pointer}
+  .tut-skip:active{transform:translateY(2px)}
+  .tut-bubble .primary{margin-top:0} .tut-bubble .ghost{margin-top:8px}
+  body.tut{height:auto; min-height:100dvh; overflow-y:auto}
+  body.tut .wrap{height:auto; min-height:100dvh; padding-bottom:210px}
+
+  @media (prefers-reduced-motion: reduce){
+    body::before{animation:none}
+    *{animation:none !important; transition:none !important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title">Scoundrel<small>a dungeon in 44 cards</small></div>
+    <div class="hbtns">
+      <button class="icon-btn" id="learnBtn">Learn</button>
+      <button class="icon-btn" id="rulesBtn">Rules</button>
+      <button class="icon-btn" id="newBtn">New</button>
+    </div>
+  </header>
+
+  <div class="status">
+    <div class="panel panel--hp" id="hpPanel">
+      <div class="hp-top"><span class="lbl">Health</span>
+        <span class="hp-num" id="hpNum">20<span class="max"> / 20</span></span></div>
+      <div class="bar"><i id="hpBar" style="width:100%"></i></div>
+    </div>
+    <div class="panel panel--wpn" id="wpnPanel">
+      <div class="wpn-row"><span class="lbl">Weapon</span><span class="wpn-num" id="wpnNum">—</span></div>
+      <div class="wpn-note" id="wpnNote">Bare-handed</div>
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <span>Dungeon: <b id="deckCount">44</b> cards left</span>
+    <span>Rooms cleared: <b id="roomsCleared">0</b></span>
+  </div>
+
+  <div class="room-label">The Room</div>
+  <div class="room" id="room" aria-label="Current room of cards"></div>
+
+  <div class="controls">
+    <button class="avoid-btn" id="avoidBtn">Avoid this room</button>
+    <div class="chronicle" id="chronicle">You descend into the dark. Four cards lie before you.
+      <span class="hint">Tap a card to face it.</span></div>
+  </div>
+</div>
+
+<!-- tutorial overlay + coach bubble -->
+<div class="tut-overlay" id="tutOverlay"></div>
+<div class="tut-bubble" id="tutBubble" role="dialog" aria-live="polite"></div>
+
+<!-- flying combat numbers -->
+<div id="floatLayer"></div>
+
+<!-- monster action sheet -->
+<div class="sheet-scrim" id="sheetScrim"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <h3 id="sheetTitle">A foe blocks the way</h3>
+  <p id="sheetDesc"></p>
+  <button class="choice" id="choiceWeapon">
+    <span><span id="cwLabel">Strike with weapon</span><small id="cwSub"></small></span>
+    <span class="dmg safe" id="cwDmg"></span>
+  </button>
+  <button class="choice" id="choiceBare">
+    <span><span>Fight bare-handed</span><small>Take the full blow</small></span>
+    <span class="dmg hurt" id="cbDmg"></span>
+  </button>
+  <button class="cancel" id="choiceCancel">Step back</button>
+</div>
+
+<!-- rules / game over modal -->
+<div class="modal-scrim" id="modalScrim">
+  <div class="modal" id="modal" role="dialog" aria-modal="true"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var MAX_HP = 20;
+  var SUIT = { spade:"♠", club:"♣", diamond:"♦", heart:"♥" };
+  var state = null;
+
+  // ---- elements ----
+  var el = {
+    room: document.getElementById('room'),
+    hpNum: document.getElementById('hpNum'),
+    hpBar: document.getElementById('hpBar'),
+    wpnNum: document.getElementById('wpnNum'),
+    wpnNote: document.getElementById('wpnNote'),
+    deckCount: document.getElementById('deckCount'),
+    roomsCleared: document.getElementById('roomsCleared'),
+    avoidBtn: document.getElementById('avoidBtn'),
+    chronicle: document.getElementById('chronicle'),
+    sheet: document.getElementById('sheet'),
+    sheetScrim: document.getElementById('sheetScrim'),
+    sheetDesc: document.getElementById('sheetDesc'),
+    sheetTitle: document.getElementById('sheetTitle'),
+    choiceWeapon: document.getElementById('choiceWeapon'),
+    choiceBare: document.getElementById('choiceBare'),
+    choiceCancel: document.getElementById('choiceCancel'),
+    cwLabel: document.getElementById('cwLabel'),
+    cwSub: document.getElementById('cwSub'),
+    cwDmg: document.getElementById('cwDmg'),
+    cbDmg: document.getElementById('cbDmg'),
+    modalScrim: document.getElementById('modalScrim'),
+    modal: document.getElementById('modal'),
+    rulesBtn: document.getElementById('rulesBtn'),
+    newBtn: document.getElementById('newBtn'),
+    learnBtn: document.getElementById('learnBtn'),
+    tutOverlay: document.getElementById('tutOverlay'),
+    tutBubble: document.getElementById('tutBubble'),
+    hpPanel: document.getElementById('hpPanel'),
+    wpnPanel: document.getElementById('wpnPanel'),
+    floatLayer: document.getElementById('floatLayer'),
+    wrap: document.querySelector('.wrap')
+  };
+
+  var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function bump(elm){ if(!elm) return; elm.classList.remove('bump'); void elm.offsetWidth; elm.classList.add('bump'); }
+  function shake(){ if(reducedMotion || !el.wrap) return; el.wrap.classList.remove('shake'); void el.wrap.offsetWidth; el.wrap.classList.add('shake'); }
+  function spawnFloat(text, kind, anchor){
+    if(!el.floatLayer || !anchor) return;
+    var r = anchor.getBoundingClientRect();
+    var d = document.createElement('div');
+    d.className = 'float ' + (kind || '');
+    d.textContent = text;
+    d.style.left = (r.left + r.width/2) + 'px';
+    d.style.top  = (r.top + 10) + 'px';
+    el.floatLayer.appendChild(d);
+    setTimeout(function(){ if(d.parentNode) d.parentNode.removeChild(d); }, 1000);
+  }
+
+  // ---- helpers ----
+  function rankLabel(v){ return v===14?'A':v===13?'K':v===12?'Q':v===11?'J':String(v); }
+  function rankWord(v){
+    var w={11:'Jack',12:'Queen',13:'King',14:'Ace'};
+    return w[v]||('the '+v);
+  }
+  function buildDeck(){
+    var d=[], id=0, r;
+    for(r=2;r<=14;r++){ d.push({suit:'spade',value:r,type:'monster',id:id++});
+                        d.push({suit:'club', value:r,type:'monster',id:id++}); }
+    for(r=2;r<=10;r++){ d.push({suit:'diamond',value:r,type:'weapon',id:id++}); }
+    for(r=2;r<=10;r++){ d.push({suit:'heart',  value:r,type:'potion',id:id++}); }
+    return d; // 26 + 9 + 9 = 44
+  }
+  function shuffle(a){
+    for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i];a[i]=a[j];a[j]=t; }
+    return a;
+  }
+
+  // ---- game lifecycle ----
+  function newGame(){
+    state = {
+      dungeon: shuffle(buildDeck()),
+      room: [],
+      hp: MAX_HP,
+      weapon: null,
+      lastSlain: null,           // value of last monster slain with current weapon
+      potionUsedThisRoom: false,
+      avoidedLastRoom: false,
+      resolvedThisRoom: 0,
+      lastWasPotion: false,
+      lastPotionVal: 0,
+      roomsCleared: 0,
+      over: false,
+      pending: null,             // index of monster awaiting a choice
+      tutorial: false, tutStep: 0, _nudge: null
+    };
+    dealUpTo();
+    closeModal(); closeSheet();
+    setChronicle('You descend into the dark. Four cards lie before you.', 'New here? Tap Learn for a quick tutorial.');
+    render(); renderBubble();
+  }
+
+  // fill the room up to 4 from the front of the dungeon
+  function dealUpTo(){
+    while(state.room.length < 4 && state.dungeon.length > 0){
+      state.room.push(state.dungeon.shift());
+    }
+  }
+
+  function canAvoid(){
+    return !state.over && !state.avoidedLastRoom && state.resolvedThisRoom === 0
+           && state.room.length > 0 && state.dungeon.length > 0;
+  }
+
+  function avoidRoom(){
+    if(state && state.tutorial){
+      var sa = TUT[state.tutStep];
+      if(!sa || sa.kind !== 'action' || sa.expect.action !== 'avoid'){
+        tutNudge('Not yet — follow the glowing guide.');
+        return;
+      }
+    }
+    if(!canAvoid()) return;
+    // place all room cards on the bottom of the dungeon
+    for(var i=0;i<state.room.length;i++){ state.dungeon.push(state.room[i]); }
+    state.room = [];
+    state.avoidedLastRoom = true;
+    state.resolvedThisRoom = 0;
+    state.potionUsedThisRoom = false;
+    state.lastWasPotion = false;
+    dealUpTo();
+    setChronicle('You slip past the room, sending it to the bottom of the dungeon.',
+                 'You cannot avoid the next room.');
+    render();
+    if(state.tutorial) advanceTut();
+  }
+
+  // remove a resolved card from the room, then advance if needed
+  function afterResolve(){
+    state.resolvedThisRoom++;
+    // death check happens in callers (hp may have changed)
+    if(state.hp <= 0){ endGame(false); return; }
+
+    if(state.dungeon.length > 0){
+      if(state.room.length === 1){
+        // three resolved -> carry the last card, deal a fresh room
+        state.roomsCleared++;
+        state.avoidedLastRoom = false;
+        state.resolvedThisRoom = 0;
+        state.potionUsedThisRoom = false;
+        dealUpTo();
+      }
+    } else {
+      // dungeon empty: finish whatever remains in the room
+      if(state.room.length === 0){ endGame(true); return; }
+    }
+    render();
+  }
+
+  // ---- card interactions ----
+  function tapCard(idx){
+    if(state.over) return;
+    var card = state.room[idx];
+    if(!card) return;
+
+    if(state.tutorial){
+      var st = TUT[state.tutStep];
+      if(!st || st.kind !== 'action'){
+        tutNudge(st && st.kind === 'finish' ? 'Tutorial complete — choose below.' : 'Finish reading, then tap Continue.');
+        return;
+      }
+      var ex = st.expect, t = st.target;
+      if(ex.action === 'avoid'){ tutNudge('Use the Avoid button below.'); return; }
+      if(!(t && card.suit === t.suit && card.value === t.value)){ tutNudge('Tap the glowing card.'); return; }
+      if(ex.action === 'potion'){ resolvePotion(idx); afterTutAction(); return; }
+      if(ex.action === 'weapon'){ resolveWeapon(idx); afterTutAction(); return; }
+      if(ex.action === 'fight-bare' || ex.action === 'fight-weapon'){ openSheet(idx); return; }
+      return;
+    }
+
+    if(card.type === 'potion'){
+      resolvePotion(idx);
+    } else if(card.type === 'weapon'){
+      resolveWeapon(idx);
+    } else {
+      openSheet(idx); // monster -> choose how to fight
+    }
+  }
+
+  function resolvePotion(idx){
+    var card = state.room.splice(idx,1)[0];
+    if(!state.potionUsedThisRoom){
+      var before = state.hp;
+      state.hp = Math.min(MAX_HP, state.hp + card.value);
+      state.potionUsedThisRoom = true;
+      state.lastWasPotion = true; state.lastPotionVal = card.value;
+      var gained = state.hp - before;
+      if(gained > 0){ spawnFloat('+'+gained, 'heal', el.hpPanel); bump(el.hpPanel); }
+      else { spawnFloat('FULL', 'muted', el.hpPanel); }
+      setChronicle('You quaff the '+SUIT.heart+' '+rankLabel(card.value)+' potion. +'+gained+' health.',
+                   gained < card.value ? 'Already at full vigour — the rest is spilled.' : '');
+    } else {
+      state.lastWasPotion = false;
+      spawnFloat('WASTE', 'muted', el.hpPanel);
+      setChronicle('You already drank a potion in this room. The '+SUIT.heart+' '+rankLabel(card.value)+' is wasted.',
+                   'Only the first potion each room restores you.');
+    }
+    afterResolve();
+  }
+
+  function resolveWeapon(idx){
+    var card = state.room.splice(idx,1)[0];
+    state.weapon = card.value;
+    state.lastSlain = null;          // fresh weapon, no monster slain yet
+    state.lastWasPotion = false;
+    spawnFloat('EQUIP', 'safe', el.wpnPanel); bump(el.wpnPanel);
+    setChronicle('You take up the '+SUIT.diamond+' '+rankLabel(card.value)+' as your weapon.',
+                 'It can keep cutting, but each foe slain must be weaker than the last.');
+    afterResolve();
+  }
+
+  function weaponAllowed(monVal){
+    if(state.weapon === null) return false;
+    if(state.lastSlain === null) return true;
+    return monVal < state.lastSlain;
+  }
+
+  function fight(idx, useWeapon){
+    var card = state.room[idx];
+    if(!card) return;
+    if(state.tutorial){
+      var sf = TUT[state.tutStep];
+      var want = useWeapon ? 'fight-weapon' : 'fight-bare';
+      if(!sf || sf.kind !== 'action' || (sf.expect.action !== 'fight-bare' && sf.expect.action !== 'fight-weapon')) return;
+      if(sf.expect.action !== want){
+        tutNudge(useWeapon ? 'Not with the blade here — fight bare-handed.' : 'Choose Strike with weapon to spare your health.');
+        return;
+      }
+    }
+    var dmg, line, hint='';
+    if(useWeapon){
+      dmg = Math.max(0, card.value - state.weapon);
+      state.lastSlain = card.value;
+      line = 'You strike the '+suitName(card)+' '+rankLabel(card.value)+' with your blade'
+             + (dmg>0 ? ', taking '+dmg+' damage.' : ' — no damage taken.');
+      hint = 'Next foe slain with this weapon must be below '+card.value+'.';
+    } else {
+      dmg = card.value;
+      line = 'You face the '+suitName(card)+' '+rankLabel(card.value)+' bare-handed, taking '+dmg+' damage.';
+    }
+    state.hp -= dmg;
+    if(dmg > 0){ spawnFloat('-'+dmg, 'dmg', el.hpPanel); bump(el.hpPanel); shake(); }
+    else { spawnFloat('BLOCK', 'safe', el.hpPanel); }
+    state.lastWasPotion = false;
+    state.room.splice(idx,1);
+    closeSheet();
+    setChronicle(line, hint);
+    afterResolve();
+    if(state.tutorial) advanceTut();
+  }
+
+  function suitName(card){ return SUIT[card.suit]; }
+
+  // ---- monster action sheet ----
+  function openSheet(idx){
+    var card = state.room[idx];
+    state.pending = idx;
+    el.sheetTitle.textContent = 'A '+rankWord(card.value).replace('the ','')+' of '+
+      (card.suit==='spade'?'Spades':'Clubs')+' attacks';
+    el.sheetDesc.textContent = 'This foe strikes for '+card.value+'. How do you meet it?';
+
+    el.cbDmg.textContent = '−'+card.value;
+
+    if(weaponAllowed(card.value)){
+      var d = Math.max(0, card.value - state.weapon);
+      el.choiceWeapon.disabled = false;
+      el.cwLabel.textContent = 'Strike with weapon ('+state.weapon+')';
+      el.cwSub.textContent = d>0 ? 'Foe value minus weapon' : 'A clean kill — no damage';
+      el.cwDmg.textContent = '−'+d;
+    } else {
+      el.choiceWeapon.disabled = true;
+      el.cwLabel.textContent = 'Strike with weapon';
+      if(state.weapon === null){ el.cwSub.textContent = 'You have no weapon'; }
+      else { el.cwSub.textContent = 'Foe is too strong — must be below '+state.lastSlain; }
+      el.cwDmg.textContent = '—';
+    }
+    el.sheetScrim.classList.add('open');
+    el.sheet.classList.add('open');
+  }
+  function closeSheet(){
+    state && (state.pending = null);
+    el.sheetScrim.classList.remove('open');
+    el.sheet.classList.remove('open');
+  }
+
+  // ---- end game ----
+  function endGame(won){
+    state.over = true;
+    closeSheet();
+    render();
+    var score, note;
+    if(won){
+      if(state.lastWasPotion && state.hp === MAX_HP){
+        score = MAX_HP + state.lastPotionVal;
+        note = 'Full health, and a potion as your final card — bonus claimed.';
+      } else {
+        score = state.hp;
+        note = 'Your score is the health you carried out alive.';
+      }
+    } else {
+      var remain = 0;
+      var all = state.dungeon.concat(state.room);
+      for(var i=0;i<all.length;i++){ if(all[i].type==='monster') remain += all[i].value; }
+      score = -remain;
+      note = 'Your score is the negative sum of the monsters left unfought.';
+    }
+    openEndModal(won, score, note);
+  }
+
+  // ---- rendering ----
+  function render(){
+    // status
+    el.hpNum.innerHTML = Math.max(0,state.hp) + '<span class="max"> / '+MAX_HP+'</span>';
+    el.hpBar.style.width = (Math.max(0,state.hp)/MAX_HP*100) + '%';
+    el.wpnNum.textContent = state.weapon === null ? '—' : state.weapon;
+    if(state.weapon === null){
+      el.wpnNote.textContent = 'Bare-handed';
+    } else if(state.lastSlain === null){
+      el.wpnNote.innerHTML = 'Ready — can slay any foe';
+    } else {
+      el.wpnNote.innerHTML = 'Next foe must be <b>below '+state.lastSlain+'</b>';
+    }
+    el.deckCount.textContent = state.dungeon.length;
+    el.roomsCleared.textContent = state.roomsCleared;
+
+    // avoid
+    if(state.tutorial){
+      var _st = TUT[state.tutStep];
+      var allowAvoid = _st && _st.kind === 'action' && _st.expect.action === 'avoid' && canAvoid();
+      el.avoidBtn.disabled = !allowAvoid;
+      el.avoidBtn.textContent = 'Avoid this room';
+    } else {
+      el.avoidBtn.disabled = !canAvoid();
+      el.avoidBtn.textContent = state.avoidedLastRoom && state.resolvedThisRoom===0
+        ? 'Cannot avoid two rooms in a row' : 'Avoid this room';
+    }
+
+    // room
+    el.room.innerHTML = '';
+    for(var i=0;i<state.room.length;i++){
+      el.room.appendChild(cardNode(state.room[i], i));
+    }
+    if(state.tutorial) applyTutHighlight();
+  }
+
+  function cardNode(card, idx){
+    var node = document.createElement('button');
+    node.className = 'card '+card.type;
+    node.setAttribute('data-suit', card.suit);
+    node.setAttribute('data-value', card.value);
+    node.setAttribute('aria-label', cardAria(card));
+    var rl = rankLabel(card.value), su = SUIT[card.suit];
+    var ribbon = card.type==='monster'?'ATK':card.type==='weapon'?'WPN':'HEAL';
+    var effect = card.type==='monster'
+        ? 'Attack <b>'+card.value+'</b>'
+        : card.type==='weapon' ? 'Weapon <b>'+card.value+'</b>' : 'Heal <b>'+card.value+'</b>';
+    node.innerHTML =
+      '<span class="corner tl">'+rl+'</span>'+
+      '<span class="ribbon">'+ribbon+'</span>'+
+      '<div class="pip"><div class="rank">'+rl+'</div><div class="suit">'+su+'</div></div>'+
+      '<div class="effect">'+effect+'</div>'+
+      '<span class="corner br">'+rl+'</span>';
+    node.addEventListener('click', function(){ tapCard(idx); });
+    return node;
+  }
+
+  function cardAria(card){
+    var t = card.type==='monster'?'Monster, attack '+card.value
+          : card.type==='weapon'?'Weapon, value '+card.value
+          : 'Potion, heal '+card.value;
+    return rankLabel(card.value)+' of '+card.suit+'s. '+t+'.';
+  }
+
+  function setChronicle(main, hint){
+    el.chronicle.innerHTML = main + (hint ? '<span class="hint">'+hint+'</span>' : '');
+  }
+
+  // ---- modals ----
+  function openEndModal(won, score, note){
+    var monstersLeft = state.dungeon.concat(state.room).filter(function(c){return c.type==='monster';}).length;
+    var html =
+      '<h2 class="'+(won?'win':'lose')+'">'+(won?'You climb out alive':'You fall in the dark')+'</h2>'+
+      '<p>'+(won
+        ? 'The last card is dealt with and the dungeon is empty. Few scoundrels make it this far.'
+        : 'Your health runs out. The dungeon keeps what it takes.')+'</p>'+
+      '<div class="score">'+(score>0?'+':'')+score+'</div>'+
+      '<div class="score-note">'+note+'</div>'+
+      (won?'':'<p style="font-size:.85rem;color:var(--muted)">'+monstersLeft+' foes were left unfought.</p>')+
+      '<button class="primary" id="againBtn">Descend again</button>'+
+      '<button class="ghost" id="rulesFromEnd">Read the rules</button>';
+    el.modal.innerHTML = html;
+    el.modalScrim.classList.add('open');
+    document.getElementById('againBtn').addEventListener('click', newGame);
+    document.getElementById('rulesFromEnd').addEventListener('click', openRules);
+  }
+
+  function openRules(){
+    var html =
+      '<h2>How to play</h2>'+
+      '<p>You are a scoundrel descending through a dungeon of 44 cards. Survive to the bottom of the deck and you win.</p>'+
+      '<h3>The cards</h3>'+
+      '<ul>'+
+        '<li><span class="glyph">♠ ♣</span> &nbsp;<b>Monsters</b> — deal damage equal to their value (J=11, Q=12, K=13, A=14).</li>'+
+        '<li><span class="glyph">♦</span> &nbsp;<b>Weapons</b> — equip one to soften blows.</li>'+
+        '<li><span class="glyph">♥</span> &nbsp;<b>Potions</b> — restore health, up to 20.</li>'+
+      '</ul>'+
+      '<h3>A room</h3>'+
+      '<ul>'+
+        '<li>Each room is 4 cards. Resolve any <b>3</b> of them; the 4th carries into the next room.</li>'+
+        '<li>Tap a card to deal with it, in whatever order you like.</li>'+
+        '<li><b>Avoid</b> sends all 4 cards to the bottom of the dungeon — but you cannot avoid two rooms in a row.</li>'+
+      '</ul>'+
+      '<h3>Fighting</h3>'+
+      '<ul>'+
+        '<li><b>Bare-handed:</b> take the monster\'s full value as damage.</li>'+
+        '<li><b>With a weapon:</b> take (monster − weapon) damage, never below 0.</li>'+
+        '<li>A weapon keeps cutting, but <b>each foe you slay with it must be weaker than the last</b>. Equip a new weapon to reset.</li>'+
+      '</ul>'+
+      '<h3>Potions</h3>'+
+      '<ul><li>Only the <b>first</b> potion each room heals you. Any others that room are wasted.</li></ul>'+
+      '<h3>Score</h3>'+
+      '<ul>'+
+        '<li>Survive: your score is the health you finish with. End on a potion at full health for a bonus.</li>'+
+        '<li>Die: your score is the negative total of the monsters you never fought.</li>'+
+      '</ul>'+
+      '<button class="primary" id="closeRules">Begin</button>';
+    el.modal.innerHTML = html;
+    el.modalScrim.classList.add('open');
+    document.getElementById('closeRules').addEventListener('click', closeModal);
+  }
+
+  function closeModal(){ el.modalScrim.classList.remove('open'); }
+
+  // ===== TUTORIAL =====
+  var TUT = [
+    {kind:'info', title:'Welcome, scoundrel', target:null,
+     text:"You'll descend through a deck of 44 cards. Reach the last card alive and you win. Let's learn the four things you can do."},
+    {kind:'action', expect:{action:'fight-bare'}, target:{suit:'club',value:9},
+     title:'Monsters bite',
+     text:"\u2660 and \u2663 are monsters. With no weapon, you fight bare-handed and take their full value as damage. Tap the glowing 9 of clubs."},
+    {kind:'action', expect:{action:'weapon'}, target:{suit:'diamond',value:8},
+     title:'Arm yourself',
+     text:"\u2666 cards are weapons. Tap the 8 of diamonds to wield it."},
+    {kind:'action', expect:{action:'fight-weapon'}, target:{suit:'spade',value:6},
+     title:'Strike with steel',
+     text:"Tap the 6 of spades, then choose Strike with weapon. Damage is the foe's value minus your weapon \u2014 here, none at all."},
+    {kind:'action', expect:{action:'potion'}, target:{suit:'heart',value:9},
+     title:'Bind your wounds',
+     text:"Three cards dealt with; the fourth carried into this fresh room. You're wounded \u2014 tap the 9 of hearts to drink a potion and heal, up to 20."},
+    {kind:'action', expect:{action:'fight-bare'}, target:{suit:'spade',value:7},
+     title:'A blade tires',
+     text:"Your weapon just felled a 6, so it can now strike only weaker foes. This 7 is beyond it \u2014 the weapon option is greyed out. Tap the 7 and fight bare-handed."},
+    {kind:'action', expect:{action:'potion'}, target:{suit:'heart',value:4},
+     title:'One cup per room',
+     text:"Only the first potion in a room restores you. Tap the 4 of hearts to watch it go to waste."},
+    {kind:'action', expect:{action:'avoid'}, target:'avoid',
+     title:'Know when to flee',
+     text:"One card carried over again. This room bristles with strong monsters. Tap Avoid this room to send all four to the bottom \u2014 but you can't avoid two rooms in a row."},
+    {kind:'finish', title:"You're ready", target:null,
+     text:"Fight, arm, heal, and flee \u2014 that's the whole game. Clear the deck to win; your score is the health you escape with. Good luck down there."}
+  ];
+
+  function tutDeck(){
+    var i = 0;
+    function c(s,v){ var t = s==='heart'?'potion':s==='diamond'?'weapon':'monster'; return {suit:s, value:v, type:t, id:i++}; }
+    return [ c('club',9), c('diamond',8), c('spade',6), c('heart',9),   // room A (carry the heart)
+             c('spade',7), c('heart',4), c('spade',2),                  // room B (new three)
+             c('club',13), c('spade',12), c('club',10),                 // room C (new three)
+             c('heart',5), c('diamond',6), c('club',3), c('spade',4) ]; // filler behind the finish
+  }
+
+  function startTutorial(){
+    state = {
+      dungeon: tutDeck(), room: [], hp: MAX_HP, weapon: null, lastSlain: null,
+      potionUsedThisRoom: false, avoidedLastRoom: false, resolvedThisRoom: 0,
+      lastWasPotion: false, lastPotionVal: 0, roomsCleared: 0, over: false, pending: null,
+      tutorial: true, tutStep: 0, _nudge: null
+    };
+    dealUpTo();
+    closeModal(); closeSheet();
+    setChronicle('A guided descent \u2014 follow the glowing prompts.', '');
+    render(); renderBubble();
+  }
+
+  function finishTutorial(start){
+    if(state) state.tutorial = false;
+    renderBubble();
+    if(start) newGame();
+  }
+
+  function advanceTut(){ state._nudge = null; state.tutStep++; render(); renderBubble(); }
+  function afterTutAction(){ if(state.tutorial) advanceTut(); }
+  function tutNudge(msg){ if(!state.tutorial) return; state._nudge = msg; renderBubble(); }
+
+  function applyTutHighlight(){
+    el.avoidBtn.classList.remove('tut-target');
+    var st = TUT[state.tutStep];
+    if(!st) return;
+    if(st.target === 'avoid'){ el.avoidBtn.classList.add('tut-target'); return; }
+    if(st.target && st.target.suit){
+      var nodes = el.room.querySelectorAll('.card');
+      for(var k=0;k<nodes.length;k++){
+        var n = nodes[k];
+        if(n.getAttribute('data-suit') === st.target.suit && +n.getAttribute('data-value') === st.target.value){
+          n.classList.add('tut-target');
+        }
+      }
+    }
+  }
+
+  function renderBubble(){
+    if(!state || !state.tutorial){
+      el.tutOverlay.classList.remove('on');
+      el.tutBubble.classList.remove('on');
+      document.body.classList.remove('tut');
+      return;
+    }
+    document.body.classList.add('tut');
+    el.tutOverlay.classList.add('on');
+    el.tutBubble.classList.add('on');
+    var st = TUT[state.tutStep], actions;
+    if(st.kind === 'info'){
+      actions = '<div class="tut-actions"><button class="primary" id="tutNext" style="flex:1">Continue</button>'+
+                '<button class="tut-skip" id="tutSkip">Skip</button></div>';
+    } else if(st.kind === 'finish'){
+      actions = '<button class="primary" id="tutStart">Start playing</button>'+
+                '<button class="ghost" id="tutReplay">Replay tutorial</button>';
+    } else {
+      actions = '<div class="tut-actions" style="justify-content:flex-end"><button class="tut-skip" id="tutSkip">Skip tutorial</button></div>';
+    }
+    el.tutBubble.innerHTML =
+      '<div class="tut-step">Step '+(state.tutStep+1)+' of '+TUT.length+'</div>'+
+      '<h3>'+st.title+'</h3>'+
+      '<p>'+st.text+'</p>'+
+      (state._nudge ? '<div class="tut-nudge">'+state._nudge+'</div>' : '')+
+      actions;
+    var b;
+    if((b=document.getElementById('tutNext')))   b.onclick = advanceTut;
+    if((b=document.getElementById('tutSkip')))   b.onclick = function(){ finishTutorial(true); };
+    if((b=document.getElementById('tutStart')))  b.onclick = function(){ finishTutorial(true); };
+    if((b=document.getElementById('tutReplay'))) b.onclick = startTutorial;
+  }
+
+  // ---- wire up ----
+  el.avoidBtn.addEventListener('click', avoidRoom);
+  el.newBtn.addEventListener('click', newGame);
+  el.learnBtn.addEventListener('click', startTutorial);
+  el.rulesBtn.addEventListener('click', openRules);
+  el.choiceBare.addEventListener('click', function(){ if(state.pending!==null) fight(state.pending,false); });
+  el.choiceWeapon.addEventListener('click', function(){ if(state.pending!==null && !el.choiceWeapon.disabled) fight(state.pending,true); });
+  el.choiceCancel.addEventListener('click', closeSheet);
+  el.sheetScrim.addEventListener('click', closeSheet);
+  el.modalScrim.addEventListener('click', function(e){ if(e.target===el.modalScrim) closeModal(); });
+
+  newGame();
+})();
+</script>
+</body>
+</html>
