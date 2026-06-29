@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <meta name="description" content="Play Scoundrel, the solo dungeon card game, on phone." />
 <title>Scoundrel — a dungeon in 44 cards</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -28,7 +28,7 @@
   body{
     background:radial-gradient(130% 100% at 50% 0%, #203a3f 0%, var(--bg2) 45%, var(--bg) 100%), var(--bg);
     color:var(--text); font-family:var(--font);
-    height:100vh; height:100dvh; overflow:hidden; position:relative;
+    height:100vh; height:var(--app-vh,100svh); overflow:hidden; position:relative;
   }
   body::before{ content:""; position:fixed; inset:-20%; pointer-events:none; z-index:0;
     background:
@@ -39,8 +39,9 @@
   }
   @keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(2%,-2%) scale(1.06)}}
 
-  .wrap{position:relative; z-index:1; max-width:540px; margin:0 auto; height:100vh; height:100dvh;
-    padding:10px 12px 12px; display:flex; flex-direction:column; gap:8px}
+  .wrap{position:relative; z-index:1; max-width:540px; margin:0 auto; height:100vh; height:var(--app-vh,100svh);
+    padding:calc(env(safe-area-inset-top, 0px) + 14px) max(12px, env(safe-area-inset-right, 0px)) 12px max(12px, env(safe-area-inset-left, 0px));
+    display:flex; flex-direction:column; gap:8px}
   .wrap.shake{animation:shake .32s ease}
   @keyframes shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-4px,2px)}40%{transform:translate(4px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,-1px)}}
 
@@ -209,8 +210,8 @@
     font-family:var(--font); font-weight:600; font-size:.62rem; cursor:pointer}
   .tut-skip:active{transform:translateY(2px)}
   .tut-bubble .primary{margin-top:0} .tut-bubble .ghost{margin-top:8px}
-  body.tut{height:auto; min-height:100dvh; overflow-y:auto}
-  body.tut .wrap{height:auto; min-height:100dvh; padding-bottom:210px}
+  body.tut{height:auto; min-height:var(--app-vh,100svh); overflow-y:auto}
+  body.tut .wrap{height:auto; min-height:var(--app-vh,100svh); padding-bottom:210px}
 
   @media (prefers-reduced-motion: reduce){
     body::before{animation:none}
@@ -288,9 +289,31 @@
 <script>
 (function(){
   "use strict";
+
+  // --- Viewport lock -------------------------------------------------------
+  // Embedded app webviews recompute `dvh` as host chrome shifts, so the
+  // viewport height can oscillate a few px every frame and make the felt + cards
+  // visibly jitter ("shake") on load. We freeze the height to a real measurement
+  // and only re-measure on genuine changes (rotation), ignoring micro-jitter.
+  var lastVH = 0;
+  function applyVH(force){
+    var h = window.innerHeight || document.documentElement.clientHeight || 0;
+    if(h < 1) return;
+    if(force || Math.abs(h - lastVH) > 90){
+      lastVH = h;
+      document.documentElement.style.setProperty('--app-vh', h + 'px');
+    }
+  }
+  applyVH(true);
+  if(window.requestAnimationFrame){ requestAnimationFrame(function(){ applyVH(true); }); }
+  setTimeout(function(){ applyVH(true); }, 300);  // settle after any open animation
+  window.addEventListener('resize', function(){ applyVH(false); }, { passive:true });
+  window.addEventListener('orientationchange', function(){ setTimeout(function(){ applyVH(true); }, 250); });
+
   var MAX_HP = 20;
   var SUIT = { spade:"♠", club:"♣", diamond:"♦", heart:"♥" };
   var state = null;
+  var dismissable = true;   // backdrop tap closes the modal — except the game-over screen
 
   // ---- elements ----
   var el = {
@@ -723,6 +746,7 @@
       '<button class="ghost" id="rulesFromEnd">Read the rules</button>';
     el.modal.innerHTML = html;
     el.modalScrim.classList.add('open');
+    dismissable = false;   // must pick a button; don't let a stray tap hide the result
     document.getElementById('againBtn').addEventListener('click', function(){ newGame(); });
     document.getElementById('shareResultBtn').addEventListener('click', function(){ shareResult(won, score, sd); });
     document.getElementById('replaySeedBtn').addEventListener('click', function(){ newGame(sd); });
@@ -761,10 +785,11 @@
       '<button class="primary" id="closeRules">Begin</button>';
     el.modal.innerHTML = html;
     el.modalScrim.classList.add('open');
+    dismissable = true;
     document.getElementById('closeRules').addEventListener('click', closeModal);
   }
 
-  function closeModal(){ el.modalScrim.classList.remove('open'); }
+  function closeModal(){ el.modalScrim.classList.remove('open'); dismissable = true; }
 
   // ---- seed ----
   var _toastTimer = null;
@@ -997,7 +1022,7 @@
   el.choiceWeapon.addEventListener('click', function(){ if(state.pending!==null && !el.choiceWeapon.disabled) fight(state.pending,true); });
   el.choiceCancel.addEventListener('click', closeSheet);
   el.sheetScrim.addEventListener('click', closeSheet);
-  el.modalScrim.addEventListener('click', function(e){ if(e.target===el.modalScrim) closeModal(); });
+  el.modalScrim.addEventListener('click', function(e){ if(e.target===el.modalScrim && dismissable) closeModal(); });
 
   newGame(seedFromURL());
 })();
