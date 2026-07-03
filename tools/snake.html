@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="description" content="Roguelike snake: collect gems, survive the Apex" />
+<title>Serpent Stakes</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --felt-1:#0e3a34; --felt-2:#0a2c28;
+    --panel:#155046; --panel-dk:#0f3d36; --panel-edge:#1e6154; --panel-shadow:#062019;
+    --ink:#eafff8; --ink-dim:#9cc9bd;
+    --ruby:#ff5464; --ruby-dk:#c22b3f;
+    --sapphire:#4fa8ff; --sapphire-dk:#2b6fc2;
+    --gold:#ffd25e;
+    --app-vh:100vh;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none;}
+  body{
+    font-family:'Baloo 2',system-ui,sans-serif;
+    background:radial-gradient(120% 90% at 50% 0%, var(--felt-1), var(--felt-2));
+    color:var(--ink);
+    height:var(--app-vh);
+    display:flex;flex-direction:column;
+    padding:calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 10px)
+            calc(env(safe-area-inset-bottom) + 10px) calc(env(safe-area-inset-left) + 10px);
+    user-select:none;-webkit-user-select:none;touch-action:none;
+    position:relative;
+  }
+  /* drifting glows */
+  .glow{position:fixed;width:70vmax;height:70vmax;border-radius:50%;filter:blur(90px);opacity:.16;pointer-events:none;z-index:0;}
+  .glow.r{background:var(--ruby);top:-20vmax;left:-20vmax;animation:driftA 26s ease-in-out infinite alternate;}
+  .glow.b{background:var(--sapphire);bottom:-24vmax;right:-22vmax;animation:driftB 31s ease-in-out infinite alternate;}
+  @keyframes driftA{to{transform:translate(14vmax,10vmax);}}
+  @keyframes driftB{to{transform:translate(-12vmax,-12vmax);}}
+
+  header{display:flex;align-items:center;justify-content:space-between;z-index:2;padding:2px 2px 8px;}
+  h1{font-size:clamp(18px,5vw,24px);font-weight:800;letter-spacing:.5px;text-shadow:0 2px 0 var(--panel-shadow);}
+  .pips{display:flex;gap:6px;}
+  .pip{width:14px;height:14px;border-radius:50%;background:var(--panel-dk);border:2px solid var(--panel-edge);box-shadow:0 2px 0 var(--panel-shadow);}
+  .pip.done{background:var(--gold);border-color:var(--gold);}
+  .pip.now{background:var(--ink);border-color:var(--ink);}
+  .pip.apex{border-radius:4px;transform:rotate(45deg);}
+  .head-right{display:flex;align-items:center;gap:10px;}
+  .iconbtn{
+    font-family:inherit;font-size:13px;font-weight:800;color:var(--ink);
+    letter-spacing:1px;line-height:1;
+    background:linear-gradient(var(--panel),var(--panel-dk));
+    border:2px solid var(--panel-edge);border-radius:11px;
+    box-shadow:0 3px 0 var(--panel-shadow);
+    padding:7px 11px;cursor:pointer;touch-action:manipulation;
+  }
+  .iconbtn:active{transform:translateY(3px);box-shadow:0 0 0 var(--panel-shadow);}
+  .iconbtn:disabled{opacity:.35;box-shadow:0 3px 0 var(--panel-shadow);transform:none;}
+
+  .hud{display:flex;gap:8px;z-index:2;margin-bottom:8px;}
+  .panel{
+    background:linear-gradient(var(--panel),var(--panel-dk));
+    border:2px solid var(--panel-edge);
+    border-radius:14px;
+    box-shadow:0 4px 0 var(--panel-shadow);
+    padding:6px 10px;
+  }
+  .panel.bump{animation:bump .18s ease-out;}
+  @keyframes bump{40%{transform:scale(1.06);}100%{transform:scale(1);}}
+  .score-panel{flex:1;display:flex;flex-direction:column;gap:3px;}
+  .row{display:flex;justify-content:space-between;align-items:baseline;}
+  .label{font-size:11px;font-weight:700;color:var(--ink-dim);letter-spacing:.8px;text-transform:uppercase;}
+  .score{font-size:clamp(18px,5.5vw,26px);font-weight:800;color:var(--gold);line-height:1;}
+  .target{font-size:13px;font-weight:700;color:var(--ink-dim);}
+  .bar{height:8px;border-radius:6px;background:var(--panel-shadow);overflow:hidden;}
+  .bar>i{display:block;height:100%;width:0%;border-radius:6px;background:linear-gradient(90deg,var(--sapphire),var(--gold));transition:width .25s ease;}
+  .round-panel{display:flex;flex-direction:column;justify-content:center;align-items:center;min-width:74px;}
+  .round-name{font-size:14px;font-weight:800;}
+  .round-name.apex-name{color:var(--ruby);}
+
+  .board-wrap{flex:1;display:flex;align-items:center;justify-content:center;z-index:1;min-height:0;}
+  #board{
+    background:linear-gradient(#0b332d,#092b26);
+    border:3px solid var(--panel-edge);
+    border-radius:16px;
+    box-shadow:0 6px 0 var(--panel-shadow), inset 0 0 24px rgba(0,0,0,.35);
+  }
+  #board.walls{box-shadow:0 6px 0 var(--panel-shadow), inset 0 0 0 3px var(--ruby), inset 0 0 26px rgba(255,84,100,.35);}
+  .shake{animation:shake .35s ease-in-out;}
+  @keyframes shake{20%{transform:translate(-5px,3px);}40%{transform:translate(4px,-4px);}60%{transform:translate(-3px,2px);}80%{transform:translate(2px,-2px);}}
+
+  .fly{
+    position:fixed;font-weight:800;font-size:20px;pointer-events:none;z-index:9;
+    text-shadow:0 2px 0 rgba(0,0,0,.5);
+    animation:fly .8s ease-out forwards;
+  }
+  @keyframes fly{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-46px) scale(1.25);}}
+
+  .overlay{
+    position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+    background:rgba(5,24,20,.72);backdrop-filter:blur(3px);
+    opacity:0;pointer-events:none;transition:opacity .22s ease;
+  }
+  .overlay.show{opacity:1;pointer-events:auto;}
+  .card{
+    background:linear-gradient(var(--panel),var(--panel-dk));
+    border:3px solid var(--panel-edge);border-radius:20px;
+    box-shadow:0 8px 0 var(--panel-shadow);
+    padding:22px 26px;max-width:320px;width:86%;text-align:center;
+    display:flex;flex-direction:column;gap:10px;align-items:center;
+    animation:cardIn .3s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes cardIn{from{transform:scale(.8);opacity:0;}}
+  .card h2{font-size:26px;font-weight:800;line-height:1.1;}
+  .card h2.danger{color:var(--ruby);}
+  .card h2.win{color:var(--gold);}
+  .card p{font-size:14px;color:var(--ink-dim);font-weight:600;line-height:1.4;}
+  .card .big{font-size:15px;color:var(--ink);}
+  .btn{
+    font-family:inherit;font-size:17px;font-weight:800;color:var(--ink);
+    background:linear-gradient(var(--panel-edge),var(--panel));
+    border:2px solid var(--panel-edge);border-radius:14px;
+    box-shadow:0 5px 0 var(--panel-shadow);
+    padding:10px 26px;cursor:pointer;margin-top:4px;
+  }
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--panel-shadow);}
+  .card.info{text-align:left;align-items:stretch;}
+  .card.info h2{text-align:center;}
+  .tlist{display:flex;flex-direction:column;gap:8px;margin:2px 0;}
+  .trow{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--panel-dk);border:2px solid var(--panel-edge);
+    border-radius:12px;padding:8px 12px;font-weight:700;font-size:14px;
+  }
+  .trow.cur{border-color:var(--gold);}
+  .trow .rname{display:flex;align-items:center;gap:8px;}
+  .trow .rt{color:var(--gold);font-weight:800;}
+  .trow.apexrow .rname{color:var(--ruby);}
+  .apexrule{
+    background:var(--panel-dk);border:2px solid var(--ruby);
+    border-radius:12px;padding:10px 12px;font-size:13px;color:var(--ink);font-weight:600;line-height:1.35;
+  }
+  .apexrule b{color:var(--ruby);}
+  .gemline{display:flex;gap:14px;justify-content:center;font-weight:700;font-size:14px;}
+  .dot{display:inline-block;width:12px;height:12px;border-radius:3px;transform:rotate(45deg);margin-right:5px;vertical-align:-1px;}
+  .dot.r{background:var(--ruby);} .dot.s{background:var(--sapphire);}
+
+  .dpad{
+    z-index:2;margin-top:8px;
+    display:flex;gap:8px;
+  }
+  .dbtn{
+    font-family:inherit;font-size:24px;color:var(--ink);
+    flex:1;height:64px;
+    background:linear-gradient(var(--panel-edge),var(--panel));
+    border:2px solid var(--panel-edge);border-radius:14px;
+    box-shadow:0 5px 0 var(--panel-shadow);
+    cursor:pointer;touch-action:manipulation;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .dbtn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--panel-shadow);}
+
+  @media (prefers-reduced-motion: reduce){
+    .glow,.card{animation:none !important;}
+    .shake,.fly,.panel.bump{animation:none !important;}
+    .fly{opacity:0;}
+    .bar>i{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div class="glow r"></div><div class="glow b"></div>
+
+<header>
+  <h1>Serpent Stakes</h1>
+  <div class="head-right">
+    <div class="pips" id="pips"></div>
+    <button class="iconbtn" id="pauseBtn" aria-label="Pause">&#10073;&#10073;</button>
+  </div>
+</header>
+
+<div class="hud">
+  <div class="panel score-panel" id="scorePanel">
+    <div class="row"><span class="label">Round score</span><span class="target" id="target">0 / 0</span></div>
+    <div class="score" id="score">0</div>
+    <div class="bar"><i id="barFill"></i></div>
+  </div>
+  <div class="panel round-panel">
+    <span class="label">Round</span>
+    <span class="round-name" id="roundName">1</span>
+  </div>
+</div>
+
+<div class="board-wrap"><canvas id="board"></canvas></div>
+
+<div class="dpad" id="dpad">
+  <button class="dbtn" data-d="0,-1" aria-label="Up">&#9650;</button>
+  <button class="dbtn" data-d="0,1"  aria-label="Down">&#9660;</button>
+  <button class="dbtn" data-d="-1,0" aria-label="Left">&#9664;</button>
+  <button class="dbtn" data-d="1,0"  aria-label="Right">&#9654;</button>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="card" id="card"></div>
+</div>
+
+<script>
+/* ============================================================
+   TUNING — every balance number lives here. Edit and reload.
+   ============================================================ */
+const TUNING = {
+  startTickMs: 170,        // starting snake speed: ms per cell (higher = slower)
+  tickSpeedupPerGem: 2,    // ms shaved off per gem collected (run-wide)
+  minTickMs: 90,           // speed cap — never faster than this
+  cols: 13, rows: 17,      // board grid
+  startLength: 2,          // body length at the start of every round (body resets each round)
+  gemsLive: 2,             // gems on the board at once
+  gemPoints: 1,            // points per gem
+  growthPerGem: 1,         // segments gained per gem eaten
+  roundTargets: [10, 16],  // points to clear rounds 1 and 2
+  apexTargetMult: 1.5,     // apex target = round-2 target × this
+  inputBuffer: 2,          // queued turns remembered
+  swipeMinPx: 22,          // swipe distance to register
+
+  apex: {
+    // odds must be >0; they’re normalized. Equal thirds by default.
+    drawWeights: { wall: 1, rubiesOnly: 1, sapphiresOnly: 1 },
+    // color apexes:
+    offColorPoints: 0,     // what the wrong gem scores at the apex
+    offColorGrows: false,  // wrong gem does NOT grow the body (still no points)
+    onColorSpawnOdds: 0.5, // chance a spawned gem is the scoring color
+  },
+};
+/* ============================================================ */
+
+const APEX_DEFS = {
+  wall:         { name:'The Wall',        desc:'The edges no longer wrap. Touching a wall is death.' },
+  rubiesOnly:   { name:'Rubies Only',     desc:'Sapphires are worthless here. Only rubies score.' },
+  sapphiresOnly:{ name:'Sapphires Only',  desc:'Rubies are worthless here. Only sapphires score.' },
+};
+
+// --- viewport lock (freeze --app-vh; avoids webview chrome-shift shake) ---
+document.documentElement.style.setProperty('--app-vh', window.innerHeight + 'px');
+
+// --- helpers ---
+const $ = id => document.getElementById(id);
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const rand = n => Math.floor(Math.random()*n);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+// --- canvas sizing ---
+const canvas = $('board'), ctx = canvas.getContext('2d');
+let cell = 20, dpr = 1;
+function sizeBoard(){
+  const wrap = canvas.parentElement.getBoundingClientRect();
+  cell = Math.floor(Math.min((wrap.width-8)/TUNING.cols, (wrap.height-8)/TUNING.rows));
+  dpr = window.devicePixelRatio || 1;
+  canvas.width  = TUNING.cols*cell*dpr;
+  canvas.height = TUNING.rows*cell*dpr;
+  canvas.style.width  = TUNING.cols*cell + 'px';
+  canvas.style.height = TUNING.rows*cell + 'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+// --- game state ---
+const S = {
+  phase:'menu',            // menu | play | between | over | won
+  round:1, apexKey:null,
+  snake:[], dir:{x:1,y:0}, queue:[],
+  gems:[], score:0, target:0,
+  runScore:0, gemsEaten:0,
+};
+
+function drawApex(){
+  const w = TUNING.apex.drawWeights, keys = Object.keys(w);
+  let total = keys.reduce((a,k)=>a+w[k],0), roll = Math.random()*total;
+  for(const k of keys){ roll -= w[k]; if(roll<=0) return k; }
+  return keys[0];
+}
+function roundTarget(r){
+  if(r<=2) return TUNING.roundTargets[r-1];
+  return Math.round(TUNING.roundTargets[1]*TUNING.apexTargetMult);
+}
+const isApex = () => S.round===3;
+
+// --- setup / flow ---
+function newRun(){
+  S.apexKey = drawApex();
+  S.round = 1; S.runScore = 0; S.gemsEaten = 0;
+  startRound();
+}
+function startRound(){
+  S.score = 0; S.target = roundTarget(S.round);
+  S.dir = {x:1,y:0}; S.queue = [];
+  const cy = Math.floor(TUNING.rows/2);
+  S.snake = [];
+  for(let i=0;i<TUNING.startLength;i++)
+    S.snake.push({x:Math.max(0, 3-i), y:cy}); // head first
+  S.gems = [];
+  while(S.gems.length < TUNING.gemsLive) spawnGem();
+  updateHUD();
+  canvas.classList.toggle('walls', isApex() && S.apexKey==='wall');
+  S.phase='play'; last=0; acc=0;
+}
+function apexColor(){ return S.apexKey==='rubiesOnly' ? 'ruby' : 'sapphire'; }
+function spawnGem(){
+  let color;
+  if(isApex() && S.apexKey!=='wall'){
+    color = Math.random() < TUNING.apex.onColorSpawnOdds ? apexColor()
+          : (apexColor()==='ruby' ? 'sapphire' : 'ruby');
+  } else color = Math.random()<0.5 ? 'ruby' : 'sapphire';
+  for(let tries=0; tries<400; tries++){
+    const g = {x:rand(TUNING.cols), y:rand(TUNING.rows), color};
+    if(S.snake.some(s=>s.x===g.x&&s.y===g.y)) continue;
+    if(S.gems.some(o=>o.x===g.x&&o.y===g.y)) continue;
+    S.gems.push(g); return;
+  }
+}
+
+// --- input ---
+function pushDir(d){
+  const lastD = S.queue.length ? S.queue[S.queue.length-1] : S.dir;
+  if(d.x===-lastD.x && d.y===-lastD.y) return;      // no 180s
+  if(d.x===lastD.x && d.y===lastD.y) return;
+  if(S.queue.length < TUNING.inputBuffer) S.queue.push(d);
+}
+let tS=null;
+addEventListener('touchstart', e=>{ tS = e.touches[0]; }, {passive:true});
+addEventListener('touchend', e=>{
+  if(!tS) return;
+  const dx = e.changedTouches[0].clientX - tS.clientX;
+  const dy = e.changedTouches[0].clientY - tS.clientY;
+  tS = null;
+  if(Math.max(Math.abs(dx),Math.abs(dy)) < TUNING.swipeMinPx) return;
+  if(S.phase!=='play') return;
+  if(Math.abs(dx) > Math.abs(dy)) pushDir({x:Math.sign(dx),y:0});
+  else pushDir({x:0,y:Math.sign(dy)});
+}, {passive:true});
+addEventListener('keydown', e=>{
+  if(S.phase!=='play') return;
+  const m = {ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],
+             w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}[e.key];
+  if(m) pushDir({x:m[0],y:m[1]});
+});
+$('pauseBtn').addEventListener('pointerdown', e=>{ e.preventDefault(); S.phase==='paused'?resumeGame():pauseGame(); });
+addEventListener('keydown', e=>{
+  if(e.key==='Escape' || e.key==='p' || e.key==='P'){ S.phase==='paused'?resumeGame():pauseGame(); }
+});
+document.querySelectorAll('.dbtn').forEach(b=>{
+  b.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    if(S.phase!=='play') return;
+    const [x,y] = b.dataset.d.split(',').map(Number);
+    pushDir({x,y});
+  });
+});
+
+// --- tick ---
+function step(){
+  if(S.queue.length) S.dir = S.queue.shift();
+  const head = S.snake[0];
+  let nx = head.x + S.dir.x, ny = head.y + S.dir.y;
+  const wallsKill = isApex() && S.apexKey==='wall';
+  if(wallsKill){
+    if(nx<0||ny<0||nx>=TUNING.cols||ny>=TUNING.rows) return die();
+  } else {
+    nx = (nx+TUNING.cols)%TUNING.cols; ny = (ny+TUNING.rows)%TUNING.rows;
+  }
+  if(S.snake.some((s,i)=> i<S.snake.length-1 && s.x===nx && s.y===ny)) return die();
+  S.snake.unshift({x:nx,y:ny});
+
+  const gi = S.gems.findIndex(g=>g.x===nx&&g.y===ny);
+  if(gi>=0){
+    const gem = S.gems.splice(gi,1)[0];
+    let pts = TUNING.gemPoints, grows = true;
+    if(isApex() && S.apexKey!=='wall' && gem.color!==apexColor()){
+      pts = TUNING.apex.offColorPoints;
+      grows = TUNING.apex.offColorGrows;
+    }
+    S.score += pts; S.runScore += pts; S.gemsEaten++;
+    flyNumber(nx, ny, pts, gem.color);
+    bump();
+    if(grows){ for(let i=1;i<TUNING.growthPerGem;i++) S.snake.push({...S.snake[S.snake.length-1]}); }
+    else S.snake.pop();          // no growth: remove tail as usual
+    spawnGem(); updateHUD();
+    if(S.score >= S.target) return clearRound();
+  } else {
+    S.snake.pop();
+  }
+}
+function die(){
+  S.phase='over';
+  if(!reduceMotion){ canvas.classList.add('shake'); setTimeout(()=>canvas.classList.remove('shake'),400); }
+  showCard(`
+    <h2 class="danger">The Serpent Falls</h2>
+    <p class="big">Run score: <b>${S.runScore}</b> · Reached round ${S.round}${isApex()? ' — '+APEX_DEFS[S.apexKey].name:''}</p>
+    <p>The run is lost. A new hunt awaits — new rounds, new Apex.</p>
+    <button class="btn" id="go">Hunt again</button>`);
+  $('go').onclick = ()=>{ hideCard(); newRun(); };
+}
+function clearRound(){
+  if(S.round===3){
+    S.phase='won';
+    showCard(`
+      <h2 class="win">Apex Cleared</h2>
+      <p class="big">Run score: <b>${S.runScore}</b> · Final length: ${S.snake.length}</p>
+      <button class="btn" id="go">New run</button>`);
+    $('go').onclick = ()=>{ hideCard(); newRun(); };
+    return;
+  }
+  S.phase='between'; S.round++;
+  if(S.round===3){
+    const a = APEX_DEFS[S.apexKey];
+    showCard(`
+      <p class="label">The Apex</p>
+      <h2 class="danger">${a.name}</h2>
+      <p class="big">${a.desc}</p>
+      <p>Target: ${roundTarget(3)} · Fresh body, harder rules</p>
+      <button class="btn" id="go">Face it</button>`);
+  } else {
+    showCard(`
+      <h2>Round ${S.round-1} clear</h2>
+      <p class="big">Next target: ${roundTarget(S.round)} · Your body resets</p>
+      <button class="btn" id="go">Keep hunting</button>`);
+  }
+  $('go').onclick = ()=>{ hideCard(); startRound(); };
+}
+
+// --- juice ---
+function bump(){
+  const p = $('scorePanel');
+  p.classList.remove('bump'); void p.offsetWidth; p.classList.add('bump');
+}
+function flyNumber(cx, cy, pts, color){
+  if(reduceMotion) return;
+  const r = canvas.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className='fly';
+  el.textContent = pts>0 ? `+${pts}` : '×0';
+  el.style.color = pts>0 ? (color==='ruby'?css('--ruby'):css('--sapphire')) : css('--ink-dim');
+  el.style.left = (r.left + cx*cell + cell/2 - 10)+'px';
+  el.style.top  = (r.top  + cy*cell - 6)+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 850);
+}
+
+// --- HUD ---
+function updateHUD(){
+  const pb=$('pauseBtn'); if(pb) pb.disabled = (S.phase!=='play' && S.phase!=='paused');
+  $('score').textContent = S.score;
+  $('target').textContent = `${S.score} / ${S.target}`;
+  $('barFill').style.width = Math.min(100, 100*S.score/S.target)+'%';
+  $('roundName').textContent = isApex() ? APEX_DEFS[S.apexKey].name : S.round;
+  $('roundName').classList.toggle('apex-name', isApex());
+  const pips = $('pips'); pips.innerHTML='';
+  for(let i=1;i<=3;i++){
+    const d = document.createElement('div');
+    d.className = 'pip' + (i===3?' apex':'') + (i<S.round?' done': i===S.round?' now':'');
+    pips.appendChild(d);
+  }
+}
+
+// --- overlay ---
+function showCard(html){ $('card').innerHTML = html; $('overlay').classList.add('show'); }
+function hideCard(){ $('overlay').classList.remove('show'); $('card').classList.remove('info'); }
+
+function pauseGame(){
+  if(S.phase!=='play') return;
+  S.phase='paused';
+  const known = APEX_DEFS[S.apexKey];
+  const rows = [1,2,3].map(r=>{
+    const apex = r===3;
+    const cur = r===S.round;
+    const label = apex ? `<span class="rname">&#9670; Apex — ${known.name}</span>`
+                       : `<span class="rname">Round ${r}</span>`;
+    return `<div class="trow${apex?' apexrow':''}${cur?' cur':''}">
+              ${label}<span class="rt">${roundTarget(r)}</span>
+            </div>`;
+  }).join('');
+  showCard(`
+    <h2>Paused</h2>
+    <div class="tlist">${rows}</div>
+    <div class="apexrule"><b>Apex rule:</b> ${known.desc}</div>
+    <button class="btn" id="resume">Resume</button>`);
+  $('card').classList.add('info');
+  $('resume').onclick = resumeGame;
+}
+function resumeGame(){
+  if(S.phase!=='paused') return;
+  hideCard(); S.phase='play'; last=0; acc=0;
+}
+
+// --- render ---
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // subtle checker
+  ctx.globalAlpha = .05; ctx.fillStyle = '#ffffff';
+  for(let y=0;y<TUNING.rows;y++) for(let x=0;x<TUNING.cols;x++)
+    if((x+y)%2===0) ctx.fillRect(x*cell,y*cell,cell,cell);
+  ctx.globalAlpha = 1;
+  // gems (rotated squares)
+  for(const g of S.gems){
+    const cx=g.x*cell+cell/2, cy=g.y*cell+cell/2, s=cell*0.30;
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(Math.PI/4);
+    ctx.fillStyle = g.color==='ruby' ? css('--ruby') : css('--sapphire');
+    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.roundRect(-s,-s,s*2,s*2,3); ctx.fill();
+    ctx.restore();
+  }
+  // snake
+  for(let i=S.snake.length-1;i>=0;i--){
+    const s=S.snake[i], pad = i===0? 1.5 : 2.5;
+    ctx.fillStyle = i===0 ? '#eafff8' : `hsl(160 45% ${Math.max(28, 52-i*1.2)}%)`;
+    ctx.beginPath();
+    ctx.roundRect(s.x*cell+pad, s.y*cell+pad, cell-pad*2, cell-pad*2, cell*0.28);
+    ctx.fill();
+  }
+}
+
+// --- loop ---
+const currentTick = () => Math.max(TUNING.minTickMs,
+  TUNING.startTickMs - S.gemsEaten * TUNING.tickSpeedupPerGem);
+let last=0, acc=0;
+function loop(t){
+  requestAnimationFrame(loop);
+  if(S.phase!=='play'){ render(); return; }
+  if(!last) last=t;
+  acc += t-last; last=t;
+  const tk = currentTick();
+  while(acc >= tk){ acc -= tk; step(); if(S.phase!=='play') break; }
+  render();
+}
+
+// --- boot ---
+sizeBoard();
+addEventListener('resize', ()=>{ sizeBoard(); render(); });
+showCard(`
+  <h2>Serpent Stakes</h2>
+  <p class="big">Swipe to steer. Collect gems, clear 3 rounds.<br/>Round 3 is the <b>Apex</b> — the rules change.</p>
+  <div class="gemline"><span><span class="dot r"></span>Ruby</span><span><span class="dot s"></span>Sapphire</span></div>
+  <button class="btn" id="go">Start the hunt</button>`);
+$('go').onclick = ()=>{ hideCard(); newRun(); };
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
