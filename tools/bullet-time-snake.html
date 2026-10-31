@@ -127,9 +127,9 @@ const MAX_TURNS = 4;   // snap: state before the current move, for instant turns
 let screen = null; // 'start' while the start screen is up
 let mode = 'play', tut = null;   // tut: {step, need, eaten, subT}
 let tutDone = false; try { tutDone = localStorage.getItem('bsnake-tut-done') === '1'; } catch (e) {}
-const TUT_STEPS = 5, TUT_EAT = 3;
+const TUT_STEPS = 6, TUT_EAT = 3;
 // the ring tightens through the tutorial, ending at the real setting
-const ringTime = () => mode === 'tut' && tut.step < 4 ? Math.max(cfg.ring, [1.4, 1.1, 0.8, 1.2][tut.step]) : cfg.ring;
+const ringTime = () => mode === 'tut' && tut.step < 5 ? Math.max(cfg.ring, [1.4, 1.1, 0.8, 1.2, 1.2][tut.step]) : cfg.ring;
 const speedNow = () => mode === 'tut' ? cfg.speed * 0.7 : cfg.speed;
 const CONTACT = 0.12; // fraction of a move at which a crashing head touches its body
 let deadAt = -1, gesture = null, flash = 0, pulse = 0, shake = 0, lastReal = 0;
@@ -159,12 +159,13 @@ function reset() {
   placeFood(); updateHud();
 }
 function placeFood() {
-  if (mode === 'tut' && tut.step < 4) { food = null; return; }
+  if (mode === 'tut' && tut.step < 5) { food = null; return; }
   let p;
   do { p = [Math.floor(Math.random() * COLS), Math.floor(Math.random() * ROWS)]; }
   while (snake.some(s => s[0] === p[0] && s[1] === p[1]));
   food = p;
 }
+const OPP = { up: 'down', down: 'up', left: 'right', right: 'left' };
 const isReverse = (a, b) => DIRS[a][0] === -DIRS[b][0] && DIRS[a][1] === -DIRS[b][1];
 
 const wrap = (v, n) => (v + n) % n;
@@ -254,6 +255,10 @@ function commit(g) {
   } else if (tut.step === 3) {
     if (turns[0] === tut.need && turns[1] === tut.need2) { tutSub('Double turn!'); tutAdvance(); }
     else if (turns.length === 1) tutSub(`That was one turn — keep holding and bend ${tut.need2} too`, true);
+    else tutSub(`Drag ${tut.need}, then ${tut.need2}, in one hold`, true);
+  } else if (tut.step === 4) {
+    if (turns[0] === tut.need && turns[1] === tut.need2) { tutSub('U-turn!'); tutAdvance(); }
+    else if (turns.length === 1) tutSub(`Keep holding and bend ${tut.need2} to finish the U-turn`, true);
     else tutSub(`Drag ${tut.need}, then ${tut.need2}, in one hold`, true);
   }
 }
@@ -435,7 +440,7 @@ function drawTutHint(ctx, Wd, Hd) {
     ctx.beginPath(); ctx.arc(cx, cy, 62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - k)); ctx.stroke();
     ctx.globalAlpha = 1; return;
   }
-  if (tut.step === 3 && tut.need && tut.need2) {
+  if ((tut.step === 3 || tut.step === 4) && tut.need && tut.need2) {
     const [ax, ay] = DIRS[tut.need], [bx, by] = DIRS[tut.need2], k = (timeReal % 1.8) / 1.8;
     const m = Math.min(1, k / 0.7) * 120, l1 = Math.min(60, m), l2 = Math.max(0, m - 60);
     const fx = cx + ax * l1 + bx * l2, fy = cy + ay * l1 + by * l2, lift = k > 0.8;
@@ -514,8 +519,8 @@ function pickNeed() {
 }
 function tutAdvance() {
   tut.step++;
-  if (tut.step >= 1 && tut.step <= 3) tut.need = null; // picked in tutUpdate once the turn lands
-  if (tut.step === 4) { placeFood(); }
+  if (tut.step >= 1 && tut.step <= 4) tut.need = null; // picked in tutUpdate once the turn lands
+  if (tut.step === 5) { placeFood(); }
   tutRender();
 }
 function tutUpdate() {
@@ -524,6 +529,8 @@ function tutUpdate() {
       (!tut.need || tut.need === dir || isReverse(tut.need, dir))) { tut.need = pickNeed(); tutRender(); }
   if (tut.step === 3 && !turnQueue.length && !gesture &&
       (!tut.need || tut.need === dir || isReverse(tut.need, dir))) { tut.need = pickNeed(); tut.need2 = dir; tutRender(); }
+  if (tut.step === 4 && !turnQueue.length && !gesture &&
+      (!tut.need || tut.need === dir || isReverse(tut.need, dir))) { tut.need = pickNeed(); tut.need2 = OPP[dir]; tutRender(); }
   if (tut.subT && timeReal > tut.subT) { tip.querySelector('.sub').style.opacity = 0; tut.subT = 0; }
 }
 function tutRender() {
@@ -533,6 +540,7 @@ function tutRender() {
     `Keep holding, drag ${n},<br>then <b>let go</b> before the ring closes.`,
     `Again — drag ${n} and let go.<br>The ring is quicker now.`,
     `Two turns in one hold: drag ${n},<br>then bend ${tut.need2 ? `<b>${ARROW[tut.need2]} ${tut.need2}</b>` : ''} before letting go.`,
+    `Now a U-turn: drag ${n},<br>then bend ${tut.need2 ? `<b>${ARROW[tut.need2]} ${tut.need2}</b>` : ''} to head back the way you came.`,
     `Full-speed ring. Steer to the food.<br>Eat ${TUT_EAT} to finish.`,
   ][tut.step];
   tip.querySelector('.step').textContent = `TUTORIAL ${tut.step + 1} / ${TUT_STEPS}`;
