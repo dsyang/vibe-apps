@@ -87,7 +87,6 @@
   <div class="grp">Bullet time</div>
   <div class="row"><label>Bullet time length (real time) <b id="v-ring"></b></label><input id="ring" type="range" min="0.15" max="1.5" step="0.05"></div>
   <div class="row"><label>Bullet time slow-down (time scale) <b id="v-slow"></b></label><input id="slow" type="range" min="0.01" max="0.5" step="0.01"></div>
-  <div class="row"><label>Slow-mo after letting go <b id="v-linger"></b></label><input id="linger" type="range" min="0" max="0.8" step="0.05"></div>
   <div class="row"><label>Drag deadzone <b id="v-dead"></b></label><input id="dead" type="range" min="8" max="80" step="1"></div>
   <div class="row"><label>Time ramp (in/out) <b id="v-ramp"></b></label><input id="ramp" type="range" min="0" max="300" step="10"></div>
   <div class="row"><label>When the ring runs out</label>
@@ -99,7 +98,7 @@
 'use strict';
 // ---------- tunables ----------
 // all tunables live here and in the ⚙︎ sheet: board/speed are normal snake settings, ring/slow are bullet time
-const cfg = { cols: 13, rows: 20, speed: 7, ring: 0.45, slow: 0.08, linger: 0, dead: 26, ramp: 120, expire: 'cancel' };
+const cfg = { cols: 13, rows: 20, speed: 7, ring: 0.45, slow: 0.08, dead: 26, ramp: 120, expire: 'cancel' };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem('bsnake-ljs-cfg5') || '{}')); } catch (e) {}
 const saveCfg = () => { try { localStorage.setItem('bsnake-ljs-cfg5', JSON.stringify(cfg)); } catch (e) {} };
 
@@ -123,7 +122,7 @@ let COLS = cfg.cols, ROWS = cfg.rows;   // edges wrap
 const DIRS = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] };   // grid space, y down
 let snake, prev, dir, pendingDir, food, score, alive = true, started = false, acc = 0, steers = 0, expired = 0;
 let grow = false, dying = false, snap = null;
-let turnQueue = [], lingerUntil = 0;   // extra turns from one drawn path, applied one per cell
+let turnQueue = [];   // extra turns from one drawn path, applied one per cell
 const MAX_TURNS = 4;   // snap: state before the current move, for instant turns
 let screen = null; // 'start' while the start screen is up
 let mode = 'play', tut = null;   // tut: {step, need, eaten, subT}
@@ -245,7 +244,6 @@ function commit(g) {
   const { turns, bad } = plan(g);
   if (turns.length && !bad && alive) {
     steers++; turnNow(turns[0]); turnQueue = turns.slice(1); updateHud();
-    lingerUntil = timeReal + cfg.linger;
   }
   if (mode !== 'tut' || !alive) return;
   const d = turns[0] || g.segs[0];
@@ -304,7 +302,7 @@ function gameUpdatePost() {
   if (mode === 'tut' && started && alive) tutUpdate();
 
   // ease the engine's time scale toward slow-mo while held
-  const target = gesture || timeReal < lingerUntil ? cfg.slow : 1;
+  const target = gesture ? cfg.slow : 1;
   const ts = cfg.ramp <= 0 ? target : timeScale + (target - timeScale) * (1 - Math.exp(-realDt * 1000 / (cfg.ramp / 3)));
   setTimeScale(Math.max(0.001, ts));
 
@@ -488,7 +486,7 @@ function updateHud() {
 const sheet = document.getElementById('sheet');
 document.getElementById('gear').addEventListener('click', () => { gesture = null; sheet.classList.add('open'); });
 document.getElementById('closeSheet').addEventListener('click', () => sheet.classList.remove('open'));
-const fmt = { linger: v => (+v ? (+v).toFixed(2) + ' s' : 'off'), cols: v => v + ' cells', rows: v => v + ' cells', speed: v => v + ' cells/s', slow: v => '×' + (+v).toFixed(2), ring: v => (+v).toFixed(2) + ' s', dead: v => v + ' px', ramp: v => v + ' ms' };
+const fmt = { cols: v => v + ' cells', rows: v => v + ' cells', speed: v => v + ' cells/s', slow: v => '×' + (+v).toFixed(2), ring: v => (+v).toFixed(2) + ' s', dead: v => v + ' px', ramp: v => v + ' ms' };
 for (const k of Object.keys(fmt)) {
   const el = document.getElementById(k), out = document.getElementById('v-' + k);
   el.value = cfg[k]; out.textContent = fmt[k](cfg[k]);
