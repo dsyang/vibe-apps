@@ -87,6 +87,7 @@
   <div class="grp">Bullet time</div>
   <div class="row"><label>Bullet time length (real time) <b id="v-ring"></b></label><input id="ring" type="range" min="0.15" max="1.5" step="0.05"></div>
   <div class="row"><label>Bullet time slow-down (time scale) <b id="v-slow"></b></label><input id="slow" type="range" min="0.01" max="0.5" step="0.01"></div>
+  <div class="row"><label>Slow-mo after letting go <b id="v-linger"></b></label><input id="linger" type="range" min="0" max="0.8" step="0.05"></div>
   <div class="row"><label>Drag deadzone <b id="v-dead"></b></label><input id="dead" type="range" min="8" max="80" step="1"></div>
   <div class="row"><label>Time ramp (in/out) <b id="v-ramp"></b></label><input id="ramp" type="range" min="0" max="300" step="10"></div>
   <div class="row"><label>When the ring runs out</label>
@@ -98,9 +99,9 @@
 'use strict';
 // ---------- tunables ----------
 // all tunables live here and in the ⚙︎ sheet: board/speed are normal snake settings, ring/slow are bullet time
-const cfg = { cols: 13, rows: 20, speed: 7, ring: 0.45, slow: 0.08, dead: 26, ramp: 120, expire: 'cancel' };
-try { Object.assign(cfg, JSON.parse(localStorage.getItem('bsnake-ljs-cfg4') || '{}')); } catch (e) {}
-const saveCfg = () => { try { localStorage.setItem('bsnake-ljs-cfg4', JSON.stringify(cfg)); } catch (e) {} };
+const cfg = { cols: 13, rows: 20, speed: 7, ring: 0.45, slow: 0.08, linger: 0, dead: 26, ramp: 120, expire: 'cancel' };
+try { Object.assign(cfg, JSON.parse(localStorage.getItem('bsnake-ljs-cfg5') || '{}')); } catch (e) {}
+const saveCfg = () => { try { localStorage.setItem('bsnake-ljs-cfg5', JSON.stringify(cfg)); } catch (e) {} };
 
 // ---------- engine settings ----------
 setGLEnable(false);                 // plain canvas2d: lets us draw the ring with raw arcs in gameRenderPost
@@ -121,13 +122,15 @@ const C = {
 let COLS = cfg.cols, ROWS = cfg.rows;   // edges wrap
 const DIRS = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] };   // grid space, y down
 let snake, prev, dir, pendingDir, food, score, alive = true, started = false, acc = 0, steers = 0, expired = 0;
-let grow = false, dying = false, snap = null;   // snap: state before the current move, for instant turns
+let grow = false, dying = false, snap = null;
+let turnQueue = [], lingerUntil = 0;   // extra turns from one drawn path, applied one per cell
+const MAX_TURNS = 4;   // snap: state before the current move, for instant turns
 let screen = null; // 'start' while the start screen is up
 let mode = 'play', tut = null;   // tut: {step, need, eaten, subT}
 let tutDone = false; try { tutDone = localStorage.getItem('bsnake-tut-done') === '1'; } catch (e) {}
-const TUT_STEPS = 4, TUT_EAT = 3;
+const TUT_STEPS = 5, TUT_EAT = 3;
 // the ring tightens through the tutorial, ending at the real setting
-const ringTime = () => mode === 'tut' && tut.step < 3 ? Math.max(cfg.ring, [1.4, 1.1, 0.8][tut.step]) : cfg.ring;
+const ringTime = () => mode === 'tut' && tut.step < 4 ? Math.max(cfg.ring, [1.4, 1.1, 0.8, 1.2][tut.step]) : cfg.ring;
 const speedNow = () => mode === 'tut' ? cfg.speed * 0.7 : cfg.speed;
 const CONTACT = 0.12; // fraction of a move at which a crashing head touches its body
 let deadAt = -1, gesture = null, flash = 0, pulse = 0, shake = 0, lastReal = 0;
@@ -153,11 +156,11 @@ function reset() {
   const cx = Math.floor(COLS / 2), cy = Math.floor(ROWS * 0.6);
   snake = [[cx, cy], [cx, cy + 1], [cx, cy + 2]];
   prev = snake.map(s => s.slice());
-  dir = 'up'; pendingDir = null; score = 0; alive = true; acc = 0.999; grow = false; dying = false; snap = null; steers = 0; expired = 0;
+  dir = 'up'; pendingDir = null; score = 0; alive = true; acc = 0.999; grow = false; dying = false; snap = null; turnQueue = []; steers = 0; expired = 0;
   placeFood(); updateHud();
 }
 function placeFood() {
-  if (mode === 'tut' && tut.step < 3) { food = null; return; }
+  if (mode === 'tut' && tut.step < 4) { food = null; return; }
   let p;
   do { p = [Math.floor(Math.random() * COLS), Math.floor(Math.random() * ROWS)]; }
   while (snake.some(s => s[0] === p[0] && s[1] === p[1]));
@@ -191,7 +194,11 @@ function move() {
   if (crash) dying = true;   // keep moving until the head visibly touches, then die (see gameUpdate)
   updateHud();
 }
-function step() { if (arrive()) move(); }
+function step() {
+  if (!arrive()) return;
+  if (turnQueue.length) { const d = turnQueue.shift(); if (d !== dir && !isReverse(d, dir)) dir = d; }
+  move();
+}
 
 // turn right now instead of at the next cell: if the head is less than half way into its
 // current move, redo that move in the new direction; otherwise finish it instantly and turn
@@ -210,19 +217,46 @@ function die() {
 
 // ---------- gesture ----------
 // positions are in canvas css pixels (mousePosScreen)
-function gestureDir(g) {
-  const dx = g.x - g.x0, dy = g.y - g.y0;
-  if (Math.hypot(dx, dy) < cfg.dead) return null;
-  return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+// One hold can draw a path: every time the drag bends past the deadzone a new leg starts.
+// Leg 1 turns the snake now; each further leg turns it one cell later (zig-zags, U-turns).
+function newGesture() {
+  const x = mousePosScreen.x, y = mousePosScreen.y;
+  return { x0: x, y0: y, x, y, t0: timeReal, ax: x, ay: y, segs: [], pts: [[x, y]], trail: [[x, y]] };
+}
+function trackGesture(g) {
+  const tl = g.trail[g.trail.length - 1];
+  if (Math.hypot(g.x - tl[0], g.y - tl[1]) > 3) g.trail.push([g.x, g.y]);
+  const dx = g.x - g.ax, dy = g.y - g.ay, last = g.segs[g.segs.length - 1];
+  if (Math.hypot(dx, dy) < (last ? cfg.dead * 1.2 : cfg.dead)) return;
+  const d = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+  if (d === last) { g.ax = g.x; g.ay = g.y; g.pts[g.pts.length - 1] = [g.x, g.y]; return; } // same leg, keep extending
+  if (last && isReverse(d, last)) return;                                                     // doubling back: ignore
+  if (g.segs.length >= MAX_TURNS + 1) return;
+  g.segs.push(d); g.ax = g.x; g.ay = g.y; g.pts.push([g.x, g.y]);
+}
+const gestureDir = g => g.segs[g.segs.length - 1] || null;
+// the turns a gesture asks for, relative to the snake's current heading
+function plan(g) {
+  const turns = g.segs.slice();
+  while (turns.length && turns[0] === dir) turns.shift();  // a leg along the current heading is a no-op
+  return { turns, bad: !!(turns.length && isReverse(turns[0], dir)) };
 }
 function commit(g) {
-  const d = gestureDir(g);
-  if (d && !isReverse(d, dir) && d !== dir && alive) { steers++; turnNow(d); updateHud(); }
+  const { turns, bad } = plan(g);
+  if (turns.length && !bad && alive) {
+    steers++; turnNow(turns[0]); turnQueue = turns.slice(1); updateHud();
+    lingerUntil = timeReal + cfg.linger;
+  }
   if (mode !== 'tut' || !alive) return;
+  const d = turns[0] || g.segs[0];
   if (tut.step === 1 || tut.step === 2) {
     if (d === tut.need) { tutSub('Nice!'); tutAdvance(); }
     else if (!d) tutSub('Drag a bit further before letting go', true);
     else tutSub(`That was ${d} — try ${tut.need}`, true);
+  } else if (tut.step === 3) {
+    if (turns[0] === tut.need && turns[1] === tut.need2) { tutSub('Double turn!'); tutAdvance(); }
+    else if (turns.length === 1) tutSub(`That was one turn — keep holding and bend ${tut.need2} too`, true);
+    else tutSub(`Drag ${tut.need}, then ${tut.need2}, in one hold`, true);
   }
 }
 function ringExpired() {
@@ -254,11 +288,11 @@ function gameUpdatePost() {
     if (!started || !alive) {
       if (screen !== 'start' && timeReal - deadAt > 0.5) startGame();
     } else if (!gesture) {
-      gesture = { x0: mousePosScreen.x, y0: mousePosScreen.y, x: mousePosScreen.x, y: mousePosScreen.y, t0: timeReal };
+      gesture = newGesture();
     }
   }
   if (gesture) {
-    gesture.x = mousePosScreen.x; gesture.y = mousePosScreen.y;
+    gesture.x = mousePosScreen.x; gesture.y = mousePosScreen.y; trackGesture(gesture);
     if (mouseWasReleased(0) || !mouseIsDown(0)) { commit(gesture); gesture = null; }
     else if (timeReal - gesture.t0 >= ringTime()) {
       if (cfg.expire === 'commit') commit(gesture);
@@ -270,7 +304,7 @@ function gameUpdatePost() {
   if (mode === 'tut' && started && alive) tutUpdate();
 
   // ease the engine's time scale toward slow-mo while held
-  const target = gesture ? cfg.slow : 1;
+  const target = gesture || timeReal < lingerUntil ? cfg.slow : 1;
   const ts = cfg.ramp <= 0 ? target : timeScale + (target - timeScale) * (1 - Math.exp(-realDt * 1000 / (cfg.ramp / 3)));
   setTimeScale(Math.max(0.001, ts));
 
@@ -331,15 +365,17 @@ function gameRender() {
 
   // ghost preview from the head
   if (gesture && alive) {
-    const d = gestureDir(gesture);
-    if (d) {
-      const [gx, gy] = DIRS[d], col = (isReverse(d, dir) ? C.bad : C.ok).scale(1, .85);
-      const end = h.add(vec2(gx * 3, -gy * 3));
-      for (let k = 0; k < 6; k++) { // dashed
-        const a = h.lerp(end, k / 6 + 0.04), b = h.lerp(end, k / 6 + 0.11);
-        drawLine(a, b, 0.1, col);
+    const { turns, bad } = plan(gesture);
+    const col = (bad ? C.bad : C.ok).scale(1, .85);
+    let p = h;
+    turns.forEach((d, i) => {
+      const [gx, gy] = DIRS[d], len = i === turns.length - 1 ? 3 : 1;
+      const end = p.add(vec2(gx * len, -gy * len));
+      for (let k = 0; k < len * 2; k++) { // dashed
+        drawLine(p.lerp(end, (k + .1) / (len * 2)), p.lerp(end, (k + .55) / (len * 2)), 0.1, col);
       }
-    }
+      p = end;
+    });
   }
 }
 
@@ -358,14 +394,16 @@ function gameRenderPost() {
   if (gesture) {
     const g = gesture, R = 62;
     const frac = Math.max(0, 1 - (timeReal - g.t0) / ringTime());
-    const d = gestureDir(g), bad = d && isReverse(d, dir);
+    const d = gestureDir(g), bad = plan(g).bad;
     ctx.fillStyle = 'rgba(255,255,255,.35)';
     ctx.beginPath(); ctx.arc(g.x0, g.y0, 5, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(g.x0, g.y0, cfg.dead, 0, Math.PI * 2); ctx.stroke();
     if (d) {
-      ctx.strokeStyle = bad ? 'rgba(255,90,110,.8)' : 'rgba(83,242,166,.8)'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(g.x0, g.y0); ctx.lineTo(g.x, g.y); ctx.stroke();
+      ctx.strokeStyle = bad ? 'rgba(255,90,110,.8)' : 'rgba(83,242,166,.8)'; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(g.x0, g.y0);
+      for (const [px, py] of g.trail) ctx.lineTo(px, py);
+      ctx.lineTo(g.x, g.y); ctx.stroke();
     }
     ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 7;
     ctx.beginPath(); ctx.arc(g.x, g.y, R, 0, Math.PI * 2); ctx.stroke();
@@ -397,6 +435,17 @@ function drawTutHint(ctx, Wd, Hd) {
     ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#53f2a6'; ctx.lineWidth = 5;
     ctx.beginPath(); ctx.arc(cx, cy, 62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - k)); ctx.stroke();
+    ctx.globalAlpha = 1; return;
+  }
+  if (tut.step === 3 && tut.need && tut.need2) {
+    const [ax, ay] = DIRS[tut.need], [bx, by] = DIRS[tut.need2], k = (timeReal % 1.8) / 1.8;
+    const m = Math.min(1, k / 0.7) * 120, l1 = Math.min(60, m), l2 = Math.max(0, m - 60);
+    const fx = cx + ax * l1 + bx * l2, fy = cy + ay * l1 + by * l2, lift = k > 0.8;
+    ctx.globalAlpha = lift ? 0.5 * Math.max(0, 1 - (k - 0.8) / 0.2) : 0.5;
+    ctx.strokeStyle = '#53f2a6'; ctx.lineWidth = 3; ctx.setLineDash([6, 6]);
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + ax * 60, cy + ay * 60); ctx.lineTo(cx + ax * 60 + bx * 75, cy + ay * 60 + by * 75); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(fx, fy, lift ? 16 : 22, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1; return;
   }
   if ((tut.step === 1 || tut.step === 2) && tut.need) {
@@ -439,7 +488,7 @@ function updateHud() {
 const sheet = document.getElementById('sheet');
 document.getElementById('gear').addEventListener('click', () => { gesture = null; sheet.classList.add('open'); });
 document.getElementById('closeSheet').addEventListener('click', () => sheet.classList.remove('open'));
-const fmt = { cols: v => v + ' cells', rows: v => v + ' cells', speed: v => v + ' cells/s', slow: v => '×' + (+v).toFixed(2), ring: v => (+v).toFixed(2) + ' s', dead: v => v + ' px', ramp: v => v + ' ms' };
+const fmt = { linger: v => (+v ? (+v).toFixed(2) + ' s' : 'off'), cols: v => v + ' cells', rows: v => v + ' cells', speed: v => v + ' cells/s', slow: v => '×' + (+v).toFixed(2), ring: v => (+v).toFixed(2) + ' s', dead: v => v + ' px', ramp: v => v + ' ms' };
 for (const k of Object.keys(fmt)) {
   const el = document.getElementById(k), out = document.getElementById('v-' + k);
   el.value = cfg[k]; out.textContent = fmt[k](cfg[k]);
@@ -467,14 +516,16 @@ function pickNeed() {
 }
 function tutAdvance() {
   tut.step++;
-  if (tut.step === 1 || tut.step === 2) tut.need = null; // picked in tutUpdate once the turn lands
-  if (tut.step === 3) { placeFood(); }
+  if (tut.step >= 1 && tut.step <= 3) tut.need = null; // picked in tutUpdate once the turn lands
+  if (tut.step === 4) { placeFood(); }
   tutRender();
 }
 function tutUpdate() {
   if (tut.step === 0 && gesture && timeReal - gesture.t0 > 0.35) { tutSub('Time is slowed. See the ring?'); tutAdvance(); }
-  if ((tut.step === 1 || tut.step === 2) && !pendingDir &&
+  if ((tut.step === 1 || tut.step === 2) && !turnQueue.length &&
       (!tut.need || tut.need === dir || isReverse(tut.need, dir))) { tut.need = pickNeed(); tutRender(); }
+  if (tut.step === 3 && !turnQueue.length && !gesture &&
+      (!tut.need || tut.need === dir || isReverse(tut.need, dir))) { tut.need = pickNeed(); tut.need2 = dir; tutRender(); }
   if (tut.subT && timeReal > tut.subT) { tip.querySelector('.sub').style.opacity = 0; tut.subT = 0; }
 }
 function tutRender() {
@@ -483,6 +534,7 @@ function tutRender() {
     'Press and <b>hold</b> anywhere.<br>Time slows down while you hold.',
     `Keep holding, drag ${n},<br>then <b>let go</b> before the ring closes.`,
     `Again — drag ${n} and let go.<br>The ring is quicker now.`,
+    `Two turns in one hold: drag ${n},<br>then bend ${tut.need2 ? `<b>${ARROW[tut.need2]} ${tut.need2}</b>` : ''} before letting go.`,
     `Full-speed ring. Steer to the food.<br>Eat ${TUT_EAT} to finish.`,
   ][tut.step];
   tip.querySelector('.step').textContent = `TUTORIAL ${tut.step + 1} / ${TUT_STEPS}`;
