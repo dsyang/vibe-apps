@@ -122,7 +122,7 @@ let COLS = cfg.cols, ROWS = cfg.rows;   // edges wrap
 const DIRS = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] };   // grid space, y down
 let snake, prev, dir, pendingDir, food, score, alive = true, started = false, acc = 0, steers = 0, expired = 0;
 let grow = false, dying = false, snap = null;
-let turnQueue = [];   // extra turns from one drawn path, applied one per cell
+let turnQueue = [], lastDir = 'up';   // lastDir: heading of the move before the current one   // extra turns from one drawn path, applied one per cell
 const MAX_TURNS = 4;   // snap: state before the current move, for instant turns
 let screen = null; // 'start' while the start screen is up
 let mode = 'play', tut = null;   // tut: {step, need, eaten, subT}
@@ -155,7 +155,7 @@ function reset() {
   const cx = Math.floor(COLS / 2), cy = Math.floor(ROWS * 0.6);
   snake = [[cx, cy], [cx, cy + 1], [cx, cy + 2]];
   prev = snake.map(s => s.slice());
-  dir = 'up'; pendingDir = null; score = 0; alive = true; acc = 0.999; grow = false; dying = false; snap = null; turnQueue = []; steers = 0; expired = 0;
+  dir = 'up'; pendingDir = null; score = 0; alive = true; acc = 0.999; grow = false; dying = false; snap = null; turnQueue = []; lastDir = 'up'; steers = 0; expired = 0;
   placeFood(); updateHud();
 }
 function placeFood() {
@@ -183,7 +183,8 @@ function arrive() {
 }
 // start moving one cell in `dir`
 function move() {
-  snap = { snake: snake.map(c => c.slice()), prev: prev.map(c => c.slice()), grow };
+  snap = { snake: snake.map(c => c.slice()), prev: prev.map(c => c.slice()), grow, lastDir };
+  lastDir = dir;
   prev = snake.map(c => c.slice());
   const [dx, dy] = DIRS[dir];
   const head = [wrap(snake[0][0] + dx, COLS), wrap(snake[0][1] + dy, ROWS)];
@@ -203,8 +204,10 @@ function step() {
 // turn right now instead of at the next cell: if the head is less than half way into its
 // current move, redo that move in the new direction; otherwise finish it instantly and turn
 function turnNow(d) {
-  if (snap && Math.min(1, acc) < 0.5) {
-    snake = snap.snake; prev = snap.prev; grow = snap.grow; dying = false;
+  // redoing the move is only safe if the new heading isn't a reversal of the heading *before* it
+  // (two quick steers: up -> right -> down would redo the move straight back into the neck)
+  if (snap && Math.min(1, acc) < 0.5 && !isReverse(d, snap.lastDir)) {
+    snake = snap.snake; prev = snap.prev; grow = snap.grow; lastDir = snap.lastDir; dying = false;
     dir = d; move();
   } else {
     dir = d; acc = 0; step();
