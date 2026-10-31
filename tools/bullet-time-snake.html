@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="description" content="Mobile snake game prototype">
+<title>Bullet-Time Snake (LittleJS)</title>
+<style>
+  :root { --bg:#0d0f14; --fg:#e8ecf3; --dim:#7b8496; --accent:#53f2a6; --warn:#ff5a6e; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;
+    overflow:hidden; overscroll-behavior:none; user-select:none; -webkit-user-select:none; }
+  #wrap { position:fixed; inset:0; padding:calc(env(safe-area-inset-top) + 52px) 12px calc(env(safe-area-inset-bottom) + 12px);
+    display:flex; align-items:center; justify-content:center; }
+  canvas#game { touch-action:none; display:block; }
+  canvas#fx { position:fixed; inset:0; pointer-events:none; }
+  #hud { pointer-events:none; }
+  #gear, #help { pointer-events:auto; }
+  #hudR { display:flex; gap:8px; }
+  #hud { position:fixed; top:calc(env(safe-area-inset-top) + 8px); left:12px; right:12px; height:36px;
+    display:flex; align-items:center; justify-content:space-between; z-index:5; font-variant-numeric:tabular-nums; }
+  #score { font-size:22px; font-weight:700; letter-spacing:.5px; }
+  #stats { font-size:12px; color:var(--dim); }
+  #gear, #help { width:36px; height:36px; border-radius:10px; border:1px solid #232836; background:#151923; color:var(--fg);
+    font-size:18px; display:grid; place-items:center; }
+  canvas { touch-action:none; }
+  #tip { position:fixed; left:16px; right:16px; top:calc(env(safe-area-inset-top) + 58px); z-index:4; pointer-events:none;
+    text-align:center; }
+  #skip { pointer-events:auto; position:absolute; top:-2px; right:0; background:none; border:0; color:var(--dim);
+    font-size:12px; padding:8px 4px; }
+  #tip { pointer-events:none; }
+  #tip .main { position:relative; padding-top:22px !important; display:inline-block; background:rgba(20,24,34,.88); border:1px solid #2a3142; border-radius:12px;
+    padding:10px 14px; font-size:15px; line-height:1.35; max-width:340px; }
+  #tip .sub { margin-top:6px; font-size:13px; color:var(--accent); min-height:18px; transition:opacity .3s; }
+  #tip .sub.bad { color:var(--warn); }
+  #tip .step { font-size:11px; letter-spacing:1.5px; color:var(--dim); margin-bottom:4px; }
+  #overlay { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:24px; pointer-events:none; z-index:4; }
+  #overlay h1 { margin:0 0 8px; font-size:30px; letter-spacing:1px; }
+  #overlay p { margin:4px 0; color:var(--dim); font-size:15px; line-height:1.4; max-width:320px; }
+  #overlay .big { color:var(--fg); font-size:17px; margin-top:16px; }
+  #overlay.start { background:rgba(13,15,20,.82); justify-content:flex-end;
+    padding-bottom:calc(env(safe-area-inset-bottom) + 28px); }
+  #overlay .hero { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #overlay .btns { width:100%; max-width:360px; display:flex; flex-direction:column; gap:12px; pointer-events:auto; }
+  #overlay .btns button { width:100%; height:60px; border-radius:16px; font-size:18px; font-weight:700; letter-spacing:.3px; }
+  #overlay .primary { background:var(--accent); color:#06110b; border:0; }
+  #overlay .secondary { background:#151923; color:var(--fg); border:1px solid #2a3142; }
+  .hidden { display:none !important; }
+  #sheet { position:fixed; left:0; right:0; bottom:0; z-index:10; background:#141822; border-top:1px solid #262c3b;
+    border-radius:18px 18px 0 0; padding:16px 18px calc(env(safe-area-inset-bottom) + 18px); transform:translateY(105%);
+    transition:transform .25s ease; }
+  #sheet.open { transform:none; }
+  #sheet h2 { margin:0 0 10px; font-size:16px; display:flex; justify-content:space-between; align-items:center; }
+  #sheet h2 button { background:none; border:0; color:var(--accent); font-size:15px; font-weight:600; }
+  .row { margin:12px 0; }
+  .grp { margin:16px 0 4px; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent); }
+  #sheet { max-height:85vh; overflow-y:auto; }
+  .row label { display:flex; justify-content:space-between; font-size:13px; color:var(--dim); margin-bottom:6px; }
+  .row label b { color:var(--fg); font-weight:600; }
+  input[type=range] { width:100%; accent-color:var(--accent); }
+  .seg { display:flex; gap:6px; }
+  .seg button { flex:1; padding:8px; border-radius:8px; border:1px solid #2a3142; background:#1a1f2b; color:var(--dim); font-size:13px; }
+  .seg button.on { color:#06110b; background:var(--accent); border-color:var(--accent); font-weight:600; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div><div id="score">0</div><div id="stats">steers 0 · expired 0</div></div>
+  <div id="hudR"><button id="help" aria-label="Tutorial">?</button><button id="gear" aria-label="Tuning">⚙︎</button></div>
+</div>
+<div id="tip" class="hidden"><div class="main"><div class="step"></div><button id="skip">Skip tutorial ›</button><div class="txt"></div></div><div class="sub"></div></div>
+<div id="overlay">
+  <h1>BULLET SNAKE</h1>
+  <p>Press and hold anywhere — time slows and a ring starts closing.</p>
+  <p>Drag toward the direction you want, then lift before the ring runs out.</p>
+  <p class="big" id="startCta">Tap to start</p>
+</div>
+
+<div id="sheet">
+  <h2>Tuning <button id="closeSheet">Done</button></h2>
+  <div class="grp">Snake</div>
+  <div class="row"><label>Board width (next game) <b id="v-cols"></b></label><input id="cols" type="range" min="7" max="21" step="1"></div>
+  <div class="row"><label>Board height (next game) <b id="v-rows"></b></label><input id="rows" type="range" min="7" max="30" step="1"></div>
+  <div class="row"><label>Snake speed <b id="v-speed"></b></label><input id="speed" type="range" min="3" max="16" step="0.5"></div>
+  <div class="grp">Bullet time</div>
+  <div class="row"><label>Bullet time length (real time) <b id="v-ring"></b></label><input id="ring" type="range" min="0.15" max="1.5" step="0.05"></div>
+  <div class="row"><label>Bullet time slow-down (time scale) <b id="v-slow"></b></label><input id="slow" type="range" min="0.01" max="0.5" step="0.01"></div>
+  <div class="row"><label>Drag deadzone <b id="v-dead"></b></label><input id="dead" type="range" min="8" max="80" step="1"></div>
+  <div class="row"><label>Time ramp (in/out) <b id="v-ramp"></b></label><input id="ramp" type="range" min="0" max="300" step="10"></div>
+  <div class="row"><label>When the ring runs out</label>
+    <div class="seg" id="expire"><button data-v="cancel">Cancel steer</button><button data-v="commit">Commit steer</button></div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/littlejsengine@1.28.0/dist/littlejs.release.js"></script>
+<script>
+'use strict';
+// ---------- tunables ----------
+// all tunables live here and in the ⚙︎ sheet: board/speed are normal snake settings, ring/slow are bullet time
+const cfg = { cols: 13, rows: 20, speed: 7, ring: 0.45, slow: 0.08, dead: 26, ramp: 120, expire: 'cancel' };
+try { Object.assign(cfg, JSON.parse(localStorage.getItem('bsnake-ljs-cfg4') || '{}')); } catch (e) {}
+const saveCfg = () => { try { localStorage.setItem('bsnake-ljs-cfg4', JSON.stringify(cfg)); } catch (e) {} };
+
+// ---------- engine settings ----------
+setGLEnable(false);                 // plain canvas2d: lets us draw the ring with raw arcs in gameRenderPost
+setEngineVariableStep(true);        // one update per display frame, so slow-mo input stays smooth
+setCanvasPixelRatio(undefined);     // use devicePixelRatio for crisp lines
+setCanvasClearColor(new Color().setHex('#0d0f14'));
+setTouchGamepadEnable(false);
+setShowSplashScreen(false);
+
+const hex = h => new Color().setHex(h);
+const C = {
+  board: hex('#121620'), grid: hex('#1a1f2c'), edge: hex('#2a3142'),
+  body: hex('#2fd08a'), head: hex('#7dffc2'), dead: hex('#5a6476'), deadHead: hex('#8792a6'),
+  food: hex('#ffcc4d'), eye: hex('#0d0f14'), ok: hex('#53f2a6'), bad: hex('#ff5a6e'),
+};
+
+// ---------- game state ----------
+let COLS = cfg.cols, ROWS = cfg.rows;   // edges wrap
+const DIRS = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] };   // grid space, y down
+let snake, prev, dir, pendingDir, food, score, alive = true, started = false, acc = 0, steers = 0, expired = 0;
+let grow = false, dying = false, snap = null;   // snap: state before the current move, for instant turns
+let screen = null; // 'start' while the start screen is up
+let mode = 'play', tut = null;   // tut: {step, need, eaten, subT}
+let tutDone = false; try { tutDone = localStorage.getItem('bsnake-tut-done') === '1'; } catch (e) {}
+const TUT_STEPS = 4, TUT_EAT = 3;
+// the ring tightens through the tutorial, ending at the real setting
+const ringTime = () => mode === 'tut' && tut.step < 3 ? Math.max(cfg.ring, [1.4, 1.1, 0.8][tut.step]) : cfg.ring;
+const speedNow = () => mode === 'tut' ? cfg.speed * 0.7 : cfg.speed;
+const CONTACT = 0.12; // fraction of a move at which a crashing head touches its body
+let deadAt = -1, gesture = null, flash = 0, pulse = 0, shake = 0, lastReal = 0;
+const HUD_H = 56, PAD = 12;
+
+function layout() {
+  const availW = mainCanvasSize.x - PAD * 2, availH = mainCanvasSize.y - HUD_H - PAD * 2;
+  return { cell: Math.floor(Math.min(availW / COLS, availH / ROWS)) };
+}
+function applyCamera() {
+  const { cell } = layout();
+  setCameraScale(cell);
+  // centre board in the area below the HUD (world y is up, so nudge camera up to push board down)
+  const sx = shake ? (Math.random() - .5) * 10 * shake / cell : 0;
+  const sy = shake ? (Math.random() - .5) * 10 * shake / cell : 0;
+  setCameraPos(vec2(COLS / 2 + sx, ROWS / 2 + (HUD_H / 2) / cell + sy));
+}
+// grid cell (y down) -> world pos (y up), cell centre
+const W = (x, y) => vec2(x + .5, ROWS - y - .5);
+
+function reset() {
+  if (mode === 'tut' || screen === 'start') { COLS = 13; ROWS = 13; } else { COLS = cfg.cols; ROWS = cfg.rows; }   // tutorial board leaves room for the instructions
+  const cx = Math.floor(COLS / 2), cy = Math.floor(ROWS * 0.6);
+  snake = [[cx, cy], [cx, cy + 1], [cx, cy + 2]];
+  prev = snake.map(s => s.slice());
+  dir = 'up'; pendingDir = null; score = 0; alive = true; acc = 0.999; grow = false; dying = false; snap = null; steers = 0; expired = 0;
+  placeFood(); updateHud();
+}
+function placeFood() {
+  if (mode === 'tut' && tut.step < 3) { food = null; return; }
+  let p;
+  do { p = [Math.floor(Math.random() * COLS), Math.floor(Math.random() * ROWS)]; }
+  while (snake.some(s => s[0] === p[0] && s[1] === p[1]));
+  food = p;
+}
+const isReverse = (a, b) => DIRS[a][0] === -DIRS[b][0] && DIRS[a][1] === -DIRS[b][1];
+
+const wrap = (v, n) => (v + n) % n;
+// shortest signed offset on a wrapping axis
+const wdelta = (d, n) => d > n / 2 ? d - n : d < -n / 2 ? d + n : d;
+
+// the previous move has just finished visually: the head is centred on snake[0]
+function arrive() {
+  if (food && snake[0][0] === food[0] && snake[0][1] === food[1]) {
+    score++; grow = true; pulse = 1;
+    if (mode === 'tut' && ++tut.eaten >= TUT_EAT) { finishTutorial(); return false; }
+    placeFood(); if (mode === 'tut') tutSub(`${tut.eaten} / ${TUT_EAT}`);
+  }
+  return true;
+}
+// start moving one cell in `dir`
+function move() {
+  snap = { snake: snake.map(c => c.slice()), prev: prev.map(c => c.slice()), grow };
+  prev = snake.map(c => c.slice());
+  const [dx, dy] = DIRS[dir];
+  const head = [wrap(snake[0][0] + dx, COLS), wrap(snake[0][1] + dy, ROWS)];
+  const body = grow ? snake : snake.slice(0, -1);
+  const crash = body.some(c => c[0] === head[0] && c[1] === head[1]);
+  snake.unshift(head);
+  if (grow) { prev.push(prev[prev.length - 1].slice()); grow = false; } else snake.pop();
+  if (crash) dying = true;   // keep moving until the head visibly touches, then die (see gameUpdate)
+  updateHud();
+}
+function step() { if (arrive()) move(); }
+
+// turn right now instead of at the next cell: if the head is less than half way into its
+// current move, redo that move in the new direction; otherwise finish it instantly and turn
+function turnNow(d) {
+  if (snap && Math.min(1, acc) < 0.5) {
+    snake = snap.snake; prev = snap.prev; grow = snap.grow; dying = false;
+    dir = d; move();
+  } else {
+    dir = d; acc = 0; step();
+  }
+}
+function die() {
+  alive = false; deadAt = timeReal; gesture = null; shake = 1;
+  showOverlay('CRASHED', [`Score ${score} · ${steers} steers · ${expired} expired rings`], 'Tap to retry');
+}
+
+// ---------- gesture ----------
+// positions are in canvas css pixels (mousePosScreen)
+function gestureDir(g) {
+  const dx = g.x - g.x0, dy = g.y - g.y0;
+  if (Math.hypot(dx, dy) < cfg.dead) return null;
+  return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+}
+function commit(g) {
+  const d = gestureDir(g);
+  if (d && !isReverse(d, dir) && d !== dir && alive) { steers++; turnNow(d); updateHud(); }
+  if (mode !== 'tut' || !alive) return;
+  if (tut.step === 1 || tut.step === 2) {
+    if (d === tut.need) { tutSub('Nice!'); tutAdvance(); }
+    else if (!d) tutSub('Drag a bit further before letting go', true);
+    else tutSub(`That was ${d} — try ${tut.need}`, true);
+  }
+}
+function ringExpired() {
+  if (mode === 'tut') tutSub('The ring closed — let go sooner', true);
+}
+function pressIsOnUi() {
+  const el = document.elementFromPoint(mousePosScreen.x, mousePosScreen.y);
+  return el && el.closest && el.closest('#gear, #help, #skip, #sheet, #overlay button');
+}
+
+// ---------- engine callbacks ----------
+function gameInit() { lastReal = timeReal; showStart(); }
+
+// gameUpdate runs on *scaled* time: timeDelta shrinks while the finger is down
+function gameUpdate() {
+  if (started && alive && !sheet.classList.contains('open')) {
+    acc += timeDelta * speedNow();
+    while (acc >= 1 && !dying) { acc -= 1; step(); }
+    if (dying && acc >= CONTACT) { acc = CONTACT; die(); }
+  }
+}
+
+// gameUpdatePost: input, ring and time scale all on *real* time
+function gameUpdatePost() {
+  const realDt = Math.min(0.05, timeReal - lastReal); lastReal = timeReal;
+  const sheetOpen = sheet.classList.contains('open');
+
+  if (mouseWasPressed(0) && !sheetOpen && !pressIsOnUi()) {
+    if (!started || !alive) {
+      if (screen !== 'start' && timeReal - deadAt > 0.5) startGame();
+    } else if (!gesture) {
+      gesture = { x0: mousePosScreen.x, y0: mousePosScreen.y, x: mousePosScreen.x, y: mousePosScreen.y, t0: timeReal };
+    }
+  }
+  if (gesture) {
+    gesture.x = mousePosScreen.x; gesture.y = mousePosScreen.y;
+    if (mouseWasReleased(0) || !mouseIsDown(0)) { commit(gesture); gesture = null; }
+    else if (timeReal - gesture.t0 >= ringTime()) {
+      if (cfg.expire === 'commit') commit(gesture);
+      else { expired++; flash = 0.7; updateHud(); ringExpired(); }
+      gesture = null;
+    }
+  }
+  if (sheetOpen) gesture = null;
+  if (mode === 'tut' && started && alive) tutUpdate();
+
+  // ease the engine's time scale toward slow-mo while held
+  const target = gesture ? cfg.slow : 1;
+  const ts = cfg.ramp <= 0 ? target : timeScale + (target - timeScale) * (1 - Math.exp(-realDt * 1000 / (cfg.ramp / 3)));
+  setTimeScale(Math.max(0.001, ts));
+
+  flash = Math.max(0, flash - realDt * 2.2);
+  pulse = Math.max(0, pulse - realDt * 3);
+  shake = Math.max(0, shake - realDt * 2.5);
+  applyCamera();
+}
+
+function gameRender() {
+  // board + grid
+  drawRect(vec2(COLS / 2, ROWS / 2), vec2(COLS, ROWS), C.board);
+  for (let x = 1; x < COLS; x++) drawLine(vec2(x, 0), vec2(x, ROWS), 0.04, C.grid);
+  for (let y = 1; y < ROWS; y++) drawLine(vec2(0, y), vec2(COLS, y), 0.04, C.grid);
+  for (const [a, b] of [[vec2(0,0), vec2(COLS,0)], [vec2(COLS,0), vec2(COLS,ROWS)], [vec2(COLS,ROWS), vec2(0,ROWS)], [vec2(0,ROWS), vec2(0,0)]])
+    drawLine(a, b, 0.08, C.edge);
+  if (!snake) return;
+
+  // food
+  if (food) drawCircle(W(...food), 0.64 * (1 + 0.08 * Math.sin(timeReal * 5.5)), C.food);
+
+  // snake as a path through cell centres: interpolated head, body cells, interpolated tail.
+  // corners stay square; coordinates are unwrapped so the snake can slide through an edge
+  const t = Math.min(1, acc), n = snake.length;
+  const path = [];
+  let cur = snake[1].slice();
+  const headU = [cur[0] + wdelta(snake[0][0] - cur[0], COLS), cur[1] + wdelta(snake[0][1] - cur[1], ROWS)];
+  path.push([cur[0] + (headU[0] - cur[0]) * t, cur[1] + (headU[1] - cur[1]) * t]);
+  path.push(cur.slice());
+  for (let i = 2; i < n; i++) {
+    cur = [cur[0] + wdelta(snake[i][0] - snake[i - 1][0], COLS), cur[1] + wdelta(snake[i][1] - snake[i - 1][1], ROWS)];
+    path.push(cur.slice());
+  }
+  const oldTail = prev[n - 1] || snake[n - 1];
+  const tailU = [cur[0] + wdelta(oldTail[0] - snake[n - 1][0], COLS), cur[1] + wdelta(oldTail[1] - snake[n - 1][1], ROWS)];
+  path.push([tailU[0] + (cur[0] - tailU[0]) * t, tailU[1] + (cur[1] - tailU[1]) * t]);
+
+  const bodyCol = alive ? C.body : C.dead, w = 0.66 + pulse * 0.15;
+  const tl = worldToScreen(vec2(0, ROWS)), br = worldToScreen(vec2(COLS, 0));
+  drawContext.save();
+  drawContext.beginPath(); drawContext.rect(tl.x, tl.y, br.x - tl.x, br.y - tl.y); drawContext.clip();
+  for (const ox of [-COLS, 0, COLS]) for (const oy of [-ROWS, 0, ROWS]) {
+    const pts = path.map(p => W(p[0] + ox, p[1] + oy));
+    for (let i = 0; i < pts.length; i++) {
+      drawCircle(pts[i], w, bodyCol);
+      if (i) drawLine(pts[i - 1], pts[i], w, bodyCol);
+    }
+    const hp = pts[0];
+    drawCircle(hp, 0.8, alive ? C.head : C.deadHead);
+    const [ex, ey] = DIRS[dir];
+    for (const s of [-1, 1]) {
+      const ox2 = ex * .14 + ey * s * .15, oy2 = ey * .14 - ex * s * .15;
+      drawCircle(hp.add(vec2(ox2, -oy2)), 0.14, C.eye);
+    }
+  }
+  drawContext.restore();
+  const h = W(wrap(path[0][0], COLS), wrap(path[0][1], ROWS));
+
+  // ghost preview from the head
+  if (gesture && alive) {
+    const d = gestureDir(gesture);
+    if (d) {
+      const [gx, gy] = DIRS[d], col = (isReverse(d, dir) ? C.bad : C.ok).scale(1, .85);
+      const end = h.add(vec2(gx * 3, -gy * 3));
+      for (let k = 0; k < 6; k++) { // dashed
+        const a = h.lerp(end, k / 6 + 0.04), b = h.lerp(end, k / 6 + 0.11);
+        drawLine(a, b, 0.1, col);
+      }
+    }
+  }
+}
+
+// screen-space overlay: vignette, edge flash, countdown ring (raw canvas2d, css pixels)
+function gameRenderPost() {
+  const ctx = mainContext, Wd = mainCanvasSize.x, Hd = mainCanvasSize.y;
+  const slowAmt = Math.max(0, Math.min(1, (1 - timeScale) / ((1 - cfg.slow) || 1)));
+  ctx.save();
+  if (slowAmt > 0.01) {
+    const g = ctx.createRadialGradient(Wd / 2, Hd / 2, Math.min(Wd, Hd) * 0.3, Wd / 2, Hd / 2, Math.max(Wd, Hd) * 0.75);
+    g.addColorStop(0, 'rgba(10,20,60,0)'); g.addColorStop(1, `rgba(10,20,60,${0.55 * slowAmt})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, Wd, Hd);
+  }
+  if (flash > 0) { ctx.globalAlpha = flash; ctx.strokeStyle = '#ff5a6e'; ctx.lineWidth = 10; ctx.strokeRect(0, 0, Wd, Hd); ctx.globalAlpha = 1; }
+
+  if (gesture) {
+    const g = gesture, R = 62;
+    const frac = Math.max(0, 1 - (timeReal - g.t0) / ringTime());
+    const d = gestureDir(g), bad = d && isReverse(d, dir);
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    ctx.beginPath(); ctx.arc(g.x0, g.y0, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(g.x0, g.y0, cfg.dead, 0, Math.PI * 2); ctx.stroke();
+    if (d) {
+      ctx.strokeStyle = bad ? 'rgba(255,90,110,.8)' : 'rgba(83,242,166,.8)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(g.x0, g.y0); ctx.lineTo(g.x, g.y); ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.arc(g.x, g.y, R, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = `hsl(${150 * frac},90%,60%)`; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(g.x, g.y, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac); ctx.stroke();
+    if (frac < 0.3) {
+      ctx.globalAlpha = 0.4 * (0.5 + 0.5 * Math.sin(timeReal * 25));
+      ctx.beginPath(); ctx.arc(g.x, g.y, R + 10, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    if (d) {
+      const [dx, dy] = DIRS[d], col = bad ? '#ff5a6e' : '#53f2a6';
+      ctx.strokeStyle = ctx.fillStyle = col; ctx.lineWidth = 4;
+      const ax = g.x + dx * (R + 30), ay = g.y + dy * (R + 30);
+      ctx.beginPath(); ctx.moveTo(g.x + dx * (R + 14), g.y + dy * (R + 14)); ctx.lineTo(ax, ay); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ax + dx * 10, ay + dy * 10);
+      ctx.lineTo(ax - dy * 8, ay + dx * 8); ctx.lineTo(ax + dy * 8, ay - dx * 8); ctx.closePath(); ctx.fill();
+    }
+  }
+  if (mode === 'tut' && started && alive && !gesture) drawTutHint(ctx, Wd, Hd);
+  ctx.restore();
+}
+
+// ghost finger demonstrating the gesture
+function drawTutHint(ctx, Wd, Hd) {
+  const cx = Wd / 2, cy = Hd * 0.62;
+  if (tut.step === 0) {
+    const k = (timeReal % 1.6) / 1.6, a = Math.sin(Math.PI * Math.min(1, k * 1.3));
+    ctx.globalAlpha = 0.5 * a; ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#53f2a6'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(cx, cy, 62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - k)); ctx.stroke();
+    ctx.globalAlpha = 1; return;
+  }
+  if ((tut.step === 1 || tut.step === 2) && tut.need) {
+    const [dx, dy] = DIRS[tut.need], k = (timeReal % 1.4) / 1.4;
+    const m = Math.min(1, k / 0.6), dist = 70 * (1 - Math.pow(1 - m, 3));
+    const lift = k > 0.7;
+    ctx.globalAlpha = lift ? 0.5 * Math.max(0, 1 - (k - 0.7) / 0.3) : 0.5;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(cx + dx * dist, cy + dy * dist, lift ? 16 : 22, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#53f2a6'; ctx.lineWidth = 3; ctx.setLineDash([6, 6]);
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + dx * 90, cy + dy * 90); ctx.stroke(); ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ---------- HTML UI ----------
+const overlay = document.getElementById('overlay');
+function showStart() {
+  started = false; mode = 'play'; tut = null; gesture = null; screen = 'start';
+  reset(); acc = 0;
+  tip.classList.add('hidden');
+  overlay.className = 'start';
+  overlay.innerHTML = `<div class="hero"><h1>BULLET SNAKE</h1>
+    <p>Hold to slow time. Drag to aim. Let go before the ring closes.</p></div>
+    <div class="btns"><button class="primary" id="goTut">Start tutorial</button>
+    <button class="secondary" id="goPlay">Skip to game</button></div>`;
+  document.getElementById('goTut').onclick = () => { screen = null; startTutorial(); };
+  document.getElementById('goPlay').onclick = () => { screen = null; startGame(); };
+}
+function showOverlay(title, lines, cta) {
+  overlay.className = '';
+  overlay.innerHTML = `<h1>${title}</h1>${lines.map(l => `<p>${l}</p>`).join('')}<p class="big">${cta}</p>`;
+  overlay.classList.remove('hidden');
+}
+function hideOverlay() { overlay.classList.add('hidden'); }
+function updateHud() {
+  document.getElementById('score').textContent = score;
+  document.getElementById('stats').textContent = mode === 'tut' ? 'tutorial' : `steers ${steers} · expired ${expired}`;
+}
+const sheet = document.getElementById('sheet');
+document.getElementById('gear').addEventListener('click', () => { gesture = null; sheet.classList.add('open'); });
+document.getElementById('closeSheet').addEventListener('click', () => sheet.classList.remove('open'));
+const fmt = { cols: v => v + ' cells', rows: v => v + ' cells', speed: v => v + ' cells/s', slow: v => '×' + (+v).toFixed(2), ring: v => (+v).toFixed(2) + ' s', dead: v => v + ' px', ramp: v => v + ' ms' };
+for (const k of Object.keys(fmt)) {
+  const el = document.getElementById(k), out = document.getElementById('v-' + k);
+  el.value = cfg[k]; out.textContent = fmt[k](cfg[k]);
+  el.addEventListener('input', () => { cfg[k] = +el.value; out.textContent = fmt[k](el.value); saveCfg(); });
+}
+const seg = document.getElementById('expire');
+const paintSeg = () => seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === cfg.expire));
+seg.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { cfg.expire = b.dataset.v; paintSeg(); saveCfg(); } });
+paintSeg();
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// ---------- modes ----------
+const tip = document.getElementById('tip');
+const ARROW = { up: '↑', down: '↓', left: '←', right: '→' };
+function startGame() {
+  mode = 'play'; tut = null; started = true; reset(); hideOverlay(); tip.classList.add('hidden');
+}
+function startTutorial() {
+  mode = 'tut'; tut = { step: 0, need: null, eaten: 0, subT: 0 };
+  started = true; reset(); hideOverlay(); tip.classList.remove('hidden'); tutRender(); tutSub('');
+}
+function pickNeed() {
+  const h = snake[0];
+  return (dir === 'up' || dir === 'down') ? (h[0] < COLS / 2 ? 'right' : 'left') : (h[1] < ROWS / 2 ? 'down' : 'up');
+}
+function tutAdvance() {
+  tut.step++;
+  if (tut.step === 1 || tut.step === 2) tut.need = null; // picked in tutUpdate once the turn lands
+  if (tut.step === 3) { placeFood(); }
+  tutRender();
+}
+function tutUpdate() {
+  if (tut.step === 0 && gesture && timeReal - gesture.t0 > 0.35) { tutSub('Time is slowed. See the ring?'); tutAdvance(); }
+  if ((tut.step === 1 || tut.step === 2) && !pendingDir &&
+      (!tut.need || tut.need === dir || isReverse(tut.need, dir))) { tut.need = pickNeed(); tutRender(); }
+  if (tut.subT && timeReal > tut.subT) { tip.querySelector('.sub').style.opacity = 0; tut.subT = 0; }
+}
+function tutRender() {
+  const n = tut.need ? `<b>${ARROW[tut.need]} ${tut.need}</b>` : '';
+  const txt = [
+    'Press and <b>hold</b> anywhere.<br>Time slows down while you hold.',
+    `Keep holding, drag ${n},<br>then <b>let go</b> before the ring closes.`,
+    `Again — drag ${n} and let go.<br>The ring is quicker now.`,
+    `Full-speed ring. Steer to the food.<br>Eat ${TUT_EAT} to finish.`,
+  ][tut.step];
+  tip.querySelector('.step').textContent = `TUTORIAL ${tut.step + 1} / ${TUT_STEPS}`;
+  tip.querySelector('.txt').innerHTML = txt;
+}
+function tutSub(text, bad) {
+  const el = tip.querySelector('.sub');
+  el.textContent = text; el.classList.toggle('bad', !!bad); el.style.opacity = 1;
+  if (tut) tut.subT = text ? timeReal + 1.6 : 0;
+}
+function finishTutorial() {
+  tutDone = true; try { localStorage.setItem('bsnake-tut-done', '1'); } catch (e) {}
+  started = false; deadAt = timeReal; gesture = null; mode = 'play'; tut = null;
+  tip.classList.add('hidden');
+  showOverlay('YOU GOT IT', ['Walls wrap around — only your own tail is deadly.'], 'Tap to play');
+}
+document.getElementById('help').addEventListener('click', () => { sheet.classList.remove('open'); screen = null; startTutorial(); });
+document.getElementById('skip').addEventListener('click', () => { gesture = null; startGame(); });
+
+engineInit(gameInit, gameUpdate, gameUpdatePost, gameRender, gameRenderPost);
+</script>
+</body>
+</html>
