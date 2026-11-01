@@ -143,15 +143,13 @@ function showPause() {
 function openDetail(id) {
   const c = ALL_CONTENT[id], isCh = !!CHALLENGES[id];
   const kv = Object.entries(c.tun).map(([k, t]) => `<div class="kv"><span>${t.label}</span><b>${t.fmt(T(id, k))}</b></div>`).join('');
-  const chip = i => `<span class="${run.powerups.includes(i) ? 'own' : ''}">${POWERUPS[i].icon} ${POWERUPS[i].name}${run.powerups.includes(i) ? ' ✓' : ''}</span>`;
-  let body, status = '';
+  let body = '', status = '';
   if (isCh) {
     const active = run.stage === 3 || run.stage === 'continue';
     status = `<div class="st ${active ? 'on' : ''}">${active ? 'ACTIVE NOW' : 'ACTIVE IN STAGE 3'}</div>`;
-    body = `<div class="lbl">ANSWERED BY</div><div class="chips">${COUNTERS[id].map(chip).join('')}</div>`;
   } else {
     status = '<div class="st">ACTIVE</div>';
-    body = '';   // what a power-up answers is left for the player to work out
+    // what answers what is left for the player to work out
   }
   const d = $('detail');
   d.innerHTML = `<div class="dcard ${isCh ? 'chal' : ''}"><div class="big">${c.icon}</div><h3>${c.name}</h3>${status}<p class="eff">${c.desc}</p>${kv}${body}
