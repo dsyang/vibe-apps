@@ -27,23 +27,35 @@ function stageBarHtml() {
   }).join('');
   return `<div class="stagerow"><div class="stagebadge">${cont ? 'CONTINUE' : `STAGE ${st}/3`}</div><div class="segs">${segs}</div></div>`;
 }
+function chalHtml(ch, active, soonLabel, attrs) {
+  return `<div class="chalcard ${active ? 'on' : 'soon'}" ${attrs || ''}><div class="ic">${ch.icon}</div><div><b>${ch.name}</b><span class="d">${ch.desc.split('.')[0]}</span></div><div class="tag">${active ? 'ACTIVE' : soonLabel}</div></div>`;
+}
 function chalCardHtml() {
   const active = run.stage === 3 || run.stage === 'continue';
   if (!run.revealed) return '<div class="chalcard"><div class="ic">❓</div><div><b>Challenge ???</b><span class="d">Revealed after stage 1</span></div></div>';
   const ch = CHALLENGES[run.challenge];
-  return `<div class="chalcard ${active ? 'on' : 'soon'}" data-detail="${ch.id}"><div class="ic">${ch.icon}</div><div><b>${ch.name}</b><span class="d">${ch.desc.split('.')[0]}</span></div><div class="tag">${active ? 'ACTIVE' : 'STAGE 3'}</div></div>`;
+  return chalHtml(ch, active, 'STAGE 3', `data-detail="${ch.id}"`);
 }
-function dockHtml() {
+function docksHtml(ids, detail) {
   return '<div class="docks">' + [0, 1, 2].map(i => {
-    const id = run.powerups[i];
-    return id ? `<div class="pu" data-detail="${id}"><span class="ic">${POWERUPS[id].icon}</span><span>${POWERUPS[id].name}</span></div>` : '<div class="pu empty">—</div>';
+    const id = ids[i];
+    return id ? `<div class="pu" ${detail ? `data-detail="${id}"` : ''}><span class="ic">${POWERUPS[id].icon}</span><span>${POWERUPS[id].name}</span></div>` : '<div class="pu empty">—</div>';
   }).join('') + '</div>';
 }
+const dockHtml = () => docksHtml(run.powerups, true);
 function updateHud() {
-  const inRun = !!run;
-  for (const id of ['stagebar', 'chal', 'dock']) $(id).classList.toggle('hidden', !inRun);
   hudInsets = null;
-  if (!run) { $('score').textContent = '0'; $('stats').textContent = mode === 'tut' ? 'tutorial' : ''; return; }
+  const tutHud = !run && mode === 'tut' && tut;   // the tutorial shows the challenge card and dock once you've met them
+  $('stagebar').classList.toggle('hidden', !run);
+  $('chal').classList.toggle('hidden', !run && !(tutHud && tut.chOn));
+  $('dock').classList.toggle('hidden', !run && !(tutHud && tut.pu));
+  $('chal').classList.toggle('tut', !run);
+  if (!run) {
+    $('score').textContent = '0'; $('stats').textContent = mode === 'tut' ? 'tutorial' : '';
+    if (tutHud && tut.chOn) $('chal').innerHTML = chalHtml(CHALLENGES.shortfuse, true, '');
+    if (tutHud && tut.pu) $('dock').innerHTML = docksHtml([tut.pu], false);
+    return;
+  }
   $('score').textContent = run.score;
   $('stats').textContent = `${run.steers} steers · ${run.expired} expired`;
   $('stagebar').innerHTML = stageBarHtml();
@@ -68,6 +80,31 @@ function showTutDone() {
   setOverlay(`<h1>YOU GOT IT</h1><p>Tap the ? at the top any time to do the tutorial again.</p>
     <div class="btns"><button class="primary" id="go">Play</button></div>`);
   $('go').onclick = startRun;
+}
+// ---------- tutorial steps 6 and 7 (real card screens, scripted content) ----------
+function tutBar() {
+  return `<div class="tutbar"><span>TUTORIAL ${tut.step + 1} / ${TUT_STEPS}</span><button id="tutSkip">Skip tutorial ›</button></div>`;
+}
+function showTutPick() {
+  phase = 'pick';
+  setOverlay(`${tutBar()}<h2>POWER-UP</h2><h1>Pick 1 of 2</h1>
+    <p>Between stages you pick power-ups. They stay with you for the whole run.</p>
+    <div class="cards">${['focus', 'longfuse'].map(id => { const p = POWERUPS[id];
+      return `<button class="card" data-id="${id}"><div class="ic">${p.icon}</div><div><b>${p.name}</b><span>${p.desc}</span></div></button>`; }).join('')}</div>
+    <p style="margin-top:14px;font-size:14px">Tap one to take it</p>`);
+  overlay.querySelectorAll('.card').forEach(b => b.onclick = () => tutPicked(b.dataset.id));
+  $('tutSkip').onclick = startRun;
+}
+function showTutChallenge() {
+  const ch = CHALLENGES.shortfuse;
+  setOverlay(`${tutBar()}<h2>CHALLENGE REVEALED</h2>
+    <div class="cards" style="margin-top:6px"><button class="card challenge" id="rev"><div class="ic">${ch.icon}</div><div><b>${ch.name}</b><span>${ch.desc}</span></div>
+    <span style="color:#ff9aa8">Active in stage 3</span></button></div>
+    <p style="margin-top:16px">Every run reveals one challenge after stage 1. Pick power-ups to prepare for it.</p>
+    <p class="big">Tap to continue</p>`);
+  $('rev').onclick = tutChallengeSeen;
+  $('tutSkip').onclick = startRun;
+  updateHud();
 }
 function renderPick(n, offer) {
   hideBanner();

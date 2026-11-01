@@ -40,13 +40,17 @@ These already exist in `tools/bullet-time-snake.html` and carry over to v1 uncha
 - **Counters:** `steers` (committed gestures) and `expired` (rings that closed) are tracked.
 
 ### Tutorial
-Six steps at 70% speed. The ring starts long and tightens each step until it reaches the real setting.
+Eight steps at 70% speed. The ring starts long and tightens through steps 1 to 5 until it reaches the real setting. The label reads `TUTORIAL n / 8`, and every step has a **Skip tutorial** link.
 1. Hold. Time slows and the ring appears.
 2. Drag in the asked direction and let go.
 3. Again, with a quicker ring.
 4. Two turns in one hold.
 5. A U-turn in one hold.
-6. Full-speed ring: eat 3 food to finish.
+6. **Power-ups:** the real "Pick 1 of 2" screen with two fixed options, Deep Focus and Long Fuse. "Between stages you pick power-ups. They stay with you for the whole run." The pick goes into the dock and stays active for step 8.
+7. **Challenges:** the real challenge reveal card, always Short Fuse. "Every run reveals one challenge after stage 1. Pick power-ups to prepare for it." It doesn't say what answers it. Tap to continue.
+8. Eat 3 food to finish, with the power-up and Short Fuse both on. The ring is the real length with those modifiers applied, and the challenge card and dock are on screen.
+
+The tutorial's picks and challenge are scripted. They don't use a seed and don't touch a run or anything saved. The tutorial HUD has no stage bar.
 
 Finishing sets `localStorage['bsnake-tut-done'] = '1'`. The **?** button replays it any time.
 
