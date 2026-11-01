@@ -85,6 +85,7 @@ Stage 1 → [Reveal challenge + pick 1 of 2] → Stage 2 → [Pick 1 of 2] → S
 - **Staging zones** pause time and show tap-to-select cards, not the steering gesture. In zone 1 the challenge card shows first, then the two power-up cards.
 - **One round per run.** Dying before the win ends the run. The next run starts again at stage 1: roguelike, no checkpoints.
 - **The snake keeps growing across stages.** It's 33 cells long by the end of stage 3, so stage 3 is naturally the hardest.
+- **Every stage starts from the centre, as just a head.** At the start of every stage, and at the start of a run (Classic too), the head sits on the start cell heading up with no body. The body then grows one cell per move to the length it had (3 cells at the start of a run). A long body can't be forgotten while you're not steering.
 - **No duplicate offers.** A pick never offers a power-up you already own, so every winning run has 2 different power-ups.
 - **Continue mode:** after the win, keep your power-ups and score. The challenge stays on, and Speed Ramp keeps climbing to its cap. The run ends on death.
 

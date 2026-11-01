@@ -31,6 +31,7 @@ let mode = 'play', tut = null;   // tut: {step, need, eaten, subT}
 let run = null;                  // see GDD section 10; null in the menu and the tutorial
 let tutDone = false; try { tutDone = localStorage.getItem('bsnake-tut-done') === '1'; } catch (e) {}
 const TUT_STEPS = 8, TUT_EAT = 3;   // steps: 0 hold, 1-2 drag, 3 two turns, 4 U-turn, 5 pick a power-up, 6 meet a challenge, 7 eat food with both on
+const START_LEN = 3;   // snake length at the start of a run (the menu and tutorial show it whole)
 const CONTACT = 0.12; // fraction of a move at which a crashing head touches its body
 let deadAt = -1, gesture = null, flash = 0, pulse = 0, shake = 0, lastReal = 0, pops = [];
 const PAD = 12;
@@ -94,12 +95,23 @@ const W = (x, y) => vec2(x + .5, ROWS - y - .5);
 // ---------- board ----------
 function reset() {
   if (mode === 'tut' || phase === 'menu') { COLS = 13; ROWS = 13; } else { COLS = cfg.cols; ROWS = cfg.rows; }
-  const cx = Math.floor(COLS / 2), cy = Math.floor(ROWS * 0.6);
-  snake = [[cx, cy], [cx, cy + 1], [cx, cy + 2]];
-  prev = snake.map(s => s.slice());
-  dir = 'up'; pendingDir = null; alive = true; acc = 0.999; grow = false; dying = false; snap = null;
-  turnQueue = []; lastDir = 'up'; foods = []; decoy = null; pops = [];
+  alive = true; pops = [];
+  recenter();
   placeFoods(); updateHud();
+}
+// head back at the start cell with n cells heading up, board cleared of food
+function recenter(n = START_LEN) {
+  const cx = Math.floor(COLS / 2), cy = Math.floor(ROWS * 0.6);
+  snake = Array.from({ length: n }, (_, i) => [cx, cy + i]);
+  prev = snake.map(s => s.slice());
+  dir = 'up'; pendingDir = null; acc = 0.999; grow = false; dying = false; snap = null;
+  turnQueue = []; lastDir = 'up'; foods = []; decoy = null;
+}
+// every stage (and every run, Classic included) starts with just the head at the centre; the body then grows one cell per
+// move to its full length, so a long body can't be forgotten about. A new run's full length is START_LEN.
+function restartStage(full = snake.length) {
+  recenter(1);
+  run.regrow = Math.max(0, full - 1);
 }
 const foodAt = p => foods.some(f => f[0] === p[0] && f[1] === p[1]) || (decoy && decoy[0] === p[0] && decoy[1] === p[1]);
 const onSnake = p => snake.some(s => s[0] === p[0] && s[1] === p[1]);
@@ -185,7 +197,8 @@ function arrive() {
 }
 // start moving one cell in `dir`
 function move() {
-  snap = { snake: snake.map(c => c.slice()), prev: prev.map(c => c.slice()), grow, lastDir, phaseLeft: run ? run.phaseLeft : 0 };
+  snap = { snake: snake.map(c => c.slice()), prev: prev.map(c => c.slice()), grow, lastDir, phaseLeft: run ? run.phaseLeft : 0, regrow: run ? run.regrow : 0 };
+  if (!grow && run && run.regrow > 0) { grow = true; run.regrow--; }   // regrowing after a stage start
   lastDir = dir;
   prev = snake.map(c => c.slice());
   const [dx, dy] = DIRS[dir];
@@ -234,7 +247,7 @@ function turnNow(d) {
   // redoing the move is only safe if the new heading isn't a reversal of the heading *before* it
   if (snap && Math.min(1, acc) < 0.5 && !isReverse(d, snap.lastDir)) {
     snake = snap.snake; prev = snap.prev; grow = snap.grow; lastDir = snap.lastDir; dying = false;
-    if (run) run.phaseLeft = snap.phaseLeft;
+    if (run) { run.phaseLeft = snap.phaseLeft; run.regrow = snap.regrow; }
     dir = d; move();
   } else {
     dir = d; acc = 0; step();
@@ -276,7 +289,7 @@ function newRun() {
     offers: [[], perm.slice(0, 2), perm.slice(2, 4)],   // index = pick number (no pick before stage 1); disjoint pairs: never a duplicate offer, same seed = same offers
     challenge: runCfg.force || drawn, revealed: false,
     score: 0, steers: 0, expired: 0, time: 0, roundClear: null,
-    phaseLeft: 0, savorUntil: 0, skitT: 0,
+    phaseLeft: 0, savorUntil: 0, skitT: 0, regrow: 0,
   };
 }
 // classic === true: no power-ups, no challenge, no stages, no speed ramp; play until you crash
@@ -292,6 +305,7 @@ function pickPower(n, id) {
 }
 function beginStage(s) {
   run.stage = s; run.stageFood = 0; run.skitT = 0;
+  restartStage(s === 1 || s === 'classic' ? START_LEN : undefined);
   if (s === 2) run.rampFood = 0;
   run.phaseLeft = has('phase') ? T('phase', 'charges') : 0;
   if (chActive('decoy')) placeDecoy(); else decoy = null;
@@ -322,7 +336,7 @@ function winRound() {
   showWin();
 }
 function continueRun() {
-  run.stage = 'continue'; run.stageFood = 0; updateHud();
+  run.stage = 'continue'; run.stageFood = 0; restartStage(); placeFoods(); updateHud();
   setReady('CONTINUE', 900);
 }
 function die() {
@@ -473,7 +487,7 @@ function gameRender() {
   // corners stay square; coordinates are unwrapped so the snake can slide through an edge
   const t = Math.min(1, acc), n = snake.length;
   const path = [];
-  let cur = snake[1].slice();
+  let cur = (snake[1] || snake[0]).slice();   // a lone head (start of a stage) has no neck
   const headU = [cur[0] + wdelta(snake[0][0] - cur[0], COLS), cur[1] + wdelta(snake[0][1] - cur[1], ROWS)];
   path.push([cur[0] + (headU[0] - cur[0]) * t, cur[1] + (headU[1] - cur[1]) * t]);
   path.push(cur.slice());
