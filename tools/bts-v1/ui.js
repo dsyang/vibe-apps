@@ -150,11 +150,8 @@ function openDetail(id) {
     status = `<div class="st ${active ? 'on' : ''}">${active ? 'ACTIVE NOW' : 'ACTIVE IN STAGE 3'}</div>`;
     body = `<div class="lbl">ANSWERED BY</div><div class="chips">${COUNTERS[id].map(chip).join('')}</div>`;
   } else {
-    const vs = Object.keys(COUNTERS).filter(ch => COUNTERS[ch].includes(id));
     status = '<div class="st">ACTIVE</div>';
-    body = vs.length
-      ? `<div class="lbl">ANSWERS</div><div class="chips">${vs.map(ch => `<span class="${run.challenge === ch && run.revealed ? 'own' : ''}">${CHALLENGES[ch].icon} ${CHALLENGES[ch].name}${run.challenge === ch && run.revealed ? ' ← this run' : ''}</span>`).join('')}</div>`
-      : '<div class="lbl">ANSWERS</div><div class="chips"><span>⏩ Speed Ramp (every run)</span></div>';
+    body = '';   // what a power-up answers is left for the player to work out
   }
   const d = $('detail');
   d.innerHTML = `<div class="dcard ${isCh ? 'chal' : ''}"><div class="big">${c.icon}</div><h3>${c.name}</h3>${status}<p class="eff">${c.desc}</p>${kv}${body}
