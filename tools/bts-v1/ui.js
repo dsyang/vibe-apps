@@ -16,7 +16,29 @@ const hideBanner = () => banner.classList.add('hidden');
 const chip = (c, extra) => `<div class="box"><b>${c.icon} ${c.name}</b> — ${c.desc}${extra ? '<br>' + extra : ''}</div>`;
 const haveRow = () => run.powerups.length ? `<div class="have">you have: ${run.powerups.map(i => POWERUPS[i].icon + ' ' + POWERUPS[i].name).join(' · ')}</div>` : '';
 
-// ---------- HUD ----------
+// ---------- HUD pieces (shared by the in-game HUD and the pause screen) ----------
+function stageBarHtml() {
+  const st = run.stage, cont = st === 'continue';
+  const segs = [1, 2, 3].map(n => {
+    const done = cont || n < st, cur = cont ? n === 3 : n === st;
+    const w = done ? 100 : cur ? Math.min(100, run.stageFood / stageGoal() * 100) : 0;
+    const label = cur ? (cont ? `food ${run.totalFood}` : `${run.stageFood} / ${stageGoal()}`) : '';
+    return `<div class="seg1 ${done ? 'done' : ''} ${cur ? 'cur' : ''}"><i style="width:${w}%"></i><em>${label}</em></div>`;
+  }).join('');
+  return `<div class="stagerow"><div class="stagebadge">${cont ? 'CONTINUE' : `STAGE ${st}/3`}</div><div class="segs">${segs}</div></div>`;
+}
+function chalCardHtml() {
+  const active = run.stage === 3 || run.stage === 'continue';
+  if (!run.revealed) return '<div class="chalcard"><div class="ic">❓</div><div><b>Challenge ???</b><span class="d">Revealed after stage 1</span></div></div>';
+  const ch = CHALLENGES[run.challenge];
+  return `<div class="chalcard ${active ? 'on' : 'soon'}"><div class="ic">${ch.icon}</div><div><b>${ch.name}</b><span class="d">${ch.desc.split('.')[0]}</span></div><div class="tag">${active ? 'ACTIVE' : 'STAGE 3'}</div></div>`;
+}
+function dockHtml() {
+  return '<div class="docks">' + [0, 1, 2].map(i => {
+    const id = run.powerups[i];
+    return id ? `<div class="pu"><span class="ic">${POWERUPS[id].icon}</span><span>${POWERUPS[id].name}</span></div>` : '<div class="pu empty">—</div>';
+  }).join('') + '</div>';
+}
 function updateHud() {
   const inRun = !!run;
   for (const id of ['stagebar', 'chal', 'dock']) $(id).classList.toggle('hidden', !inRun);
@@ -24,27 +46,9 @@ function updateHud() {
   if (!run) { $('score').textContent = '0'; $('stats').textContent = mode === 'tut' ? 'tutorial' : ''; return; }
   $('score').textContent = run.score;
   $('stats').textContent = `${run.steers} steers · ${run.expired} expired`;
-  const st = run.stage, cont = st === 'continue';
-  $('stagebadge').textContent = cont ? 'CONTINUE' : `STAGE ${st}/3`;
-  $('segs').querySelectorAll('.seg1').forEach((el, i) => {
-    const n = i + 1, done = cont || n < st;
-    el.classList.toggle('done', done); el.classList.toggle('cur', cont ? i === 2 : n === st);
-    el.querySelector('em').textContent = (cont ? i === 2 : n === st) ? (cont ? `food ${run.totalFood}` : `${run.stageFood} / ${stageGoal()}`) : '';
-    el.firstChild.style.width = done ? '100%' : n === st ? Math.min(100, run.stageFood / stageGoal() * 100) + '%' : '0';
-  });
-  const c = $('chal'), active = st === 3 || cont;
-  c.classList.remove('on', 'soon');
-  if (!run.revealed) c.innerHTML = '<div class="ic">❓</div><div><b>Challenge ???</b><span class="d">Revealed after stage 1</span></div>';
-  else {
-    const ch = CHALLENGES[run.challenge];
-    c.innerHTML = `<div class="ic">${ch.icon}</div><div><b>${ch.name}</b><span class="d">${ch.desc.split('.')[0]}</span></div><div class="tag">${active ? 'ACTIVE' : 'STAGE 3'}</div>`;
-    c.classList.add(active ? 'on' : 'soon');
-  }
-  const slots = [0, 1, 2].map(i => {
-    const id = run.powerups[i];
-    return id ? `<div class="pu"><span class="ic">${POWERUPS[id].icon}</span><span>${POWERUPS[id].name}</span></div>` : '<div class="pu empty">—</div>';
-  });
-  $('dock').innerHTML = slots.join('');
+  $('stagebar').innerHTML = stageBarHtml();
+  $('chal').innerHTML = chalCardHtml();
+  $('dock').innerHTML = dockHtml();
 }
 
 // ---------- screens ----------
@@ -118,15 +122,19 @@ function showContinueEnd() {
   $('again').onclick = () => { hideOverlay(); startRun(); };
 }
 function showPause() {
-  const st = run.stage, ch = CHALLENGES[run.challenge];
+  const st = run.stage;
   const left = [];
-  if (st !== 'continue') for (let s = st; s <= 3; s++) left.push(`stage ${s}: ${s === st ? `${goalOf(s) - run.stageFood} food left` : `${goalOf(s)} food`}`);
-  const chLine = !run.revealed ? '???' : `${ch.icon} <b>${ch.name}</b> — ${ch.desc} <i>${st === 3 || st === 'continue' ? '(active)' : '(active in stage 3)'}</i>`;
-  setOverlay(`<h1>PAUSED</h1>
-    <div class="box">Stage <b>${st === 'continue' ? 'continue' : st + ' / 3'}</b> · food <b>${run.stageFood}${st === 'continue' ? '' : '/' + stageGoal()}</b><br>
-    Score <b>${run.score}</b> (${run.steers} steers, ${run.expired} expired)<br>Time <b>${fmtTime(run.time)}</b></div>
-    <div class="box">${left.length ? 'Left: ' + left.join(' · ') + '<br>' : ''}Power-ups: <b>${powerLine()}</b><br>Challenge: ${chLine}<br>Seed <span class="seed">${run.seed}</span></div>
-    <div class="btns"><button class="primary" id="res">Resume</button><button class="secondary" id="quit">Quit run</button></div>`);
+  if (st !== 'continue') for (let s = st; s <= 3; s++) left.push(s === st ? `stage ${s}: ${goalOf(s) - run.stageFood} food left` : `stage ${s}: ${goalOf(s)}`);
+  setOverlay(`<div class="pz"><h1 style="text-align:center;margin:0 0 4px">PAUSED</h1>
+    <div><div class="lbl">PROGRESS</div>${stageBarHtml()}${left.length ? `<div class="left">${left.join(' · ')}</div>` : ''}</div>
+    <div class="stats">
+      <div class="stat"><b>${run.score}</b><span>score · ${run.steers} steers · ${run.expired} expired</span></div>
+      <div class="stat" style="flex:.7"><b>${fmtTime(run.time)}</b><span>time</span></div>
+    </div>
+    <div><div class="lbl">CHALLENGE</div>${chalCardHtml()}</div>
+    <div><div class="lbl">POWER-UPS</div>${dockHtml()}</div>
+    <div class="seedrow"><span>SEED</span><span class="seed">${run.seed}</span></div>
+    <div class="btns"><button class="primary" id="res">Resume</button><button class="secondary" id="quit">Quit run</button></div></div>`, 'modal solid');
   $('res').onclick = resumeGame;
   $('quit').onclick = quitRun;
 }

@@ -208,6 +208,7 @@ Deep Focus and Adrenaline help in every run, which makes them safe **blind picks
 
 ### Pause screen
 - Opened by **⏸**. The game also **auto-pauses on `visibilitychange`** (switching apps or locking the phone).
+- Styled like the in-game HUD: the same stage bar, challenge card and power-up slots, on a solid background.
 - **Current stats:**
   - stage n/3 and food n/10
   - score (with steers and expired rings)

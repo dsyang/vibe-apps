@@ -22,29 +22,39 @@
   #hudR { display:flex; gap:10px; pointer-events:auto; }
   #hudR button { width:44px; height:44px; border-radius:12px; border:1px solid #232836; background:var(--card); color:var(--fg);
     font-size:19px; display:grid; place-items:center; padding:0; }
-  #stagebar { position:fixed; top:calc(env(safe-area-inset-top) + 74px); left:22px; right:22px; height:32px; z-index:5; pointer-events:none;
-    display:flex; align-items:center; gap:10px; font-variant-numeric:tabular-nums; }
-  #stagebadge { font-size:13px; font-weight:800; letter-spacing:1px; padding:0 11px; height:32px; line-height:32px; border-radius:10px;
+  #stagebar { position:fixed; top:calc(env(safe-area-inset-top) + 74px); left:22px; right:22px; z-index:5; pointer-events:none; }
+  #chal { position:fixed; top:calc(env(safe-area-inset-top) + 116px); left:22px; right:22px; z-index:5; pointer-events:none; }
+  #dock { position:fixed; left:22px; right:22px; bottom:calc(env(safe-area-inset-bottom) + 22px); z-index:5; pointer-events:none; }
+  .stagerow { height:32px; display:flex; align-items:center; gap:10px; font-variant-numeric:tabular-nums; width:100%; }
+  .stagebadge { font-size:13px; font-weight:800; letter-spacing:1px; padding:0 11px; height:32px; line-height:32px; border-radius:10px;
     background:var(--accent); color:#06110b; white-space:nowrap; }
-  #segs { flex:1; height:32px; display:flex; gap:4px; position:relative; }
-  #segs .seg1 { flex:1 1 0; transition:flex-grow .25s; border-radius:10px; background:#1f2533; overflow:hidden; position:relative; }
-  #segs .seg1 i { position:absolute; inset:0; width:0; background:linear-gradient(90deg,#1c8a5c,var(--accent)); transition:width .2s; }
-  #segs .seg1.cur { flex-grow:3; }
-  #segs .seg1.done i { width:100%; }
-  #segs .seg1 em { position:absolute; inset:0; display:grid; place-items:center; font-style:normal; font-size:17px; font-weight:800; color:#fff; text-shadow:0 1px 3px #000; white-space:nowrap; }
-  #chal { position:fixed; top:calc(env(safe-area-inset-top) + 116px); left:22px; right:22px; z-index:5; pointer-events:none;
-    display:flex; align-items:center; gap:12px; padding:9px 14px; border-radius:14px; background:#1a1f2b; border:1px solid var(--line); }
-  #chal .ic { font-size:28px; }
-  #chal b { display:block; font-size:16px; }
-  #chal span.d { display:block; font-size:12px; color:var(--dim); }
-  #chal .tag { margin-left:auto; font-size:11px; letter-spacing:1.5px; font-weight:800; padding:4px 8px; border-radius:8px; background:#232836; color:var(--dim); white-space:nowrap; }
-  #chal.soon { background:#2a1820; border-color:#6b3340; } #chal.soon span.d { color:#ffb3bd; } #chal.soon .tag { background:#3a2029; color:#ffd2d8; }
-  #chal.on { background:#3a1620; border-color:var(--warn); } #chal.on span.d { color:#ffb3bd; } #chal.on .tag { background:var(--warn); color:#fff; }
-  #dock { position:fixed; left:22px; right:22px; bottom:calc(env(safe-area-inset-bottom) + 22px); z-index:5; pointer-events:none; display:flex; gap:8px; }
-  #dock .pu { flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:14px; background:var(--card); border:1px solid var(--line);
-    font-size:13px; font-weight:700; line-height:1.15; }
-  #dock .pu .ic { font-size:24px; }
-  #dock .pu.empty { border-style:dashed; color:#3b4560; justify-content:center; font-weight:500; }
+  .segs { flex:1; height:32px; display:flex; gap:4px; position:relative; }
+  .segs .seg1 { flex:1 1 0; transition:flex-grow .25s; border-radius:10px; background:#1f2533; overflow:hidden; position:relative; }
+  .segs .seg1.cur { flex-grow:3; }
+  .segs .seg1 i { position:absolute; inset:0; width:0; background:linear-gradient(90deg,#1c8a5c,var(--accent)); transition:width .2s; }
+  .segs .seg1.done i { width:100%; }
+  .segs .seg1 em { position:absolute; inset:0; display:grid; place-items:center; font-style:normal; font-size:17px; font-weight:800; color:#fff; text-shadow:0 1px 3px #000; white-space:nowrap; }
+  .chalcard { display:flex; align-items:center; gap:12px; padding:9px 14px; border-radius:14px; background:#1a1f2b; border:1px solid var(--line); text-align:left; width:100%; }
+  .chalcard .ic { font-size:28px; }
+  .chalcard b { display:block; font-size:16px; color:var(--fg); }
+  .chalcard span.d { display:block; font-size:12px; color:var(--dim); line-height:1.3; }
+  .chalcard .tag { margin-left:auto; font-size:11px; letter-spacing:1.5px; font-weight:800; padding:4px 8px; border-radius:8px; background:#232836; color:var(--dim); white-space:nowrap; }
+  .chalcard.soon { background:#2a1820; border-color:#6b3340; } .chalcard.soon span.d { color:#ffb3bd; } .chalcard.soon .tag { background:#3a2029; color:#ffd2d8; }
+  .chalcard.on { background:#3a1620; border-color:var(--warn); } .chalcard.on span.d { color:#ffb3bd; } .chalcard.on .tag { background:var(--warn); color:#fff; }
+  .docks { display:flex; gap:8px; width:100%; }
+  .docks .pu { flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:14px; background:var(--card); border:1px solid var(--line);
+    font-size:13px; font-weight:700; line-height:1.15; text-align:left; }
+  .docks .pu .ic { font-size:24px; }
+  .docks .pu.empty { border-style:dashed; color:#3b4560; justify-content:center; font-weight:500; }
+  /* pause screen */
+  .pz { width:100%; max-width:380px; display:flex; flex-direction:column; gap:14px; text-align:left; }
+  .pz .lbl { font-size:11px; letter-spacing:2px; font-weight:800; color:var(--dim); margin:0 0 6px 2px; }
+  .pz .stats { display:flex; gap:8px; }
+  .pz .stat { flex:1; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px 12px; }
+  .pz .stat b { display:block; font-size:24px; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums; color:var(--fg); }
+  .pz .stat span { font-size:12px; color:var(--dim); }
+  .pz .left { font-size:13px; color:var(--dim); margin:6px 2px 0; }
+  .pz .seedrow { display:flex; justify-content:space-between; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:13px; color:var(--dim); }
 
   /* tutorial tip */
   #tip { position:fixed; left:16px; right:16px; top:calc(env(safe-area-inset-top) + 72px); z-index:4; pointer-events:none; text-align:center; }
@@ -62,7 +72,8 @@
   /* screens */
   #overlay { position:fixed; inset:0; z-index:4; display:flex; flex-direction:column; align-items:center; justify-content:center;
     text-align:center; padding:calc(env(safe-area-inset-top) + 28px) 24px calc(env(safe-area-inset-bottom) + 28px); pointer-events:none; overflow-y:auto; }
-  #overlay.modal { pointer-events:auto; background:rgba(13,15,20,.92); }
+  #overlay.modal { pointer-events:auto; background:rgba(13,15,20,.97); z-index:6; }
+  #overlay.solid { background:#0d0f14; }
   #overlay.start { pointer-events:none; background:rgba(13,15,20,.82); justify-content:flex-end; }
   #overlay h1 { margin:0 0 8px; font-size:30px; letter-spacing:1px; }
   #overlay h2 { margin:0 0 6px; font-size:13px; letter-spacing:2px; color:var(--dim); font-weight:600; }
@@ -121,7 +132,7 @@
     <button id="gear" aria-label="Debug settings">⚙︎</button>
   </div>
 </div>
-<div id="stagebar" class="hidden"><div id="stagebadge"></div><div id="segs"><div class="seg1"><i></i><em></em></div><div class="seg1"><i></i><em></em></div><div class="seg1"><i></i><em></em></div></div></div>
+<div id="stagebar" class="hidden"></div>
 <div id="chal" class="hidden"></div>
 <div id="dock" class="hidden"></div>
 <div id="tip" class="hidden"><div class="main"><div class="step"></div><button id="skip">Skip tutorial ›</button><div class="txt"></div><div class="sub"></div></div></div>
