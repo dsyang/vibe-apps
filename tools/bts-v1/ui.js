@@ -31,12 +31,12 @@ function chalCardHtml() {
   const active = run.stage === 3 || run.stage === 'continue';
   if (!run.revealed) return '<div class="chalcard"><div class="ic">❓</div><div><b>Challenge ???</b><span class="d">Revealed after stage 1</span></div></div>';
   const ch = CHALLENGES[run.challenge];
-  return `<div class="chalcard ${active ? 'on' : 'soon'}"><div class="ic">${ch.icon}</div><div><b>${ch.name}</b><span class="d">${ch.desc.split('.')[0]}</span></div><div class="tag">${active ? 'ACTIVE' : 'STAGE 3'}</div></div>`;
+  return `<div class="chalcard ${active ? 'on' : 'soon'}" data-detail="${ch.id}"><div class="ic">${ch.icon}</div><div><b>${ch.name}</b><span class="d">${ch.desc.split('.')[0]}</span></div><div class="tag">${active ? 'ACTIVE' : 'STAGE 3'}</div></div>`;
 }
 function dockHtml() {
   return '<div class="docks">' + [0, 1, 2].map(i => {
     const id = run.powerups[i];
-    return id ? `<div class="pu"><span class="ic">${POWERUPS[id].icon}</span><span>${POWERUPS[id].name}</span></div>` : '<div class="pu empty">—</div>';
+    return id ? `<div class="pu" data-detail="${id}"><span class="ic">${POWERUPS[id].icon}</span><span>${POWERUPS[id].name}</span></div>` : '<div class="pu empty">—</div>';
   }).join('') + '</div>';
 }
 function updateHud() {
@@ -138,6 +138,40 @@ function showPause() {
   $('res').onclick = resumeGame;
   $('quit').onclick = quitRun;
 }
+
+// ---------- detail card (tap a power-up or the challenge) ----------
+function openDetail(id) {
+  const c = ALL_CONTENT[id], isCh = !!CHALLENGES[id];
+  const kv = Object.entries(c.tun).map(([k, t]) => `<div class="kv"><span>${t.label}</span><b>${t.fmt(T(id, k))}</b></div>`).join('');
+  const chip = i => `<span class="${run.powerups.includes(i) ? 'own' : ''}">${POWERUPS[i].icon} ${POWERUPS[i].name}${run.powerups.includes(i) ? ' ✓' : ''}</span>`;
+  let body, status = '';
+  if (isCh) {
+    const active = run.stage === 3 || run.stage === 'continue';
+    status = `<div class="st ${active ? 'on' : ''}">${active ? 'ACTIVE NOW' : 'ACTIVE IN STAGE 3'}</div>`;
+    body = `<div class="lbl">ANSWERED BY</div><div class="chips">${COUNTERS[id].map(chip).join('')}</div>`;
+  } else {
+    const vs = Object.keys(COUNTERS).filter(ch => COUNTERS[ch].includes(id));
+    status = '<div class="st">ACTIVE</div>';
+    body = vs.length
+      ? `<div class="lbl">ANSWERS</div><div class="chips">${vs.map(ch => `<span class="${run.challenge === ch && run.revealed ? 'own' : ''}">${CHALLENGES[ch].icon} ${CHALLENGES[ch].name}${run.challenge === ch && run.revealed ? ' ← this run' : ''}</span>`).join('')}</div>`
+      : '<div class="lbl">ANSWERS</div><div class="chips"><span>⏩ Speed Ramp (every run)</span></div>';
+  }
+  const d = $('detail');
+  d.innerHTML = `<div class="dcard ${isCh ? 'chal' : ''}"><div class="big">${c.icon}</div><h3>${c.name}</h3>${status}<p class="eff">${c.desc}</p>${kv}${body}
+    <button class="secondary" id="closeDetail">Close</button></div>`;
+  d.classList.remove('hidden');
+  $('closeDetail').onclick = closeDetail;
+  d.onclick = e => { if (e.target === d) closeDetail(); };
+}
+function closeDetail() { $('detail').classList.add('hidden'); }
+// tapping the in-game card/dock pauses and opens the detail; on the pause screen it just opens it
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-detail]');
+  if (!el || !run) return;
+  if (overlay.contains(el)) { if (phase !== 'paused') return; }
+  else { if (phase !== 'play') return; pauseGame(); }
+  openDetail(el.dataset.detail);
+});
 
 // ---------- top-bar buttons ----------
 $('pausebtn').addEventListener('click', pauseGame);

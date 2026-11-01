@@ -201,6 +201,8 @@ Deep Focus and Adrenaline help in every run, which makes them safe **blind picks
 - **Power-up dock:** at the bottom, under your thumb. Three slots show the icon and name of each power-up held, and empty slots are dashed.
 - All HUD elements sit 22 px in from the screen edges. The board fits the space between the challenge card and the dock.
 
+- **Tap for details:** tapping the challenge card or a power-up slot, in the game or on the pause screen, opens a detail card: icon, name, full effect, current tunable values, and what it answers (or, for a challenge, which power-ups answer it, with the ones you own ticked). Tapping in the game pauses first. The card and dock never start a steering gesture.
+
 ### Staging-zone cards
 - Zone 1 opens with the **challenge reveal card**: name, one-line effect and "active in stage 3". Tap to continue.
 - Each pick shows **2 power-up cards**: icon, name and one-line effect. Tap one to pick it.

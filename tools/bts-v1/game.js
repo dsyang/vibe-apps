@@ -355,7 +355,7 @@ function ringExpired() {
 }
 function pressIsOnUi() {
   const el = document.elementFromPoint(mousePosScreen.x, mousePosScreen.y);
-  return el && el.closest && el.closest('#gear, #help, #pausebtn, #skip, #sheet, #overlay button');
+  return el && el.closest && el.closest('#gear, #help, #pausebtn, #skip, #sheet, #chal, #dock, #detail, #overlay button');
 }
 const sheetIsOpen = () => document.getElementById('sheet').classList.contains('open');
 
