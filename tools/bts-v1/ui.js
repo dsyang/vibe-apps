@@ -57,7 +57,7 @@ function showStart() {
   reset(); acc = 0; hideTip(); hideBanner();
   setOverlay(`<div class="hero"><h1>BULLET SNAKE</h1>
     <p>Hold to slow time. Drag to aim. Let go before the ring closes.</p>
-    <p>3 stages · 3 power-ups · 1 challenge you see coming.</p></div>
+    <p>3 stages · 3 power-ups · 1 challenge.</p></div>
     <div class="btns">${tutDone
       ? '<button class="primary" id="goPlay">Play</button>'
       : '<button class="primary" id="goTut">Start tutorial</button><button class="secondary" id="goPlay">Skip to game</button>'}</div>`, 'start');

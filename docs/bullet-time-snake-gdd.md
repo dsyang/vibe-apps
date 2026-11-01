@@ -60,7 +60,6 @@ Finishing sets `localStorage['bsnake-tut-done'] = '1'`. The **?** button replays
 ```
 
 1. **Blind pick:** choose 1 of 2 power-ups before you know the challenge.
-   - Only offered once the tutorial is done. Before that, stage 1 starts with no power-up.
 2. **Stage 1, Normal:** eat 10 food. Constant speed.
 3. **Staging zone 1:** the **challenge is revealed** (a card), then **pick 1 of 2** power-ups.
 4. **Stage 2, Prepare:** eat 10 food.

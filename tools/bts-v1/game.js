@@ -277,7 +277,7 @@ function newRun() {
 function startRun() {
   mode = 'play'; tut = null; run = newRun(); gesture = null; phase = 'ready';
   reset(); hideTip();
-  if (tutDone && run.offers[0].length) showPick(0); else beginStage(1);
+  if (run.offers[0].length) showPick(0); else beginStage(1);   // the blind pick happens whether or not the tutorial was done
 }
 function pickPower(n, id) {
   run.powerups.push(id);
