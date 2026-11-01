@@ -94,12 +94,24 @@ const W = (x, y) => vec2(x + .5, ROWS - y - .5);
 // ---------- board ----------
 function reset() {
   if (mode === 'tut' || phase === 'menu') { COLS = 13; ROWS = 13; } else { COLS = cfg.cols; ROWS = cfg.rows; }
+  alive = true; pops = [];
+  recenter();
+  placeFoods(); updateHud();
+}
+// head back at the start cell, a 3-cell snake heading up, board cleared of food
+function recenter() {
   const cx = Math.floor(COLS / 2), cy = Math.floor(ROWS * 0.6);
   snake = [[cx, cy], [cx, cy + 1], [cx, cy + 2]];
   prev = snake.map(s => s.slice());
-  dir = 'up'; pendingDir = null; alive = true; acc = 0.999; grow = false; dying = false; snap = null;
-  turnQueue = []; lastDir = 'up'; foods = []; decoy = null; pops = [];
-  placeFoods(); updateHud();
+  dir = 'up'; pendingDir = null; acc = 0.999; grow = false; dying = false; snap = null;
+  turnQueue = []; lastDir = 'up'; foods = []; decoy = null;
+}
+// every stage starts with the head at the centre and the body regrowing to the length it had, one cell per move,
+// so a long body can't be forgotten about
+function restartStage() {
+  const full = snake.length;
+  recenter();
+  run.regrow = Math.max(0, full - snake.length);
 }
 const foodAt = p => foods.some(f => f[0] === p[0] && f[1] === p[1]) || (decoy && decoy[0] === p[0] && decoy[1] === p[1]);
 const onSnake = p => snake.some(s => s[0] === p[0] && s[1] === p[1]);
@@ -185,7 +197,8 @@ function arrive() {
 }
 // start moving one cell in `dir`
 function move() {
-  snap = { snake: snake.map(c => c.slice()), prev: prev.map(c => c.slice()), grow, lastDir, phaseLeft: run ? run.phaseLeft : 0 };
+  snap = { snake: snake.map(c => c.slice()), prev: prev.map(c => c.slice()), grow, lastDir, phaseLeft: run ? run.phaseLeft : 0, regrow: run ? run.regrow : 0 };
+  if (!grow && run && run.regrow > 0) { grow = true; run.regrow--; }   // regrowing after a stage start
   lastDir = dir;
   prev = snake.map(c => c.slice());
   const [dx, dy] = DIRS[dir];
@@ -234,7 +247,7 @@ function turnNow(d) {
   // redoing the move is only safe if the new heading isn't a reversal of the heading *before* it
   if (snap && Math.min(1, acc) < 0.5 && !isReverse(d, snap.lastDir)) {
     snake = snap.snake; prev = snap.prev; grow = snap.grow; lastDir = snap.lastDir; dying = false;
-    if (run) run.phaseLeft = snap.phaseLeft;
+    if (run) { run.phaseLeft = snap.phaseLeft; run.regrow = snap.regrow; }
     dir = d; move();
   } else {
     dir = d; acc = 0; step();
@@ -276,7 +289,7 @@ function newRun() {
     offers: [[], perm.slice(0, 2), perm.slice(2, 4)],   // index = pick number (no pick before stage 1); disjoint pairs: never a duplicate offer, same seed = same offers
     challenge: runCfg.force || drawn, revealed: false,
     score: 0, steers: 0, expired: 0, time: 0, roundClear: null,
-    phaseLeft: 0, savorUntil: 0, skitT: 0,
+    phaseLeft: 0, savorUntil: 0, skitT: 0, regrow: 0,
   };
 }
 // classic === true: no power-ups, no challenge, no stages, no speed ramp; play until you crash
@@ -292,6 +305,7 @@ function pickPower(n, id) {
 }
 function beginStage(s) {
   run.stage = s; run.stageFood = 0; run.skitT = 0;
+  if (s !== 1 && s !== 'classic') restartStage();
   if (s === 2) run.rampFood = 0;
   run.phaseLeft = has('phase') ? T('phase', 'charges') : 0;
   if (chActive('decoy')) placeDecoy(); else decoy = null;
@@ -322,7 +336,7 @@ function winRound() {
   showWin();
 }
 function continueRun() {
-  run.stage = 'continue'; run.stageFood = 0; updateHud();
+  run.stage = 'continue'; run.stageFood = 0; restartStage(); placeFoods(); updateHud();
   setReady('CONTINUE', 900);
 }
 function die() {
