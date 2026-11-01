@@ -30,7 +30,7 @@ let phase = 'menu', readyUntil = 0;
 let mode = 'play', tut = null;   // tut: {step, need, eaten, subT}
 let run = null;                  // see GDD section 10; null in the menu and the tutorial
 let tutDone = false; try { tutDone = localStorage.getItem('bsnake-tut-done') === '1'; } catch (e) {}
-const TUT_STEPS = 6, TUT_EAT = 3;
+const TUT_STEPS = 8, TUT_EAT = 3;   // steps: 0 hold, 1-2 drag, 3 two turns, 4 U-turn, 5 pick a power-up, 6 meet a challenge, 7 eat food with both on
 const CONTACT = 0.12; // fraction of a move at which a crashing head touches its body
 let deadAt = -1, gesture = null, flash = 0, pulse = 0, shake = 0, lastReal = 0, pops = [];
 const PAD = 12;
@@ -62,9 +62,13 @@ function speedNow() {
   if (run) s += runCfg.rampStep * Math.min(run.rampFood, Math.max(0, runCfg.rampCap - runCfg.stageFood));
   return s;
 }
-const slowNow = () => cfg.slow * (has('focus') ? T('focus', 'factor') : 1);
+const slowNow = () => cfg.slow * (has('focus') || (tut && tut.pu === 'focus') ? T('focus', 'factor') : 1);
 function ringTime() {
-  if (mode === 'tut') return tut.step < 5 ? Math.max(cfg.ring, [1.4, 1.1, 0.8, 1.2, 1.2][tut.step]) : cfg.ring;
+  if (mode === 'tut') {
+    if (tut.step < 5) return Math.max(cfg.ring, [1.4, 1.1, 0.8, 1.2, 1.2][tut.step]);
+    // the last step runs with the picked power-up and Short Fuse, like a real stage 3
+    return cfg.ring * (tut.pu === 'longfuse' ? T('longfuse', 'ring') : 1) * (tut.chOn ? T('shortfuse', 'ring') : 1);
+  }
   return cfg.ring * (has('longfuse') ? T('longfuse', 'ring') : 1) * (chActive('shortfuse') ? T('shortfuse', 'ring') : 1);
 }
 const savoring = () => !!run && has('savor') && timeReal < run.savorUntil;
@@ -110,7 +114,7 @@ function freeCell(ok) {
   return null;
 }
 function foodTarget() {
-  if (mode === 'tut') return tut.step < 5 ? 0 : 1;
+  if (mode === 'tut') return tut.step < 7 ? 0 : 1;
   return has('second') ? T('second', 'count') : 1;
 }
 // Food and the decoy keep a smooth on-screen position (vx, vy) that glides toward their grid cell,
@@ -619,8 +623,17 @@ function drawTutHint(ctx, Wd, Hd) {
 // ---------- tutorial ----------
 const ARROW = { up: '↑', down: '↓', left: '←', right: '→' };
 function startTutorial() {
-  mode = 'tut'; tut = { step: 0, need: null, eaten: 0, subT: 0 }; run = null; phase = 'play';
+  mode = 'tut'; tut = { step: 0, need: null, eaten: 0, subT: 0, pu: null, chOn: false }; run = null; phase = 'play';
   gesture = null; reset(); hideOverlay(); showTip(); tutRender(); tutSub('');
+}
+// step 5: take a power-up; step 6: meet a challenge; then step 7 plays with both on
+function tutPicked(id) {
+  tut.pu = id; tut.step = 6; showTutChallenge();
+}
+function tutChallengeSeen() {
+  tut.chOn = true; tut.step = 7;
+  placeFoods(); updateHud(); tutRender(); showTip(); tutSub('');
+  setReady('GO', 700);
 }
 function pickNeed() {
   const h = snake[0];
@@ -629,7 +642,7 @@ function pickNeed() {
 function tutAdvance() {
   tut.step++;
   if (tut.step >= 1 && tut.step <= 4) tut.need = null; // picked in tutUpdate once the turn lands
-  if (tut.step === 5) placeFoods();
+  if (tut.step === 5) { gesture = null; hideTip(); showTutPick(); return; }
   tutRender();
 }
 function tutUpdate() {
@@ -651,7 +664,8 @@ function tutRender() {
     `Again — drag ${n} and let go.<br>The ring is quicker now.`,
     `Two turns in one hold: drag ${n},<br>then bend ${tut.need2 ? `<b>${ARROW[tut.need2]} ${tut.need2}</b>` : ''} before letting go.`,
     `Now a U-turn: drag ${n},<br>then bend ${tut.need2 ? `<b>${ARROW[tut.need2]} ${tut.need2}</b>` : ''} to head back the way you came.`,
-    `Full-speed ring. Steer to the food.<br>Eat ${TUT_EAT} to finish.`,
+    '', '',
+    `Short Fuse is on: the ring closes faster.<br>Steer to the food. Eat ${TUT_EAT} to finish.`,
   ][tut.step];
   tip.querySelector('.step').textContent = `TUTORIAL ${tut.step + 1} / ${TUT_STEPS}`;
   tip.querySelector('.txt').innerHTML = txt;
@@ -663,6 +677,6 @@ function tutSub(text, bad) {
 }
 function finishTutorial() {
   tutDone = true; try { localStorage.setItem('bsnake-tut-done', '1'); } catch (e) {}
-  gesture = null; mode = 'play'; tut = null; phase = 'menu'; hideTip();
+  gesture = null; mode = 'play'; tut = null; phase = 'menu'; hideTip(); updateHud();
   showTutDone();
 }
