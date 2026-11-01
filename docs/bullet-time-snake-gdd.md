@@ -203,6 +203,9 @@ Deep Focus and Adrenaline help in every run, which makes them safe picks whichev
 ### Start screen
 - First launch: **Start tutorial** or **Skip to game** (as in the prototype).
 - After the tutorial: **Play** goes straight into stage 1, with no pick screen first.
+- **Hidden: play a seed.** Long-press **Play** (or **Classic mode**) for about 0.6 s to open a "Play a seed" prompt. Type a 5-character seed and **Start** to begin a run from it; **Cancel** goes back. There's no hint on the start screen.
+  - The seed is used for that run only. It doesn't touch the debug panel's Seed field, and the next normal tap on Play gets a fresh random seed.
+  - Same seed = same challenge and same power-up offers (see Seed).
 - **Classic mode** button (always shown, under Play): no stages, power-ups, challenge or Speed Ramp. Constant base speed, play until you crash.
   - HUD: score, a `food n` count, and the top-right buttons only. No stage bar, challenge card or power-up dock.
   - Crash screen: score, food, time, steers, seed, with **Play again** and **Menu**. Pause shows the same stats.
