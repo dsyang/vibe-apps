@@ -195,9 +195,13 @@ Deep Focus and Adrenaline help in every run, which makes them safe **blind picks
 - After the tutorial: **Play** goes straight to the blind pick.
 
 ### HUD
-- **Left:** score, plus a status line with stage pips `● ○ ○` and `food n/10`.
-- **Challenge tag:** shows the challenge once it's revealed: "*Short Fuse* · stage 3" during stage 2, then "*Short Fuse* · active".
-- **Right:** **⏸** pause, **?** tutorial, **⚙︎** debug settings.
+- **Top row:** score (with steers and expired rings under it) on the left. **⏸** pause, **?** tutorial and **⚙︎** debug settings on the right, as 44 px buttons.
+- **Stage bar:** a green `STAGE n/3` badge and a bar of three segments. Finished stages are full, and the current segment grows with food and shows `food n/10`.
+- **Challenge card:** under the stage bar. "Challenge ???" until it's revealed, then its icon, name, one-line effect and a `STAGE 3` tag, which becomes `ACTIVE` in stage 3.
+- **Power-up dock:** at the bottom, under your thumb. Three slots show the icon and name of each power-up held, and empty slots are dashed.
+- All HUD elements sit 22 px in from the screen edges. The board fits the space between the challenge card and the dock.
+
+- **Tap for details:** tapping the challenge card or a power-up slot, in the game or on the pause screen, opens a detail card: icon, name, full effect, current tunable values, and, for a challenge, when it's active. The cards never say what answers what; players work that out. Tapping in the game pauses first. The card and dock never start a steering gesture.
 
 ### Staging-zone cards
 - Zone 1 opens with the **challenge reveal card**: name, one-line effect and "active in stage 3". Tap to continue.
@@ -206,6 +210,7 @@ Deep Focus and Adrenaline help in every run, which makes them safe **blind picks
 
 ### Pause screen
 - Opened by **⏸**. The game also **auto-pauses on `visibilitychange`** (switching apps or locking the phone).
+- Styled like the in-game HUD: the same stage bar, challenge card and power-up slots, on a solid background.
 - **Current stats:**
   - stage n/3 and food n/10
   - score (with steers and expired rings)
@@ -289,7 +294,7 @@ A multi-file tool instead of the prototype's single inline page:
 
 ```
 tools/bts-v1.html              page shell: HUD + overlay markup, styles, <script src> tags
-tools/bts-v1/littlejs.release.js   vendored LittleJS (littlejsengine@1.28.0)
+tools/bts-v1/littlejs.min.js       vendored LittleJS (littlejsengine@1.28.0)
 tools/bts-v1/rng.js            seed generation, hashing, mulberry32, run/board streams
 tools/bts-v1/content.js        challenge + power-up definitions and tunables (data)
 tools/bts-v1/game.js           engine loop, snake, bullet time (ported from the prototype), run/stage logic
@@ -301,7 +306,7 @@ tools/bts-v1/ui.js             HUD, cards, pause/crash/win screens, debug panel
   - every sub-asset needs its own `<script src="bts-v1/…">` tag;
   - files share globals, with no ES-module `import`s between them (`build.py` wouldn't copy imported files).
 - **LittleJS is vendored:**
-  - It's the `littlejsengine@1.28.0` `dist/littlejs.release.js`, the same build the prototype loads from jsDelivr.
+  - It's the `littlejsengine@1.28.0` `dist/littlejs.min.js` (the minified build, about 500 KB; the prototype loads the larger `release` build from jsDelivr).
   - It's committed under `tools/bts-v1/`, so the game works offline and can't change under a CDN update.
   - To upgrade, replace the file and update the version noted here.
 
@@ -358,3 +363,13 @@ Power-ups and challenges are data with hooks, not scattered `if`s. The prototype
 - **Debug panel access:** always-visible ⚙︎, or hidden behind `?debug=1`.
 - **Best score:** whether to persist it in `localStorage` and show it on the start screen.
 - **Feast and Decoy coverage:** each has only one dedicated counter. Consider a second counter if they test too hard.
+
+### Decisions made while building BTS v1
+- **Decoy no-spawn area:** built as a centred **5 × 5** square (`area` tunable, odd sizes only).
+- **Phase Shift indicator:** a translucent blue glow around the head while a charge is unused.
+- **Debug panel access:** the ⚙︎ button is always visible.
+- **Offers:** the run stream shuffles the 8 power-ups once, and the three picks take disjoint pairs. That keeps same seed = same offers whatever you pick.
+- **Skittish Prey** timer runs on game time, so bullet time slows it too.
+- **Lure** measures range as Manhattan distance across wrapped edges.
+- **Decoy** is not respawned when you eat it; it comes back with the next real food.
+
