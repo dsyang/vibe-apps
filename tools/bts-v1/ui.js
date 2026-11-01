@@ -47,9 +47,10 @@ const dockHtml = () => docksHtml(run.powerups, true);
 function updateHud() {
   hudInsets = null;
   const tutHud = !run && mode === 'tut' && tut;   // the tutorial shows the challenge card and dock once you've met them
-  $('stagebar').classList.toggle('hidden', !run);
-  $('chal').classList.toggle('hidden', !run && !(tutHud && tut.chOn));
-  $('dock').classList.toggle('hidden', !run && !(tutHud && tut.pu));
+  const cl = !!(run && run.classic);   // classic mode has no stage bar, challenge card or dock
+  $('stagebar').classList.toggle('hidden', !run || cl);
+  $('chal').classList.toggle('hidden', cl || (!run && !(tutHud && tut.chOn)));
+  $('dock').classList.toggle('hidden', cl || (!run && !(tutHud && tut.pu)));
   $('chal').classList.toggle('tut', !run);
   if (!run) {
     $('score').textContent = '0'; $('stats').textContent = mode === 'tut' ? 'tutorial' : '';
@@ -58,7 +59,8 @@ function updateHud() {
     return;
   }
   $('score').textContent = run.score;
-  $('stats').textContent = `${run.steers} steers · ${run.expired} expired`;
+  $('stats').textContent = `${cl ? `food ${run.totalFood} · ` : ''}${run.steers} steers · ${run.expired} expired`;
+  if (cl) return;
   $('stagebar').innerHTML = stageBarHtml();
   $('chal').innerHTML = chalCardHtml();
   $('dock').innerHTML = dockHtml();
@@ -73,9 +75,12 @@ function showStart() {
     <p>3 stages · 2 power-ups · 1 challenge.</p></div>
     <div class="btns">${tutDone
       ? '<button class="primary" id="goPlay">Play</button>'
-      : '<button class="primary" id="goTut">Start tutorial</button><button class="secondary" id="goPlay">Skip to game</button>'}</div>`, 'start');
+      : '<button class="primary" id="goTut">Start tutorial</button><button class="secondary" id="goPlay">Skip to game</button>'}
+      <button class="secondary" id="goClassic">Classic mode</button></div>
+    <p class="classicnote">Classic: no power-ups, no challenges. Play until you crash.</p>`, 'start');
   if ($('goTut')) $('goTut').onclick = startTutorial;
-  $('goPlay').onclick = startRun;
+  $('goPlay').onclick = () => startRun();
+  $('goClassic').onclick = () => startRun(true);
 }
 function showTutDone() {
   setOverlay(`<h1>YOU GOT IT</h1><p>Tap the ? at the top any time to do the tutorial again.</p>
@@ -141,6 +146,14 @@ function showCrash() {
   setOverlay(`<h1>CRASHED</h1>${endStats()}<p class="big">Tap to retry</p>`);
   overlay.onclick = () => { if (phase === 'dead' && timeReal - deadAt > 0.5) { overlay.onclick = null; startRun(); } };
 }
+function showClassicEnd() {
+  setOverlay(`<h1>CRASHED</h1><h2>CLASSIC</h2>
+    <div class="box">Score <b>${run.score}</b> · food <b>${run.totalFood}</b> · time <b>${fmtTime(run.time)}</b><br>
+    ${run.steers} steers, ${run.expired} expired<br>Seed <span class="seed">${run.seed}</span></div>${modsBlock()}
+    <div class="btns"><button class="primary" id="again">Play again</button><button class="secondary" id="menu">Menu</button></div>`);
+  $('again').onclick = () => { hideOverlay(); startRun(true); };
+  $('menu').onclick = () => { hideOverlay(); showStart(); };
+}
 function showWin() {
   const ch = CHALLENGES[run.challenge];
   setOverlay(`<h1 style="color:var(--accent)">ROUND CLEAR</h1>
@@ -159,7 +172,19 @@ function showContinueEnd() {
     <div class="btns"><button class="primary" id="again">New run</button></div>`);
   $('again').onclick = () => { hideOverlay(); startRun(); };
 }
+function showClassicPause() {
+  setOverlay(`<div class="pz"><h1 style="text-align:center;margin:0 0 4px">PAUSED</h1><h2 style="text-align:center;margin:0">CLASSIC</h2>
+    <div class="stats">
+      <div class="stat"><b>${run.score}</b><span>score · food ${run.totalFood} · ${run.steers} steers · ${run.expired} expired</span></div>
+      <div class="stat" style="flex:.7"><b>${fmtTime(run.time)}</b><span>time</span></div>
+    </div>
+    <div class="seedrow"><span>SEED</span><span class="seed">${run.seed}</span></div>
+    <div class="btns"><button class="primary" id="res">Resume</button><button class="secondary" id="quit">Quit run</button></div></div>`, 'modal solid');
+  $('res').onclick = resumeGame;
+  $('quit').onclick = quitRun;
+}
 function showPause() {
+  if (run.classic) { showClassicPause(); return; }
   const st = run.stage;
   const left = [];
   if (st !== 'continue') for (let s = st; s <= 3; s++) left.push(s === st ? `stage ${s}: ${goalOf(s) - run.stageFood} food left` : `stage ${s}: ${goalOf(s)}`);

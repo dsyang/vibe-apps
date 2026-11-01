@@ -202,6 +202,10 @@ Deep Focus and Adrenaline help in every run, which makes them safe picks whichev
 ### Start screen
 - First launch: **Start tutorial** or **Skip to game** (as in the prototype).
 - After the tutorial: **Play** goes straight into stage 1, with no pick screen first.
+- **Classic mode** button (always shown, under Play): no stages, power-ups, challenge or Speed Ramp. Constant base speed, play until you crash.
+  - HUD: score, a `food n` count, and the top-right buttons only. No stage bar, challenge card or power-up dock.
+  - Crash screen: score, food, time, steers, seed, with **Play again** and **Menu**. Pause shows the same stats.
+  - It still uses a seed for food spawns, and debug settings (board, speed, ring…) still apply. Forced challenge, offers and granted power-ups are ignored.
 
 ### HUD
 - **Top row:** score (with steers and expired rings under it) on the left. **⏸** pause, **?** tutorial and **⚙︎** debug settings on the right, as 44 px buttons.

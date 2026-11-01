@@ -53,7 +53,7 @@ const rb = () => run ? run.rngBoard() : Math.random();   // board stream
 
 const stageGoal = () => {
   if (!run) return 0;
-  if (run.stage === 'continue') return Infinity;
+  if (run.stage === 'continue' || run.classic) return Infinity;
   return run.stage === 3 && run.challenge === 'feast' ? T('feast', 'goal') : runCfg.stageFood;
 };
 function speedNow() {
@@ -174,13 +174,13 @@ function arrive() {
     placeFoods(); tutSub(`${tut.eaten} / ${TUT_EAT}`);
     return true;
   }
-  run.score += 10; run.totalFood++; run.stageFood++; if (run.stage !== 1) run.rampFood++;
+  run.score += 10; run.totalFood++; run.stageFood++; if (run.stage !== 1 && !run.classic) run.rampFood++;
   popText(h, '+10', '#ffcc4d');
   grow = true;
   if (has('savor')) run.savorUntil = timeReal + T('savor', 'dur');
   if (chActive('decoy')) placeDecoy();
   placeFoods(); updateHud();
-  if (run.stage !== 'continue' && run.stageFood >= stageGoal()) { endStage(); return false; }
+  if (!run.classic && run.stage !== 'continue' && run.stageFood >= stageGoal()) { endStage(); return false; }
   return true;
 }
 // start moving one cell in `dir`
@@ -279,10 +279,12 @@ function newRun() {
     phaseLeft: 0, savorUntil: 0, skitT: 0,
   };
 }
-function startRun() {
-  mode = 'play'; tut = null; run = newRun(); gesture = null; phase = 'ready';
+// classic === true: no power-ups, no challenge, no stages, no speed ramp; play until you crash
+function startRun(classic) {
+  mode = 'play'; tut = null; run = newRun();
+  if (classic === true) Object.assign(run, { classic: true, stage: 'classic', challenge: null, powerups: [], granted: [], offers: [[], [], []] }); gesture = null; phase = 'ready';
   reset(); hideTip();
-  beginStage(1);   // no blind pick: every run starts straight in stage 1
+  beginStage(run.classic ? 'classic' : 1);   // no blind pick: every run starts straight in stage 1
 }
 function pickPower(n, id) {
   run.powerups.push(id);
@@ -294,7 +296,7 @@ function beginStage(s) {
   run.phaseLeft = has('phase') ? T('phase', 'charges') : 0;
   if (chActive('decoy')) placeDecoy(); else decoy = null;
   placeFoods(); updateHud();
-  setReady(`STAGE ${s}`, 1000);
+  setReady(s === 'classic' ? 'GO' : `STAGE ${s}`, 1000);
 }
 function setReady(label, ms) {
   phase = 'ready'; readyUntil = timeReal + ms / 1000; gesture = null;
@@ -325,7 +327,8 @@ function continueRun() {
 }
 function die() {
   alive = false; deadAt = timeReal; gesture = null; shake = 1; phase = 'dead';
-  if (run && run.stage === 'continue') showContinueEnd(); else showCrash();
+  if (run && run.classic) showClassicEnd();
+  else if (run && run.stage === 'continue') showContinueEnd(); else showCrash();
 }
 function pauseGame() {
   if (phase !== 'play' || !run) return;
