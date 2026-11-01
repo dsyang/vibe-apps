@@ -358,3 +358,13 @@ Power-ups and challenges are data with hooks, not scattered `if`s. The prototype
 - **Debug panel access:** always-visible ⚙︎, or hidden behind `?debug=1`.
 - **Best score:** whether to persist it in `localStorage` and show it on the start screen.
 - **Feast and Decoy coverage:** each has only one dedicated counter. Consider a second counter if they test too hard.
+
+### Decisions made while building BTS v1
+- **Decoy no-spawn area:** built as a centred **5 × 5** square (`area` tunable, odd sizes only).
+- **Phase Shift indicator:** a translucent blue glow around the head while a charge is unused.
+- **Debug panel access:** the ⚙︎ button is always visible.
+- **Offers:** the run stream shuffles the 8 power-ups once, and the three picks take disjoint pairs. That keeps same seed = same offers whatever you pick.
+- **Skittish Prey** timer runs on game time, so bullet time slows it too.
+- **Lure** measures range as Manhattan distance across wrapped edges.
+- **Decoy** is not respawned when you eat it; it comes back with the next real food.
+
