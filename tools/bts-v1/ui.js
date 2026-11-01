@@ -220,15 +220,20 @@ const ENGINE_UI = [
   ['slow', 'Slow-down (time scale)', 0.01, 0.5, 0.01, v => '×' + (+v).toFixed(2)], ['dead', 'Drag deadzone', 8, 80, 1, v => v + ' px'],
   ['ramp', 'Time ramp (in/out)', 0, 300, 10, v => v + ' ms'],
 ];
-function sliderRow(parent, label, get, set, min, max, step, fmt) {
+// each settings row registers a test for "differs from default"; refreshMods() highlights those rows
+let modRows = [];
+function trackMod(row, isMod) { modRows.push([row, isMod]); row.classList.toggle('mod', !!isMod()); }
+function refreshMods() { for (const [row, isMod] of modRows) row.classList.toggle('mod', !!isMod()); }
+function sliderRow(parent, label, get, set, min, max, step, fmt, isMod) {
   const row = document.createElement('div'); row.className = 'row';
   row.innerHTML = `<label>${label} <b></b></label><input type="range" min="${min}" max="${max}" step="${step}">`;
   const out = row.querySelector('b'), inp = row.querySelector('input');
   inp.value = get(); out.textContent = fmt(get());
+  if (isMod) trackMod(row, isMod);
   inp.addEventListener('input', () => { set(+inp.value); out.textContent = fmt(inp.value); saveDbg(); });
   parent.appendChild(row);
 }
-function segRow(parent, label, opts, get, set, multi) {
+function segRow(parent, label, opts, get, set, multi, isMod) {
   const row = document.createElement('div'); row.className = 'row';
   row.innerHTML = `<label>${label}</label><div class="seg"></div>`;
   const seg = row.querySelector('.seg');
@@ -238,33 +243,35 @@ function segRow(parent, label, opts, get, set, multi) {
     b.onclick = () => { set(v); paint(); saveDbg(); };
   }
   paint(); parent.appendChild(row);
+  if (isMod) trackMod(row, isMod);
 }
 function buildSheet() {
+  modRows = [];
   sheet.innerHTML = '<h2>Debug <button id="closeSheet">Done</button></h2><div id="sheetBody"></div>';
   const body = $('sheetBody');
   const grp = (t, sub) => { const g = document.createElement('div'); g.className = 'grp' + (sub ? ' sub' : ''); g.textContent = t; body.appendChild(g); };
 
   grp('Engine (base values)');
-  for (const [k, label, min, max, step, fmt] of ENGINE_UI) sliderRow(body, label, () => cfg[k], v => { cfg[k] = v; }, min, max, step, fmt);
-  segRow(body, 'When the ring runs out', [['cancel', 'Cancel steer'], ['commit', 'Commit steer']], () => cfg.expire, v => { cfg.expire = v; });
+  for (const [k, label, min, max, step, fmt] of ENGINE_UI) sliderRow(body, label, () => cfg[k], v => { cfg[k] = v; }, min, max, step, fmt, () => cfg[k] !== ENGINE_DEF[k]);
+  segRow(body, 'When the ring runs out', [['cancel', 'Cancel steer'], ['commit', 'Commit steer']], () => cfg.expire, v => { cfg.expire = v; }, false, () => cfg.expire !== ENGINE_DEF.expire);
 
   grp('Run');
   const seedRow = document.createElement('div'); seedRow.className = 'row';
   seedRow.innerHTML = '<label>Seed for next run (blank = random)</label><input class="inp" id="seedIn" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="e.g. K7QX4">';
-  body.appendChild(seedRow);
+  body.appendChild(seedRow); trackMod(seedRow, () => !!runCfg.seed);
   const seedIn = seedRow.querySelector('input'); seedIn.value = runCfg.seed;
   seedIn.addEventListener('input', () => { runCfg.seed = cleanSeed(seedIn.value); saveDbg(); });
-  sliderRow(body, 'Stage food goal', () => runCfg.stageFood, v => { runCfg.stageFood = v; }, 3, 20, 1, v => v);
-  sliderRow(body, 'Speed Ramp step (cells/s per food)', () => runCfg.rampStep, v => { runCfg.rampStep = v; }, 0, 0.5, 0.01, v => '+' + (+v).toFixed(2));
-  sliderRow(body, 'Speed Ramp cap (total food)', () => runCfg.rampCap, v => { runCfg.rampCap = v; }, 15, 100, 1, v => v);
-  segRow(body, 'Force challenge', [['', 'Random']].concat(CHALLENGE_IDS.map(i => [i, CHALLENGES[i].name])), () => runCfg.force, v => { runCfg.force = v; });
+  sliderRow(body, 'Stage food goal', () => runCfg.stageFood, v => { runCfg.stageFood = v; }, 3, 20, 1, v => v, () => runCfg.stageFood !== RUN_DEF.stageFood);
+  sliderRow(body, 'Speed Ramp step (cells/s per food)', () => runCfg.rampStep, v => { runCfg.rampStep = v; }, 0, 0.5, 0.01, v => '+' + (+v).toFixed(2), () => runCfg.rampStep !== RUN_DEF.rampStep);
+  sliderRow(body, 'Speed Ramp cap (total food)', () => runCfg.rampCap, v => { runCfg.rampCap = v; }, 15, 100, 1, v => v, () => runCfg.rampCap !== RUN_DEF.rampCap);
+  segRow(body, 'Force challenge', [['', 'Random']].concat(CHALLENGE_IDS.map(i => [i, CHALLENGES[i].name])), () => runCfg.force, v => { runCfg.force = v; }, false, () => !!runCfg.force);
   const offRow = document.createElement('div'); offRow.className = 'row';
   offRow.innerHTML = `<label>Force offers (power-up ids in order, 2 per pick)</label><input class="inp" id="offIn" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${POWERUP_IDS.join(', ')}">`;
-  body.appendChild(offRow);
+  body.appendChild(offRow); trackMod(offRow, () => !!runCfg.offers);
   const offIn = offRow.querySelector('input'); offIn.value = runCfg.offers;
   offIn.addEventListener('input', () => { runCfg.offers = offIn.value; saveDbg(); });
   segRow(body, 'Grant power-ups at start', POWERUP_IDS.map(i => [i, POWERUPS[i].icon + ' ' + POWERUPS[i].name]),
-    () => runCfg.grant, v => { const g = runCfg.grant, i = g.indexOf(v); if (i >= 0) g.splice(i, 1); else g.push(v); }, true);
+    () => runCfg.grant, v => { const g = runCfg.grant, i = g.indexOf(v); if (i >= 0) g.splice(i, 1); else g.push(v); }, true, () => runCfg.grant.length > 0);
 
   grp('Content tuning');
   for (const [id, c] of Object.entries(ALL_CONTENT)) {
@@ -273,7 +280,7 @@ function buildSheet() {
     grp(`${c.icon} ${c.name}`, true);
     for (const k of keys) {
       const t = c.tun[k];
-      sliderRow(body, t.label, () => T(id, k), v => { if (v === t.def) delete contentCfg[id + '.' + k]; else contentCfg[id + '.' + k] = v; }, t.min, t.max, t.step, t.fmt);
+      sliderRow(body, t.label, () => T(id, k), v => { if (v === t.def) delete contentCfg[id + '.' + k]; else contentCfg[id + '.' + k] = v; }, t.min, t.max, t.step, t.fmt, () => (id + '.' + k) in contentCfg && +contentCfg[id + '.' + k] !== t.def);
     }
   }
   const rs = document.createElement('button'); rs.className = 'reset'; rs.textContent = 'Reset all to defaults'; body.appendChild(rs);
