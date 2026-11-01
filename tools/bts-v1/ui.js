@@ -37,9 +37,10 @@ function chalCardHtml() {
   return chalHtml(ch, active, 'STAGE 3', `data-detail="${ch.id}"`);
 }
 function docksHtml(ids, detail) {
-  return '<div class="docks">' + [0, 1, 2].map(i => {
+  return '<div class="docks">' + [0, 1].concat(ids.slice(2).map((_, i) => i + 2)).map(i => {
     const id = ids[i];
-    return id ? `<div class="pu" ${detail ? `data-detail="${id}"` : ''}><span class="ic">${POWERUPS[id].icon}</span><span>${POWERUPS[id].name}</span></div>` : '<div class="pu empty">—</div>';
+    const spent = detail && id === 'phase' && run && run.phaseLeft <= 0 && typeof run.stage === 'number' && run.stage >= 1;   // Phase Shift: charge used this stage
+    return id ? `<div class="pu${spent ? ' spent' : ''}" ${detail ? `data-detail="${id}"` : ''}><span class="ic">${POWERUPS[id].icon}</span><span>${POWERUPS[id].name}</span></div>` : '<div class="pu empty">—</div>';
   }).join('') + '</div>';
 }
 const dockHtml = () => docksHtml(run.powerups, true);
@@ -69,7 +70,7 @@ function showStart() {
   reset(); acc = 0; hideTip(); hideBanner();
   setOverlay(`<div class="hero"><h1>BULLET SNAKE</h1>
     <p>Hold to slow time. Drag to aim. Let go before the ring closes.</p>
-    <p>3 stages · 3 power-ups · 1 challenge.</p></div>
+    <p>3 stages · 2 power-ups · 1 challenge.</p></div>
     <div class="btns">${tutDone
       ? '<button class="primary" id="goPlay">Play</button>'
       : '<button class="primary" id="goTut">Start tutorial</button><button class="secondary" id="goPlay">Skip to game</button>'}</div>`, 'start');
@@ -108,8 +109,8 @@ function showTutChallenge() {
 }
 function renderPick(n, offer) {
   hideBanner();
-  setOverlay(`<h2>${n === 0 ? 'BLIND PICK' : 'POWER-UP'} · ${n + 1} / 3</h2><h1>Pick 1 of ${offer.length}</h1>
-    <p>${n === 0 ? 'Power-ups stay with you for the whole run.' : run.revealed ? `Challenge: <b>${CHALLENGES[run.challenge].name}</b> in stage 3.` : ''}</p>
+  setOverlay(`<h2>POWER-UP · ${n} / 2</h2><h1>Pick 1 of ${offer.length}</h1>
+    <p>${run.revealed ? `Challenge: <b>${CHALLENGES[run.challenge].name}</b> in stage 3.` : ''}</p>
     <div class="cards">${offer.map(id => { const p = POWERUPS[id];
       return `<button class="card" data-id="${id}"><div class="ic">${p.icon}</div><div><b>${p.name}</b><span>${p.desc}</span></div></button>`; }).join('')}</div>
     ${haveRow()}`);

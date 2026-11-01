@@ -6,7 +6,7 @@ Source of truth for **BTS v1**, to be built as `tools/bts-v1.html`. The current 
 
 ## 1. Overview
 
-**Pitch:** Snake where holding your finger slows time and dragging steers. Each run is a short roguelike: three stages, three power-up picks, and one challenge you see coming.
+**Pitch:** Snake where holding your finger slows time and dragging steers. Each run is a short roguelike: three stages, two power-up picks, and one challenge you see coming.
 
 **Platform:** Phone first (portrait, one thumb). Desktop with a mouse works too. Built with LittleJS.
 
@@ -60,33 +60,32 @@ Finishing sets `localStorage['bsnake-tut-done'] = '1'`. The **?** button replays
 
 ### Flow
 ```
-[Blind pick 1 of 2] → Stage 1 → [Reveal challenge + pick 1 of 2] → Stage 2 → [Pick 1 of 2] → Stage 3 → WIN → (Continue)
+Stage 1 → [Reveal challenge + pick 1 of 2] → Stage 2 → [Pick 1 of 2] → Stage 3 → WIN → (Continue)
 ```
 
-1. **Blind pick:** choose 1 of 2 power-ups before you know the challenge.
-2. **Stage 1, Normal:** eat 10 food. Constant speed.
-3. **Staging zone 1:** the **challenge is revealed** (a card), then **pick 1 of 2** power-ups.
-4. **Stage 2, Prepare:** eat 10 food.
+1. **Stage 1, Normal:** eat 10 food. Constant speed, no power-ups. Pressing Play drops you straight into the game loop here, every run.
+2. **Staging zone 1:** the **challenge is revealed** (a card), then **pick 1 of 2** power-ups.
+3. **Stage 2, Prepare:** eat 10 food.
    - Power-ups are on and **Speed Ramp starts**.
    - The challenge is **not** active yet; the HUD shows it as upcoming.
-5. **Staging zone 2:** **pick 1 of 2** power-ups.
-6. **Stage 3, Challenge:** eat 10 food (15 with *Feast*). Power-ups, Speed Ramp and the challenge are all on.
-7. **Win screen.**
-8. **Continue mode** (optional): play on endlessly with the same build.
+4. **Staging zone 2:** **pick 1 of 2** power-ups.
+5. **Stage 3, Challenge:** eat 10 food (15 with *Feast*). Power-ups, Speed Ramp and the challenge are all on.
+6. **Win screen.**
+7. **Continue mode** (optional): play on endlessly with the same build.
 
 ### Stage table
 | Stage | Food goal | Speed | Power-ups | Challenge |
 |---|---|---|---|---|
-| 1 Normal | 10 | base | blind pick only | hidden until stage 1 ends |
+| 1 Normal | 10 | base | none | hidden until stage 1 ends |
 | 2 Prepare | 10 | Speed Ramp on | 2 | revealed, **inactive** |
-| 3 Challenge | 10 (15 Feast) | Speed Ramp on | 3 | **active** |
-| Continue | endless | Speed Ramp to cap | 3 | active |
+| 3 Challenge | 10 (15 Feast) | Speed Ramp on | 2 | **active** |
+| Continue | endless | Speed Ramp to cap | 2 | active |
 
 ### Rules
 - **Staging zones** pause time and show tap-to-select cards, not the steering gesture. In zone 1 the challenge card shows first, then the two power-up cards.
-- **One round per run.** Dying before the win ends the run. The next run starts from a new blind pick: roguelike, no checkpoints.
+- **One round per run.** Dying before the win ends the run. The next run starts again at stage 1: roguelike, no checkpoints.
 - **The snake keeps growing across stages.** It's 33 cells long by the end of stage 3, so stage 3 is naturally the hardest.
-- **No duplicate offers.** A pick never offers a power-up you already own, so every winning run has 3 different power-ups.
+- **No duplicate offers.** A pick never offers a power-up you already own, so every winning run has 2 different power-ups.
 - **Continue mode:** after the win, keep your power-ups and score. The challenge stays on, and Speed Ramp keeps climbing to its cap. The run ends on death.
 
 ### Seed
@@ -161,7 +160,7 @@ One per run. It's revealed at staging zone 1 and **active in stage 3 and continu
 
 ## 7. Power-ups (8)
 
-Picked 1 of 2, three times per run. They're active from the stage after you pick them.
+Picked 1 of 2, twice per run (after stage 1 and after stage 2). They're active from the stage after you pick them.
 
 | Power-up | Effect | Hook (prototype code) | Counters |
 |---|---|---|---|
@@ -174,7 +173,7 @@ Picked 1 of 2, three times per run. They're active from the stage after you pick
 | **Lure** | Food within 4 cells is pulled toward your head, one cell every 4 snake steps | per-move food step | Skittish Prey |
 | **Second Helping** | Two real food on the board at once | `food` becomes an array | Skittish Prey, Decoy |
 
-Deep Focus and Adrenaline help in every run, which makes them safe **blind picks**.
+Deep Focus and Adrenaline help in every run, which makes them safe picks whichever challenge comes up.
 
 ### Counter matrix
 |  | Short Fuse | Lockdown | Skittish Prey | Feast | Decoy |
@@ -202,13 +201,13 @@ Deep Focus and Adrenaline help in every run, which makes them safe **blind picks
 
 ### Start screen
 - First launch: **Start tutorial** or **Skip to game** (as in the prototype).
-- After the tutorial: **Play** goes straight to the blind pick.
+- After the tutorial: **Play** goes straight into stage 1, with no pick screen first.
 
 ### HUD
 - **Top row:** score (with steers and expired rings under it) on the left. **⏸** pause, **?** tutorial and **⚙︎** debug settings on the right, as 44 px buttons.
 - **Stage bar:** a green `STAGE n/3` badge and a bar of three segments. Finished stages are full, and the current segment grows with food and shows `food n/10`.
 - **Challenge card:** under the stage bar. "Challenge ???" until it's revealed, then its icon, name, one-line effect and a `STAGE 3` tag, which becomes `ACTIVE` in stage 3.
-- **Power-up dock:** at the bottom, under your thumb. Three slots show the icon and name of each power-up held, and empty slots are dashed.
+- **Power-up dock:** at the bottom, under your thumb. Two slots show the icon and name of each power-up held, and empty slots are dashed. A power-up with per-stage charges (**Phase Shift**) **dims as disabled** once its charge is used, and lights up again when the next stage refills it.
 - All HUD elements sit 22 px in from the screen edges. The board fits the space between the challenge card and the dock.
 
 - **Tap for details:** tapping the challenge card or a power-up slot, in the game or on the pause screen, opens a detail card: icon, name, full effect, current tunable values, and, for a challenge, when it's active. The cards never say what answers what; players work that out. Tapping in the game pauses first. The card and dock never start a steering gesture.
@@ -237,10 +236,10 @@ Deep Focus and Adrenaline help in every run, which makes them safe **blind picks
 - Stage reached, score, time.
 - The revealed challenge (or "not revealed"), the power-ups picked so far, and the **seed**.
 - The **modified-settings** block, if any.
-- Tap to retry: a **new run** with a new seed, starting from the blind pick.
+- Tap to retry: a **new run** with a new seed, starting again at stage 1.
 
 ### Win screen
-- **ROUND CLEAR:** score, time, challenge, the 3 power-ups, **seed**, and the **modified-settings** block, if any.
+- **ROUND CLEAR:** score, time, challenge, the 2 power-ups, **seed**, and the **modified-settings** block, if any.
 - Buttons: **Continue** (enter continue mode) and **New run**.
 
 ### Continue-mode end screen
@@ -378,9 +377,9 @@ Power-ups and challenges are data with hooks, not scattered `if`s. The prototype
 
 ### Decisions made while building BTS v1
 - **Decoy no-spawn area:** built as a centred **5 × 5** square (`area` tunable, odd sizes only).
-- **Phase Shift indicator:** a translucent blue glow around the head while a charge is unused.
+- **Phase Shift indicator:** a translucent blue glow around the head while a charge is unused.  The HUD power-up slot also dims once the charge is spent.
 - **Debug panel access:** the ⚙︎ button is always visible.
-- **Offers:** the run stream shuffles the 8 power-ups once, and the three picks take disjoint pairs. That keeps same seed = same offers whatever you pick.
+- **Offers:** the run stream shuffles the 8 power-ups once, and the two picks take disjoint pairs. That keeps same seed = same offers whatever you pick.
 - **Skittish Prey** timer runs on game time, so bullet time slows it too.
 - **Lure** measures range as Manhattan distance across wrapped edges. A food is pulled the moment it enters range, then once every 4 snake steps while it stays in range. The pull glides smoothly over those steps.
 - **Decoy** is not respawned when you eat it; it comes back with the next real food.
