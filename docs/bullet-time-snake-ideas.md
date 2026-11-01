@@ -10,11 +10,12 @@ The snake gets faster as you eat food.
 - Sketch: add a small increment per food (for example +0.25 cells/s) with a cap, so `speedNow()` becomes `cfg.speed + eaten * step`, clamped.
 - Open questions: should bullet time slow-down scale with it, and should the tutorial stay at its current fixed speed?
 
-### Solid walls (built)
-Wrap-around is the default; the **Solid walls** challenge (⚙︎ → Challenges, `cfg.walls`) makes edges lethal.
-- Off in the tutorial. The board border turns red while it is on.
-- The head stops half a cell into the wall before the crash, so a fast steer under bullet time can still save you.
-- Not yet: a start-screen picker, or a separate high score per challenge.
+### Solid walls
+Wrap-around stays the default; this challenge makes edges lethal (hitting an edge is a crash).
+- Today the game always wraps, so this is a new rule on top of the baseline.
+- Sketch: a `cfg.walls` flag checked where `crash` is computed; red board border while active; off in the tutorial.
+- Bullet-time angle: the head could stop half a cell into the wall before the crash, so a late steer can still save you.
+- Open: a start-screen picker, and separate high scores per challenge.
 
 ### More challenge ideas
 - **Shrinking arena:** the playable board loses a ring of cells every N foods; edges become solid there.
@@ -41,5 +42,6 @@ Pickups that spawn occasionally beside normal food and last a few seconds. Sketc
 - **Bonus bullet-time charge:** refills the meter if the limited bullet-time challenge is on.
 
 ## Open questions
+- Which challenges ship first?
 - Are challenges selectable on the start screen, combinable, or a rotating daily rule?
 - Do power-ups appear in challenge modes, or only in a "classic+" mode?
