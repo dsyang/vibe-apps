@@ -160,7 +160,7 @@ Picked 1 of 2, three times per run. They're active from the stage after you pick
 | **Adrenaline** | Base speed −20%: as your adrenaline rises, the world seems to slow down | `speedNow()` | Speed Ramp (generalist) |
 | **Shed Skin** | At the end of each stage, the tail is cut by 5 (never below 3 cells) | `endStage()` | Lockdown, Feast |
 | **Long Fuse** | Bullet-time ring lasts 50% longer | `ringTime()` | Short Fuse |
-| **Savor** | About 2 s of ring-free slow-mo right after each food | `arrive()` + gesture timer | Short Fuse |
+| **Savor** | 1 s of ring-free slow-mo right after each food | `arrive()` + gesture timer | Short Fuse |
 | **Lure** | Food within 2 cells is pulled toward your head | per-move food step | Skittish Prey |
 | **Second Helping** | Two real food on the board at once | `food` becomes an array | Skittish Prey, Decoy |
 
@@ -270,7 +270,7 @@ A section per power-up and per challenge, generated from the tunables declared i
 | Adrenaline | speed factor (×0.8) |
 | Shed Skin | tail cells removed at stage end (5) |
 | Long Fuse | ring multiplier (×1.5) |
-| Savor | ring-free slow-mo duration (2 s) |
+| Savor | ring-free slow-mo duration (1 s) |
 | Lure | range (2 cells) |
 | Second Helping | food on board (2) |
 | Short Fuse | ring multiplier (×0.5) |
