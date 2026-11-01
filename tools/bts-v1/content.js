@@ -6,8 +6,11 @@ const CHALLENGES = {
   shortfuse: { id: 'shortfuse', name: 'Short Fuse', icon: '⏱️', desc: 'The bullet-time ring closes 2× faster.',
     tun: { ring: { label: 'Ring multiplier', def: 0.5, min: 0.2, max: 1, step: 0.05, fmt: v => '×' + (+v).toFixed(2) } } },
   lockdown: { id: 'lockdown', name: 'Lockdown', icon: '🧱', desc: 'Edges stop wrapping. Touch one and you die.', tun: {} },
-  skittish: { id: 'skittish', name: 'Skittish Prey', icon: '🐇', desc: 'Food hops one cell every few seconds.',
-    tun: { interval: { label: 'Move interval', def: 3, min: 0.5, max: 10, step: 0.5, fmt: v => v + ' s' } } },
+  skittish: { id: 'skittish', name: 'Skittish Prey', icon: '🐇', desc: 'Food hops one cell every 2 seconds. It never wraps, and holds still when your head is next to it.',
+    tun: {
+      interval: { label: 'Hop every', def: 2, min: 0.3, max: 6, step: 0.1, fmt: v => (+v).toFixed(1) + ' s' },
+      calm: { label: 'Stays put when head is within', def: 1, min: 0, max: 4, step: 1, fmt: v => v + ' cells' },
+    } },
   feast: { id: 'feast', name: 'Feast', icon: '🍖', desc: 'Stage 3 needs 15 food instead of 10.',
     tun: { goal: { label: 'Stage 3 food goal', def: 15, min: 10, max: 30, step: 1, fmt: v => v + ' food' } } },
   decoy: { id: 'decoy', name: 'Decoy', icon: '🎭', desc: 'A fake food is on the board. Eating it costs 20 points and doesn\'t count.',
@@ -30,8 +33,11 @@ const POWERUPS = {
     tun: { ring: { label: 'Ring multiplier', def: 1.5, min: 1, max: 3, step: 0.05, fmt: v => '×' + (+v).toFixed(2) } } },
   savor: { id: 'savor', name: 'Savor', icon: '🍯', desc: '1 s of extra ring-free slow-mo after each food.',
     tun: { dur: { label: 'Slow-mo duration', def: 1, min: 0.5, max: 6, step: 0.5, fmt: v => v + ' s' } } },
-  lure: { id: 'lure', name: 'Lure', icon: '🧲', desc: 'Food within 2 cells is pulled toward your head.',
-    tun: { range: { label: 'Range', def: 2, min: 1, max: 6, step: 1, fmt: v => v + ' cells' } } },
+  lure: { id: 'lure', name: 'Lure', icon: '🧲', desc: 'Food within 4 cells is pulled toward your head, one cell every 4 steps.',
+    tun: {
+      range: { label: 'Range (cells)', def: 4, min: 1, max: 8, step: 1, fmt: v => v + ' cells' },
+      every: { label: 'Pull every N snake steps', def: 4, min: 1, max: 8, step: 1, fmt: v => v },
+    } },
   second: { id: 'second', name: 'Second Helping', icon: '🍽️', desc: 'Two real food on the board at once.',
     tun: { count: { label: 'Food on board', def: 2, min: 2, max: 4, step: 1, fmt: v => v } } },
 };

@@ -97,6 +97,7 @@ function reset() {
   turnQueue = []; lastDir = 'up'; foods = []; decoy = null; pops = [];
   placeFoods(); updateHud();
 }
+const foodAt = p => foods.some(f => f[0] === p[0] && f[1] === p[1]) || (decoy && decoy[0] === p[0] && decoy[1] === p[1]);
 const onSnake = p => snake.some(s => s[0] === p[0] && s[1] === p[1]);
 const taken = p => onSnake(p) || foods.some(f => f[0] === p[0] && f[1] === p[1]) || (decoy && decoy[0] === p[0] && decoy[1] === p[1]);
 // random free cell from the board stream
@@ -198,16 +199,19 @@ function move() {
 }
 // Lure: food (and, deliberately, the decoy) within range slides one cell toward the head
 function lure() {
+  const every = T('lure', 'every');
   const h = snake[0], range = T('lure', 'range'), walls = wallsOn();
   const pull = p => {
     const dx = walls ? h[0] - p[0] : wdelta(h[0] - p[0], COLS), dy = walls ? h[1] - p[1] : wdelta(h[1] - p[1], ROWS);
-    if (!dx && !dy || Math.abs(dx) + Math.abs(dy) > range) return p;
+    if (!dx && !dy || Math.abs(dx) + Math.abs(dy) > range) { p.pullN = 0; return p; }
+    p.pullN = (p.pullN || 0) + 1;
+    if ((p.pullN - 1) % every) return p;   // pulled when it enters range, then only every Nth snake step
     const tries = Math.abs(dx) >= Math.abs(dy) ? [[Math.sign(dx), 0], [0, Math.sign(dy)]] : [[0, Math.sign(dy)], [Math.sign(dx), 0]];
     for (const [sx, sy] of tries) {
       if (!sx && !sy) continue;
       const q = [wrap(p[0] + sx, COLS), wrap(p[1] + sy, ROWS)];
       const bodyHit = snake.some((c, i) => i > 0 && c[0] === q[0] && c[1] === q[1]);
-      if (!bodyHit && !foods.some(f => f !== p && f[0] === q[0] && f[1] === q[1])) return glide(p, q, sx, sy, 1 / speedNow(), false);   // one step of travel per snake step
+      if (!bodyHit && !foods.some(f => f !== p && f[0] === q[0] && f[1] === q[1])) { q.pullN = p.pullN; return glide(p, q, sx, sy, every / speedNow(), false); };   // one step of travel per snake step
     }
     return p;
   };
@@ -239,10 +243,13 @@ function skitTick(dt) {
   run.skitT = 0;
   const ds = Object.values(DIRS);
   foods = foods.map(p => {
+    const hd = snake[0];
+    if (Math.abs(hd[0] - p[0]) + Math.abs(hd[1] - p[1]) <= T('skittish', 'calm')) return p;   // head is right there: stay put
     const order = rShuffle(rb, ds);
     for (const [dx, dy] of order) {
-      const q = [wrap(p[0] + dx, COLS), wrap(p[1] + dy, ROWS)];
-      if (!taken(q)) return glide(p, q, dx, dy, 0.3, true);
+      const q = [p[0] + dx, p[1] + dy];
+      if (q[0] < 0 || q[0] >= COLS || q[1] < 0 || q[1] >= ROWS) continue;   // never wraps
+      if (!foodAt(q)) return glide(p, q, dx, dy, Math.min(0.3, T('skittish', 'interval') * 0.6), true);   // may hop through the snake's body
     }
     return p;
   });
@@ -442,16 +449,17 @@ function gameRender() {
 
   // food (and decoy, a purple diamond)
   const bob = 1 + 0.08 * Math.sin(timeReal * 5.5);
-  {
+  const drawFoodLayer = onlyOnBody => {
     const tl0 = worldToScreen(vec2(0, ROWS)), br0 = worldToScreen(vec2(COLS, 0));
     drawContext.save();
     drawContext.beginPath(); drawContext.rect(tl0.x, tl0.y, br0.x - tl0.x, br0.y - tl0.y); drawContext.clip();
     for (const ox of walls ? [0] : [-COLS, 0, COLS]) for (const oy of walls ? [0] : [-ROWS, 0, ROWS]) {   // copies so a glide across an edge looks continuous
-      for (const f of foods) drawCircle(W(f.vx + ox, f.vy + oy), 0.64 * bob, C.food);
-      if (decoy) drawRect(W(decoy.vx + ox, decoy.vy + oy), vec2(0.56 * bob), C.decoy, Math.PI / 4);
+      for (const f of foods) if (!onlyOnBody || onSnake(f)) drawCircle(W(f.vx + ox, f.vy + oy), 0.64 * bob, C.food);
+      if (decoy && !onlyOnBody) drawRect(W(decoy.vx + ox, decoy.vy + oy), vec2(0.56 * bob), C.decoy, Math.PI / 4);
     }
     drawContext.restore();
-  }
+  };
+  drawFoodLayer(false);
 
   // snake as a path through cell centres: interpolated head, body cells, interpolated tail.
   // corners stay square; coordinates are unwrapped so the snake can slide through an edge
@@ -489,6 +497,7 @@ function gameRender() {
     }
   }
   drawContext.restore();
+  drawFoodLayer(true);   // food that hopped onto the body shows on top of it
   const h = W(wrap(path[0][0], COLS), wrap(path[0][1], ROWS));
 
   // ghost preview from the head
