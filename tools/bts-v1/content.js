@@ -64,6 +64,13 @@ const contentCfg = {};                              // { 'phase.charges': 2 }
 })();
 function saveDbg() {
   try { localStorage.setItem(DBG_KEY, JSON.stringify({ cfg, run: runCfg, content: contentCfg })); } catch (e) {}
+  markGear();
+  if (typeof refreshMods === 'function') refreshMods();
+}
+// dot on the ⚙︎ button while any debug setting (or a typed seed) differs from the default
+function markGear() {
+  const g = document.getElementById('gear');
+  if (g) g.classList.toggle('modded', modifiedSettings().length > 0 || !!runCfg.seed);
 }
 function resetDbg() {
   Object.assign(cfg, ENGINE_DEF); Object.assign(runCfg, JSON.parse(JSON.stringify(RUN_DEF)));
@@ -104,3 +111,5 @@ function forcedOfferIds() {
   }
   return seen;
 }
+
+markGear();   // reflect settings restored from localStorage

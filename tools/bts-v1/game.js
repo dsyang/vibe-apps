@@ -272,7 +272,7 @@ function newRun() {
     seed, rngRun: st.run, rngBoard: st.board,
     stage: 1, stageFood: 0, rampFood: 0, totalFood: 0,
     powerups: runCfg.grant.slice(), granted: runCfg.grant.slice(),
-    offers: [0, 1, 2].map(k => perm.slice(k * 2, k * 2 + 2)),   // disjoint pairs: never a duplicate offer, same seed = same offers
+    offers: [[], perm.slice(0, 2), perm.slice(2, 4)],   // index = pick number (no pick before stage 1); disjoint pairs: never a duplicate offer, same seed = same offers
     challenge: runCfg.force || drawn, revealed: false,
     score: 0, steers: 0, expired: 0, time: 0, roundClear: null,
     phaseLeft: 0, savorUntil: 0, skitT: 0,
@@ -281,7 +281,7 @@ function newRun() {
 function startRun() {
   mode = 'play'; tut = null; run = newRun(); gesture = null; phase = 'ready';
   reset(); hideTip();
-  if (run.offers[0].length) showPick(0); else beginStage(1);   // the blind pick happens whether or not the tutorial was done
+  beginStage(1);   // no blind pick: every run starts straight in stage 1
 }
 function pickPower(n, id) {
   run.powerups.push(id);
