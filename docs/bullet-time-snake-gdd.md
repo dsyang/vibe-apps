@@ -60,7 +60,6 @@ Finishing sets `localStorage['bsnake-tut-done'] = '1'`. The **?** button replays
 ```
 
 1. **Blind pick:** choose 1 of 2 power-ups before you know the challenge.
-   - Only offered once the tutorial is done. Before that, stage 1 starts with no power-up.
 2. **Stage 1, Normal:** eat 10 food. Constant speed.
 3. **Staging zone 1:** the **challenge is revealed** (a card), then **pick 1 of 2** power-ups.
 4. **Stage 2, Prepare:** eat 10 food.
@@ -137,7 +136,7 @@ One per run. It's revealed at staging zone 1 and **active in stage 3 and continu
 |---|---|---|---|
 | **Short Fuse** | Bullet-time ring closes 2× faster (ring ×0.5) | Decision time | Long Fuse, Savor |
 | **Lockdown** | Edges stop wrapping; hitting one kills you | Space | Phase Shift, Shed Skin |
-| **Skittish Prey** | Food moves one cell every few seconds | The target | Lure, Second Helping |
+| **Skittish Prey** | Food hops one cell every 2 seconds | The target | Lure, Second Helping |
 | **Feast** | Stage 3 needs 15 food instead of 10 | Endurance | Shed Skin |
 | **Decoy** | A fake food in a different colour is also on the board | Reading the board | Second Helping |
 
@@ -146,6 +145,13 @@ One per run. It's revealed at staging zone 1 and **active in stage 3 and continu
 - Each time you eat **real** food, the decoy respawns somewhere new.
 - The decoy never spawns in the **4 × 4 area around the snake's head**, so there are no unfair spawns right in front of you. See open questions about centring.
 - **Lure** pulls the decoy as well as real food. That's intended: a risky combo.
+
+### Skittish Prey rules
+- Food hops one cell (up, down, left or right) every **2 s** of game time, so bullet time slows the hops too.
+- It **never wraps**: it can't hop off an edge.
+- It **holds still** while your head is within **1 cell** (straight up, down, left or right, not diagonal).
+- It **can hop through your body**. A food sitting on your body is drawn on top of it, and it's eaten when your head reaches that cell.
+- Hops glide over about 0.3 s instead of jumping.
 
 ---
 
@@ -161,7 +167,7 @@ Picked 1 of 2, three times per run. They're active from the stage after you pick
 | **Shed Skin** | At the end of each stage, the tail is cut by 5 (never below 3 cells) | `endStage()` | Lockdown, Feast |
 | **Long Fuse** | Bullet-time ring lasts 50% longer | `ringTime()` | Short Fuse |
 | **Savor** | 1 s of ring-free slow-mo right after each food | `arrive()` + gesture timer | Short Fuse |
-| **Lure** | Food within 2 cells is pulled toward your head | per-move food step | Skittish Prey |
+| **Lure** | Food within 4 cells is pulled toward your head, one cell every 4 snake steps | per-move food step | Skittish Prey |
 | **Second Helping** | Two real food on the board at once | `food` becomes an array | Skittish Prey, Decoy |
 
 Deep Focus and Adrenaline help in every run, which makes them safe **blind picks**.
@@ -272,11 +278,11 @@ A section per power-up and per challenge, generated from the tunables declared i
 | Shed Skin | tail cells removed at stage end (5) |
 | Long Fuse | ring multiplier (×1.5) |
 | Savor | ring-free slow-mo duration (1 s) |
-| Lure | range (2 cells) |
+| Lure | range (4 cells), pull every N snake steps (4) |
 | Second Helping | food on board (2) |
 | Short Fuse | ring multiplier (×0.5) |
 | Lockdown | (none) |
-| Skittish Prey | move interval (3 s) |
+| Skittish Prey | hop interval (2 s), stays put when head within (1 cell) |
 | Feast | stage 3 food goal (15) |
 | Decoy | penalty (−20), no-spawn area (4 × 4) |
 
@@ -357,8 +363,8 @@ Power-ups and challenges are data with hooks, not scattered `if`s. The prototype
 - **Numbers to tune:**
   - Speed Ramp step and cap
   - Savor duration
-  - Skittish Prey interval
-  - Lure range
+  - Skittish Prey interval and calm distance
+  - Lure range and pull cadence
   - Shed Skin cut length
 - **Decoy no-spawn area:** a 4 × 4 square can't be centred on one cell. Either offset it toward the snake's heading, or use 5 × 5 (2 cells each way).
 - **Phase Shift indicator:** how to show an unused charge (e.g. a translucent glow on the head).
@@ -372,6 +378,6 @@ Power-ups and challenges are data with hooks, not scattered `if`s. The prototype
 - **Debug panel access:** the ⚙︎ button is always visible.
 - **Offers:** the run stream shuffles the 8 power-ups once, and the three picks take disjoint pairs. That keeps same seed = same offers whatever you pick.
 - **Skittish Prey** timer runs on game time, so bullet time slows it too.
-- **Lure** measures range as Manhattan distance across wrapped edges.
+- **Lure** measures range as Manhattan distance across wrapped edges. A food is pulled the moment it enters range, then once every 4 snake steps while it stays in range. The pull glides smoothly over those steps.
 - **Decoy** is not respawned when you eat it; it comes back with the next real food.
 
