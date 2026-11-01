@@ -65,7 +65,7 @@ function showStart() {
   $('goPlay').onclick = startRun;
 }
 function showTutDone() {
-  setOverlay(`<h1>YOU GOT IT</h1><p>Walls wrap around — only your own tail is deadly.</p>
+  setOverlay(`<h1>YOU GOT IT</h1><p>Tap the ? at the top any time to do the tutorial again.</p>
     <div class="btns"><button class="primary" id="go">Play</button></div>`);
   $('go').onclick = startRun;
 }
