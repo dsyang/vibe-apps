@@ -114,7 +114,7 @@ function showWin() {
 }
 function showContinueEnd() {
   const ch = CHALLENGES[run.challenge], rc = run.roundClear;
-  setOverlay(`<h1 style="color:var(--accent)">ROUND CLEAR</h1><h2>CONTINUE MODE OVER</h2>
+  setOverlay(`<h1>CRASHED</h1><h2>AFTER ROUND CLEAR</h2>
     <div class="box">At round clear: score <b>${rc.score}</b> · time <b>${fmtTime(rc.time)}</b><br>
     Final: score <b>${run.score}</b> · food <b>${run.totalFood}</b> · time <b>${fmtTime(run.time)}</b><br>
     Challenge <b>${ch.icon} ${ch.name}</b><br>Power-ups <b>${powerLine()}</b><br>Seed <span class="seed">${run.seed}</span></div>${modsBlock()}

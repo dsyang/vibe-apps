@@ -234,8 +234,9 @@ Deep Focus and Adrenaline help in every run, which makes them safe **blind picks
 - Buttons: **Continue** (enter continue mode) and **New run**.
 
 ### Continue-mode end screen
-- The win screen again, plus final stats: score and time at the round clear, then the final score, total food and total time.
-- It still counts as a win.
+- Dying in continue mode still reads **CRASHED**, with "after round clear" under it.
+- It shows the stats at the round clear (score and time), then the final score, total food and total time, plus the challenge, power-ups, seed and modified-settings block.
+- The round still counts as a win.
 
 ### Modified-settings block (all end screens)
 - Shown only if any debug value differs from its default. Each change is listed as `name: default → value`. Examples:
