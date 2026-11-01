@@ -37,7 +37,7 @@ These already exist in `tools/bullet-time-snake.html` and carry over to v1 uncha
 - **Instant turns:** if the head is less than halfway into its current move, the move is redone in the new direction. Otherwise the move finishes instantly and then turns.
   - A guard stops quick double-steers from redoing a move straight into the neck.
 - **Ring expiry:** if the ring closes before you release, the steer is **cancelled** by default. The "Commit steer" debug option makes it commit instead.
-- **Counters:** `steers` (committed gestures) and `expired` (rings that closed) are tracked.
+- **Counters:** `steers` (committed gestures) and `expired` (rings that closed) are tracked. Only steers are shown to the player.
 
 ### Tutorial
 Eight steps at 70% speed. The ring starts long and tightens through steps 1 to 5 until it reaches the real setting. The label reads `TUTORIAL n / 8`, and every step has a **Skip tutorial** link.
@@ -208,7 +208,7 @@ Deep Focus and Adrenaline help in every run, which makes them safe picks whichev
   - It still uses a seed for food spawns, and debug settings (board, speed, ring…) still apply. Forced challenge, offers and granted power-ups are ignored.
 
 ### HUD
-- **Top row:** score (with steers and expired rings under it) on the left. **⏸** pause, **?** tutorial and **⚙︎** debug settings on the right, as 44 px buttons.
+- **Top row:** score (with the steer count under it) on the left. **⏸** pause, **?** tutorial and **⚙︎** debug settings on the right, as 44 px buttons.
 - **Stage bar:** a green `STAGE n/3` badge and a bar of three segments. Finished stages are full, and the current segment grows with food and shows `food n/10`.
 - **Challenge card:** under the stage bar. "Challenge ???" until it's revealed, then its icon, name, one-line effect and a `STAGE 3` tag, which becomes `ACTIVE` in stage 3.
 - **Power-up dock:** at the bottom, under your thumb. Two slots show the icon and name of each power-up held, and empty slots are dashed. A power-up with per-stage charges (**Phase Shift**) **dims as disabled** once its charge is used, and lights up again when the next stage refills it.
@@ -226,7 +226,7 @@ Deep Focus and Adrenaline help in every run, which makes them safe picks whichev
 - Styled like the in-game HUD: the same stage bar, challenge card and power-up slots, on a solid background.
 - **Current stats:**
   - stage n/3 and food n/10
-  - score (with steers and expired rings)
+  - score (with steers)
   - time
 - **What's left:**
   - remaining stages and their food targets

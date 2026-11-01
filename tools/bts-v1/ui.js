@@ -59,7 +59,7 @@ function updateHud() {
     return;
   }
   $('score').textContent = run.score;
-  $('stats').textContent = `${cl ? `food ${run.totalFood} · ` : ''}${run.steers} steers · ${run.expired} expired`;
+  $('stats').textContent = `${cl ? `food ${run.totalFood} · ` : ''}${run.steers} steers`;
   if (cl) return;
   $('stagebar').innerHTML = stageBarHtml();
   $('chal').innerHTML = chalCardHtml();
@@ -137,7 +137,7 @@ function modsBlock() {
 }
 function endStats() {
   const ch = CHALLENGES[run.challenge], st = run.stage === 'continue' ? 'continue' : `${run.stage} / 3`;
-  return `<div class="box">Stage <b>${st}</b> · score <b>${run.score}</b> (${run.steers} steers, ${run.expired} expired)<br>
+  return `<div class="box">Stage <b>${st}</b> · score <b>${run.score}</b> (${run.steers} steers)<br>
     Time <b>${fmtTime(run.time)}</b> · food <b>${run.totalFood}</b><br>
     Challenge <b>${run.revealed || run.roundClear ? ch.icon + ' ' + ch.name : 'not revealed'}</b><br>
     Power-ups <b>${powerLine()}</b><br>Seed <span class="seed">${run.seed}</span></div>${modsBlock()}`;
@@ -149,7 +149,7 @@ function showCrash() {
 function showClassicEnd() {
   setOverlay(`<h1>CRASHED</h1><h2>CLASSIC</h2>
     <div class="box">Score <b>${run.score}</b> · food <b>${run.totalFood}</b> · time <b>${fmtTime(run.time)}</b><br>
-    ${run.steers} steers, ${run.expired} expired<br>Seed <span class="seed">${run.seed}</span></div>${modsBlock()}
+    ${run.steers} steers<br>Seed <span class="seed">${run.seed}</span></div>${modsBlock()}
     <div class="btns"><button class="primary" id="again">Play again</button><button class="secondary" id="menu">Menu</button></div>`);
   $('again').onclick = () => { hideOverlay(); startRun(true); };
   $('menu').onclick = () => { hideOverlay(); showStart(); };
@@ -175,7 +175,7 @@ function showContinueEnd() {
 function showClassicPause() {
   setOverlay(`<div class="pz"><h1 style="text-align:center;margin:0 0 4px">PAUSED</h1><h2 style="text-align:center;margin:0">CLASSIC</h2>
     <div class="stats">
-      <div class="stat"><b>${run.score}</b><span>score · food ${run.totalFood} · ${run.steers} steers · ${run.expired} expired</span></div>
+      <div class="stat"><b>${run.score}</b><span>score · food ${run.totalFood} · ${run.steers} steers</span></div>
       <div class="stat" style="flex:.7"><b>${fmtTime(run.time)}</b><span>time</span></div>
     </div>
     <div class="seedrow"><span>SEED</span><span class="seed">${run.seed}</span></div>
@@ -191,7 +191,7 @@ function showPause() {
   setOverlay(`<div class="pz"><h1 style="text-align:center;margin:0 0 4px">PAUSED</h1>
     <div><div class="lbl">PROGRESS</div>${stageBarHtml()}${left.length ? `<div class="left">${left.join(' · ')}</div>` : ''}</div>
     <div class="stats">
-      <div class="stat"><b>${run.score}</b><span>score · ${run.steers} steers · ${run.expired} expired</span></div>
+      <div class="stat"><b>${run.score}</b><span>score · ${run.steers} steers</span></div>
       <div class="stat" style="flex:.7"><b>${fmtTime(run.time)}</b><span>time</span></div>
     </div>
     <div><div class="lbl">CHALLENGE</div>${chalCardHtml()}</div>
