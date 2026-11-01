@@ -65,14 +65,14 @@ function showStart() {
   $('goPlay').onclick = startRun;
 }
 function showTutDone() {
-  setOverlay(`<h1>YOU GOT IT</h1><p>Walls wrap around — only your own tail is deadly.</p>
+  setOverlay(`<h1>YOU GOT IT</h1><p>Tap the ? at the top any time to do the tutorial again.</p>
     <div class="btns"><button class="primary" id="go">Play</button></div>`);
   $('go').onclick = startRun;
 }
 function renderPick(n, offer) {
   hideBanner();
   setOverlay(`<h2>${n === 0 ? 'BLIND PICK' : 'POWER-UP'} · ${n + 1} / 3</h2><h1>Pick 1 of ${offer.length}</h1>
-    <p>${n === 0 ? "You don't know the challenge yet." : run.revealed ? `Challenge: <b>${CHALLENGES[run.challenge].name}</b> in stage 3.` : ''}</p>
+    <p>${n === 0 ? 'Power-ups stay with you for the whole run.' : run.revealed ? `Challenge: <b>${CHALLENGES[run.challenge].name}</b> in stage 3.` : ''}</p>
     <div class="cards">${offer.map(id => { const p = POWERUPS[id];
       return `<button class="card" data-id="${id}"><div class="ic">${p.icon}</div><div><b>${p.name}</b><span>${p.desc}</span></div></button>`; }).join('')}</div>
     ${haveRow()}`);
@@ -114,7 +114,7 @@ function showWin() {
 }
 function showContinueEnd() {
   const ch = CHALLENGES[run.challenge], rc = run.roundClear;
-  setOverlay(`<h1 style="color:var(--accent)">ROUND CLEAR</h1><h2>CONTINUE MODE OVER</h2>
+  setOverlay(`<h1>CRASHED</h1><h2>AFTER ROUND CLEAR</h2>
     <div class="box">At round clear: score <b>${rc.score}</b> · time <b>${fmtTime(rc.time)}</b><br>
     Final: score <b>${run.score}</b> · food <b>${run.totalFood}</b> · time <b>${fmtTime(run.time)}</b><br>
     Challenge <b>${ch.icon} ${ch.name}</b><br>Power-ups <b>${powerLine()}</b><br>Seed <span class="seed">${run.seed}</span></div>${modsBlock()}

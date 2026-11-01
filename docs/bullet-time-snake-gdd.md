@@ -158,9 +158,9 @@ Picked 1 of 2, three times per run. They're active from the stage after you pick
 | **Phase Shift** | Pass through your own body once per stage | `move()` crash check | Lockdown, a long snake |
 | **Deep Focus** | Slow-mo goes slower | `cfg.slow` | Speed Ramp (generalist) |
 | **Adrenaline** | Base speed −20%: as your adrenaline rises, the world seems to slow down | `speedNow()` | Speed Ramp (generalist) |
-| **Shed Skin** | Every 3rd food shrinks the tail by 2 instead of growing it | `arrive()` | Lockdown, Feast |
+| **Shed Skin** | At the end of each stage, the tail is cut by 5 (never below 3 cells) | `endStage()` | Lockdown, Feast |
 | **Long Fuse** | Bullet-time ring lasts 50% longer | `ringTime()` | Short Fuse |
-| **Savor** | About 2 s of ring-free slow-mo right after each food | `arrive()` + gesture timer | Short Fuse |
+| **Savor** | 1 s of ring-free slow-mo right after each food | `arrive()` + gesture timer | Short Fuse |
 | **Lure** | Food within 2 cells is pulled toward your head | per-move food step | Skittish Prey |
 | **Second Helping** | Two real food on the board at once | `food` becomes an array | Skittish Prey, Decoy |
 
@@ -234,8 +234,9 @@ Deep Focus and Adrenaline help in every run, which makes them safe **blind picks
 - Buttons: **Continue** (enter continue mode) and **New run**.
 
 ### Continue-mode end screen
-- The win screen again, plus final stats: score and time at the round clear, then the final score, total food and total time.
-- It still counts as a win.
+- Dying in continue mode still reads **CRASHED**, with "after round clear" under it.
+- It shows the stats at the round clear (score and time), then the final score, total food and total time, plus the challenge, power-ups, seed and modified-settings block.
+- The round still counts as a win.
 
 ### Modified-settings block (all end screens)
 - Shown only if any debug value differs from its default. Each change is listed as `name: default → value`. Examples:
@@ -268,9 +269,9 @@ A section per power-up and per challenge, generated from the tunables declared i
 | Phase Shift | charges per stage (1) |
 | Deep Focus | slow factor (×0.5 of base slow) |
 | Adrenaline | speed factor (×0.8) |
-| Shed Skin | every N food (3), tail cells removed (2) |
+| Shed Skin | tail cells removed at stage end (5) |
 | Long Fuse | ring multiplier (×1.5) |
-| Savor | ring-free slow-mo duration (2 s) |
+| Savor | ring-free slow-mo duration (1 s) |
 | Lure | range (2 cells) |
 | Second Helping | food on board (2) |
 | Short Fuse | ring multiplier (×0.5) |
@@ -329,7 +330,8 @@ Power-ups and challenges are data with hooks, not scattered `if`s. The prototype
 - `speedNow()`: base × Adrenaline, + Speed Ramp.
 - `ringTime()`: base × Long Fuse × Short Fuse.
 - `slowNow()`: base × Deep Focus.
-- `arrive()`: scoring, Shed Skin, Savor, decoy respawn.
+- `arrive()`: scoring, Savor, decoy respawn.
+- `endStage()`: Shed Skin.
 - `move()`: Phase Shift, Lockdown walls.
 - `placeFood()`: Second Helping, board stream, decoy no-spawn area.
 - per-tick: Skittish Prey, Lure.
@@ -357,7 +359,7 @@ Power-ups and challenges are data with hooks, not scattered `if`s. The prototype
   - Savor duration
   - Skittish Prey interval
   - Lure range
-  - Shed Skin cadence
+  - Shed Skin cut length
 - **Decoy no-spawn area:** a 4 × 4 square can't be centred on one cell. Either offset it toward the snake's heading, or use 5 × 5 (2 cells each way).
 - **Phase Shift indicator:** how to show an unused charge (e.g. a translucent glow on the head).
 - **Debug panel access:** always-visible ⚙︎, or hidden behind `?debug=1`.
