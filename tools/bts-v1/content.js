@@ -24,11 +24,8 @@ const POWERUPS = {
     tun: { factor: { label: 'Slow factor (× base slow)', def: 0.5, min: 0.1, max: 1, step: 0.05, fmt: v => '×' + (+v).toFixed(2) } } },
   adrenaline: { id: 'adrenaline', name: 'Adrenaline', icon: '💉', desc: 'Base speed −20%. The world seems to slow down.',
     tun: { factor: { label: 'Speed factor', def: 0.8, min: 0.4, max: 1, step: 0.05, fmt: v => '×' + (+v).toFixed(2) } } },
-  shed: { id: 'shed', name: 'Shed Skin', icon: '🐍', desc: 'Every 3rd food shrinks your tail by 2 instead of growing it.',
-    tun: {
-      every: { label: 'Every N food', def: 3, min: 2, max: 8, step: 1, fmt: v => v },
-      cut: { label: 'Tail cells removed', def: 2, min: 1, max: 6, step: 1, fmt: v => v },
-    } },
+  shed: { id: 'shed', name: 'Shed Skin', icon: '🐍', desc: 'At the end of each stage, your tail is cut by 5.',
+    tun: { cut: { label: 'Tail cells removed', def: 5, min: 1, max: 10, step: 1, fmt: v => v } } },
   longfuse: { id: 'longfuse', name: 'Long Fuse', icon: '🧨', desc: 'The bullet-time ring lasts 50% longer.',
     tun: { ring: { label: 'Ring multiplier', def: 1.5, min: 1, max: 3, step: 0.05, fmt: v => '×' + (+v).toFixed(2) } } },
   savor: { id: 'savor', name: 'Savor', icon: '🍯', desc: 'About 2 s of ring-free slow-mo after each food.',

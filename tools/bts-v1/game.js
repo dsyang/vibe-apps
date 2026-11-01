@@ -150,10 +150,7 @@ function arrive() {
   }
   run.score += 10; run.totalFood++; run.stageFood++; if (run.stage !== 1) run.rampFood++;
   popText(h, '+10', '#ffcc4d');
-  if (has('shed') && ++run.shedN % T('shed', 'every') === 0) {      // Shed Skin: shrink instead of grow
-    for (let i = T('shed', 'cut'); i > 0 && snake.length > 3; i--) snake.pop();
-    prev = snake.map(c => c.slice());
-  } else grow = true;
+  grow = true;
   if (has('savor')) run.savorUntil = timeReal + T('savor', 'dur');
   if (chActive('decoy')) placeDecoy();
   placeFoods(); updateHud();
@@ -246,7 +243,7 @@ function newRun() {
     offers: [0, 1, 2].map(k => perm.slice(k * 2, k * 2 + 2)),   // disjoint pairs: never a duplicate offer, same seed = same offers
     challenge: runCfg.force || drawn, revealed: false,
     score: 0, steers: 0, expired: 0, time: 0, roundClear: null,
-    phaseLeft: 0, shedN: 0, savorUntil: 0, skitT: 0,
+    phaseLeft: 0, savorUntil: 0, skitT: 0,
   };
 }
 function startRun() {
@@ -272,6 +269,10 @@ function setReady(label, ms) {
 }
 function endStage() {
   gesture = null; acc = 1;
+  if (has('shed')) {                                  // Shed Skin: the tail is cut at every stage end (never below 3 cells)
+    const cut = Math.min(T('shed', 'cut'), snake.length - 3);
+    if (cut > 0) { snake.length -= cut; prev = snake.map(c => c.slice()); popText(snake[snake.length - 1], '−' + cut, '#8ccfff'); }
+  }
   if (run.stage === 3) { winRound(); return; }
   if (run.stage === 1) { run.revealed = true; phase = 'pick'; showReveal(); }
   else showPick(2);
