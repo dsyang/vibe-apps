@@ -294,7 +294,7 @@ A multi-file tool instead of the prototype's single inline page:
 
 ```
 tools/bts-v1.html              page shell: HUD + overlay markup, styles, <script src> tags
-tools/bts-v1/littlejs.release.js   vendored LittleJS (littlejsengine@1.28.0)
+tools/bts-v1/littlejs.min.js       vendored LittleJS (littlejsengine@1.28.0)
 tools/bts-v1/rng.js            seed generation, hashing, mulberry32, run/board streams
 tools/bts-v1/content.js        challenge + power-up definitions and tunables (data)
 tools/bts-v1/game.js           engine loop, snake, bullet time (ported from the prototype), run/stage logic
@@ -306,7 +306,7 @@ tools/bts-v1/ui.js             HUD, cards, pause/crash/win screens, debug panel
   - every sub-asset needs its own `<script src="bts-v1/…">` tag;
   - files share globals, with no ES-module `import`s between them (`build.py` wouldn't copy imported files).
 - **LittleJS is vendored:**
-  - It's the `littlejsengine@1.28.0` `dist/littlejs.release.js`, the same build the prototype loads from jsDelivr.
+  - It's the `littlejsengine@1.28.0` `dist/littlejs.min.js` (the minified build, about 500 KB; the prototype loads the larger `release` build from jsDelivr).
   - It's committed under `tools/bts-v1/`, so the game works offline and can't change under a CDN update.
   - To upgrade, replace the file and update the version noted here.
 
