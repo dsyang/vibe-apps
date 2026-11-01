@@ -10,6 +10,39 @@ The snake gets faster as you eat food.
 - Sketch: add a small increment per food (for example +0.25 cells/s) with a cap, so `speedNow()` becomes `cfg.speed + eaten * step`, clamped.
 - Open questions: should bullet time slow-down scale with it, and should the tutorial stay at its current fixed speed?
 
+### Wrap-around walls
+Edges are portals: leave one side, enter the opposite side.
+- **Heads-up:** the game already does this unconditionally (`wrap()` in the step function, edges drawn as a border only). So as built, wrap is the baseline, not a challenge.
+- Two ways to frame it:
+  - **Solid walls** as a harder mode (hitting an edge is a crash), with wrap as the default. Cheapest: one `cfg.walls` flag checked where `crash` is computed.
+  - Flip the default to solid walls and make wrap an opt-in challenge, which matches how it was pitched. Changes how the game plays out of the box.
+- Bullet-time angle: with solid walls, slow-mo is a lifesaver near edges; with wrap, you can aim through an edge to set up a long straight run. Rendering already unrolls the body across the seam, so no visual work.
+
+### More challenge ideas
+- **Shrinking arena:** the playable board loses a ring of cells every N foods; edges become solid there.
+- **Obstacles:** a few static blocks, adding one per food eaten. Pairs well with wrap.
+- **Ring squeeze:** the bullet-time ring (`cfg.ring`) gets shorter per food, so you have less aiming time as you grow.
+- **Limited bullet time:** a meter that drains while held and refills while released. Turns slow-mo from free into a resource.
+- **Moving food:** food drifts one cell every few seconds, so you can't pre-plan the whole route.
+- **Poison food:** a second pickup that shrinks you or reverses steering; skip it or eat it deliberately.
+- **Time attack:** score as much as you can in 60 s; food adds a few seconds.
+- **Ghost trail:** your previous run replays as an obstacle snake.
+
 ## Power-ups
 
-_None yet._
+Pickups that spawn occasionally beside normal food and last a few seconds. Sketch: a `powerup` object with type and expiry time, drawn as a distinct glyph, with a small HUD chip showing the active one.
+
+- **Phase:** pass through your own body for a few seconds (and through walls in solid-walls mode).
+- **Extra slow-mo:** bullet time slows further (`cfg.slow` halved) and the ring lasts longer.
+- **Time freeze:** the snake stops for 2 s while you can still queue turns.
+- **Shrink:** drop the tail back to a short length, handy late in a run.
+- **Magnet:** food within 3 cells is pulled toward the head.
+- **Double points:** food counts 2x while active.
+- **Slow snake:** base speed drops to 60% for a few seconds. Cancels any speed-ramp gain temporarily.
+- **Shield:** survive one crash; the snake bounces and the shield is consumed.
+- **Bonus bullet-time charge:** refills the meter if the limited bullet-time challenge is on.
+
+## Open questions
+- Is wrap the default or a mode? (See above.)
+- Are challenges selectable on the start screen, combinable, or a rotating daily rule?
+- Do power-ups appear in challenge modes, or only in a "classic+" mode?
