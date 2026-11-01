@@ -112,8 +112,28 @@ function foodTarget() {
   if (mode === 'tut') return tut.step < 5 ? 0 : 1;
   return has('second') ? T('second', 'count') : 1;
 }
+// Food and the decoy keep a smooth on-screen position (vx, vy) that glides toward their grid cell,
+// so Lure and Skittish Prey move continuously instead of teleporting.
+function vis(p) {
+  p.ux = p.fx = p.vx = p[0]; p.uy = p.fy = p.vy = p[1]; p.t = 1; p.dur = 1; p.smooth = false;
+  return p;
+}
+// q is the cell p moves to, one step of (sx, sy); the glide starts from wherever p is drawn right now
+function glide(p, q, sx, sy, dur, smooth) {
+  q.ux = p.ux + sx; q.uy = p.uy + sy; q.fx = q.vx = p.vx; q.fy = q.vy = p.vy;
+  q.t = 0; q.dur = dur; q.smooth = smooth;
+  return q;
+}
+function tweenCells(dt) {
+  for (const c of decoy ? foods.concat([decoy]) : foods) {
+    if (c.t >= 1) continue;
+    c.t = Math.min(1, c.t + dt / c.dur);
+    const k = c.smooth ? c.t * c.t * (3 - 2 * c.t) : c.t;
+    c.vx = c.fx + (c.ux - c.fx) * k; c.vy = c.fy + (c.uy - c.fy) * k;
+  }
+}
 function placeFoods() {
-  while (foods.length < foodTarget()) { const p = freeCell(); if (!p) break; foods.push(p); }
+  while (foods.length < foodTarget()) { const p = freeCell(); if (!p) break; foods.push(vis(p)); }
 }
 function placeDecoy() {
   decoy = null;
@@ -121,6 +141,7 @@ function placeDecoy() {
   const a = Math.floor(T('decoy', 'area') / 2), h = snake[0];
   // the area around the head is off limits, measured across wrapped edges
   decoy = freeCell(p => !(Math.abs(wdelta(p[0] - h[0], COLS)) <= a && Math.abs(wdelta(p[1] - h[1], ROWS)) <= a));
+  if (decoy) vis(decoy);
 }
 const OPP = { up: 'down', down: 'up', left: 'right', right: 'left' };
 const isReverse = (a, b) => DIRS[a][0] === -DIRS[b][0] && DIRS[a][1] === -DIRS[b][1];
@@ -186,7 +207,7 @@ function lure() {
       if (!sx && !sy) continue;
       const q = [wrap(p[0] + sx, COLS), wrap(p[1] + sy, ROWS)];
       const bodyHit = snake.some((c, i) => i > 0 && c[0] === q[0] && c[1] === q[1]);
-      if (!bodyHit && !foods.some(f => f !== p && f[0] === q[0] && f[1] === q[1])) return q;
+      if (!bodyHit && !foods.some(f => f !== p && f[0] === q[0] && f[1] === q[1])) return glide(p, q, sx, sy, 1 / speedNow(), false);   // one step of travel per snake step
     }
     return p;
   };
@@ -221,7 +242,7 @@ function skitTick(dt) {
     const order = rShuffle(rb, ds);
     for (const [dx, dy] of order) {
       const q = [wrap(p[0] + dx, COLS), wrap(p[1] + dy, ROWS)];
-      if (!taken(q)) return q;
+      if (!taken(q)) return glide(p, q, dx, dy, 0.3, true);
     }
     return p;
   });
@@ -368,6 +389,7 @@ function gameUpdate() {
   if (phase === 'play' && alive && !sheetIsOpen()) {
     acc += timeDelta * speedNow();
     if (run) skitTick(timeDelta);
+    tweenCells(timeDelta);
     while (acc >= 1 && !dying && phase === 'play') { acc -= 1; step(); }
     if (dying && acc >= dyingAt) { acc = dyingAt; die(); }
   }
@@ -420,8 +442,16 @@ function gameRender() {
 
   // food (and decoy, a purple diamond)
   const bob = 1 + 0.08 * Math.sin(timeReal * 5.5);
-  for (const f of foods) drawCircle(W(...f), 0.64 * bob, C.food);
-  if (decoy) drawRect(W(...decoy), vec2(0.56 * bob), C.decoy, Math.PI / 4);
+  {
+    const tl0 = worldToScreen(vec2(0, ROWS)), br0 = worldToScreen(vec2(COLS, 0));
+    drawContext.save();
+    drawContext.beginPath(); drawContext.rect(tl0.x, tl0.y, br0.x - tl0.x, br0.y - tl0.y); drawContext.clip();
+    for (const ox of walls ? [0] : [-COLS, 0, COLS]) for (const oy of walls ? [0] : [-ROWS, 0, ROWS]) {   // copies so a glide across an edge looks continuous
+      for (const f of foods) drawCircle(W(f.vx + ox, f.vy + oy), 0.64 * bob, C.food);
+      if (decoy) drawRect(W(decoy.vx + ox, decoy.vy + oy), vec2(0.56 * bob), C.decoy, Math.PI / 4);
+    }
+    drawContext.restore();
+  }
 
   // snake as a path through cell centres: interpolated head, body cells, interpolated tail.
   // corners stay square; coordinates are unwrapped so the snake can slide through an edge
