@@ -10,13 +10,11 @@ The snake gets faster as you eat food.
 - Sketch: add a small increment per food (for example +0.25 cells/s) with a cap, so `speedNow()` becomes `cfg.speed + eaten * step`, clamped.
 - Open questions: should bullet time slow-down scale with it, and should the tutorial stay at its current fixed speed?
 
-### Wrap-around walls
-Edges are portals: leave one side, enter the opposite side.
-- **Heads-up:** the game already does this unconditionally (`wrap()` in the step function, edges drawn as a border only). So as built, wrap is the baseline, not a challenge.
-- Two ways to frame it:
-  - **Solid walls** as a harder mode (hitting an edge is a crash), with wrap as the default. Cheapest: one `cfg.walls` flag checked where `crash` is computed.
-  - Flip the default to solid walls and make wrap an opt-in challenge, which matches how it was pitched. Changes how the game plays out of the box.
-- Bullet-time angle: with solid walls, slow-mo is a lifesaver near edges; with wrap, you can aim through an edge to set up a long straight run. Rendering already unrolls the body across the seam, so no visual work.
+### Solid walls (built)
+Wrap-around is the default; the **Solid walls** challenge (⚙︎ → Challenges, `cfg.walls`) makes edges lethal.
+- Off in the tutorial. The board border turns red while it is on.
+- The head stops half a cell into the wall before the crash, so a fast steer under bullet time can still save you.
+- Not yet: a start-screen picker, or a separate high score per challenge.
 
 ### More challenge ideas
 - **Shrinking arena:** the playable board loses a ring of cells every N foods; edges become solid there.
@@ -43,6 +41,5 @@ Pickups that spawn occasionally beside normal food and last a few seconds. Sketc
 - **Bonus bullet-time charge:** refills the meter if the limited bullet-time challenge is on.
 
 ## Open questions
-- Is wrap the default or a mode? (See above.)
 - Are challenges selectable on the start screen, combinable, or a rotating daily rule?
 - Do power-ups appear in challenge modes, or only in a "classic+" mode?

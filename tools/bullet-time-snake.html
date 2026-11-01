@@ -91,6 +91,9 @@
   <div class="row"><label>Time ramp (in/out) <b id="v-ramp"></b></label><input id="ramp" type="range" min="0" max="300" step="10"></div>
   <div class="row"><label>When the ring runs out</label>
     <div class="seg" id="expire"><button data-v="cancel">Cancel steer</button><button data-v="commit">Commit steer</button></div></div>
+  <div class="grp">Challenges</div>
+  <div class="row"><label>Solid walls (hitting an edge crashes)</label>
+    <div class="seg" id="walls"><button data-v="0">Wrap around</button><button data-v="1">Solid walls</button></div></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/littlejsengine@1.28.0/dist/littlejs.release.js"></script>
@@ -98,7 +101,7 @@
 'use strict';
 // ---------- tunables ----------
 // all tunables live here and in the ⚙︎ sheet: board/speed are normal snake settings, ring/slow are bullet time
-const cfg = { cols: 13, rows: 20, speed: 7, ring: 0.45, slow: 0.08, dead: 26, ramp: 120, expire: 'cancel' };
+const cfg = { cols: 13, rows: 20, speed: 7, ring: 0.45, slow: 0.08, dead: 26, ramp: 120, expire: 'cancel', walls: false };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem('bsnake-ljs-cfg5') || '{}')); } catch (e) {}
 const saveCfg = () => { try { localStorage.setItem('bsnake-ljs-cfg5', JSON.stringify(cfg)); } catch (e) {} };
 
@@ -131,6 +134,8 @@ const TUT_STEPS = 6, TUT_EAT = 3;
 // the ring tightens through the tutorial, ending at the real setting
 const ringTime = () => mode === 'tut' && tut.step < 5 ? Math.max(cfg.ring, [1.4, 1.1, 0.8, 1.2, 1.2][tut.step]) : cfg.ring;
 const speedNow = () => mode === 'tut' ? cfg.speed * 0.7 : cfg.speed;
+const wallsOn = () => cfg.walls && mode !== 'tut';   // challenge: edges are solid instead of wrapping
+let contact = 0.12;   // fraction of the move at which the dying head touches what it hit
 const CONTACT = 0.12; // fraction of a move at which a crashing head touches its body
 let deadAt = -1, gesture = null, flash = 0, pulse = 0, shake = 0, lastReal = 0;
 const HUD_H = 56, PAD = 12;
@@ -189,7 +194,9 @@ function move() {
   const [dx, dy] = DIRS[dir];
   const head = [wrap(snake[0][0] + dx, COLS), wrap(snake[0][1] + dy, ROWS)];
   const body = grow ? snake : snake.slice(0, -1);
-  const crash = body.some(c => c[0] === head[0] && c[1] === head[1]);
+  const wall = wallsOn() && (snake[0][0] + dx < 0 || snake[0][0] + dx >= COLS || snake[0][1] + dy < 0 || snake[0][1] + dy >= ROWS);
+  const crash = wall || body.some(c => c[0] === head[0] && c[1] === head[1]);
+  contact = wall ? 0.45 : CONTACT;   // a wall is half a cell ahead of the head's centre
   snake.unshift(head);
   if (grow) { prev.push(prev[prev.length - 1].slice()); grow = false; } else snake.pop();
   if (crash) dying = true;   // keep moving until the head visibly touches, then die (see gameUpdate)
@@ -281,7 +288,7 @@ function gameUpdate() {
   if (started && alive && !sheet.classList.contains('open')) {
     acc += timeDelta * speedNow();
     while (acc >= 1 && !dying) { acc -= 1; step(); }
-    if (dying && acc >= CONTACT) { acc = CONTACT; die(); }
+    if (dying && acc >= contact) { acc = contact; die(); }
   }
 }
 
@@ -326,7 +333,7 @@ function gameRender() {
   for (let x = 1; x < COLS; x++) drawLine(vec2(x, 0), vec2(x, ROWS), 0.04, C.grid);
   for (let y = 1; y < ROWS; y++) drawLine(vec2(0, y), vec2(COLS, y), 0.04, C.grid);
   for (const [a, b] of [[vec2(0,0), vec2(COLS,0)], [vec2(COLS,0), vec2(COLS,ROWS)], [vec2(COLS,ROWS), vec2(0,ROWS)], [vec2(0,ROWS), vec2(0,0)]])
-    drawLine(a, b, 0.08, C.edge);
+    drawLine(a, b, 0.08, wallsOn() ? hex('#ff5470') : C.edge);
   if (!snake) return;
 
   // food
@@ -352,7 +359,7 @@ function gameRender() {
   const tl = worldToScreen(vec2(0, ROWS)), br = worldToScreen(vec2(COLS, 0));
   drawContext.save();
   drawContext.beginPath(); drawContext.rect(tl.x, tl.y, br.x - tl.x, br.y - tl.y); drawContext.clip();
-  for (const ox of [-COLS, 0, COLS]) for (const oy of [-ROWS, 0, ROWS]) {
+  for (const ox of wallsOn() ? [0] : [-COLS, 0, COLS]) for (const oy of wallsOn() ? [0] : [-ROWS, 0, ROWS]) {
     const pts = path.map(p => W(p[0] + ox, p[1] + oy));
     for (let i = 0; i < pts.length; i++) {
       drawCircle(pts[i], w, bodyCol);
@@ -504,6 +511,10 @@ const seg = document.getElementById('expire');
 const paintSeg = () => seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === cfg.expire));
 seg.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { cfg.expire = b.dataset.v; paintSeg(); saveCfg(); } });
 paintSeg();
+const wseg = document.getElementById('walls');
+const paintWalls = () => wseg.querySelectorAll('button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === !!cfg.walls));
+wseg.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { cfg.walls = b.dataset.v === '1'; paintWalls(); saveCfg(); } });
+paintWalls();
 document.addEventListener('contextmenu', e => e.preventDefault());
 
 // ---------- modes ----------
