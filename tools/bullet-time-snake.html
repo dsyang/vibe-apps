@@ -39,6 +39,12 @@
     text-align:center; padding:24px; pointer-events:none; z-index:4; }
   #overlay h1 { margin:0 0 8px; font-size:30px; letter-spacing:1px; }
   #overlay p { margin:4px 0; color:var(--dim); font-size:15px; line-height:1.4; max-width:320px; }
+  #overlay.win { background:rgba(13,15,20,.55); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+  #overlay.win h1 { color:var(--accent); font-size:34px; }
+  #overlay .statrow { display:flex; gap:10px; margin:18px 0 4px; }
+  #overlay .stat { min-width:88px; padding:12px 10px; border-radius:14px; background:#151923; border:1px solid #2a3142; }
+  #overlay .stat b { display:block; font-size:26px; color:var(--fg); font-variant-numeric:tabular-nums; }
+  #overlay .stat span { font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); }
   #overlay .big { color:var(--fg); font-size:17px; margin-top:16px; }
   #overlay.start { background:rgba(13,15,20,.82); justify-content:flex-end;
     padding-bottom:calc(env(safe-area-inset-bottom) + 28px); }
@@ -121,6 +127,7 @@ const C = {
 let COLS = cfg.cols, ROWS = cfg.rows;   // edges wrap
 const DIRS = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] };   // grid space, y down
 let snake, prev, dir, pendingDir, food, score, alive = true, started = false, acc = 0, steers = 0, expired = 0;
+let won = false, turnsMade = 0, runTime = 0;   // runTime: real seconds spent playing (pauses while the tuning sheet is open)
 let grow = false, dying = false, snap = null;
 let turnQueue = [], lastDir = 'up';   // lastDir: heading of the move before the current one   // extra turns from one drawn path, applied one per cell
 const MAX_TURNS = 4;   // snap: state before the current move, for instant turns
@@ -155,11 +162,12 @@ function reset() {
   const cx = Math.floor(COLS / 2), cy = Math.floor(ROWS * 0.6);
   snake = [[cx, cy], [cx, cy + 1], [cx, cy + 2]];
   prev = snake.map(s => s.slice());
-  dir = 'up'; pendingDir = null; score = 0; alive = true; acc = 0.999; grow = false; dying = false; snap = null; turnQueue = []; lastDir = 'up'; steers = 0; expired = 0;
+  dir = 'up'; pendingDir = null; score = 0; alive = true; acc = 0.999; grow = false; dying = false; snap = null; turnQueue = []; lastDir = 'up'; steers = 0; expired = 0; won = false; turnsMade = 0; runTime = 0;
   placeFood(); updateHud();
 }
 function placeFood() {
   if (mode === 'tut' && tut.step < 5) { food = null; return; }
+  if (snake.length >= COLS * ROWS) { food = null; return; }
   let p;
   do { p = [Math.floor(Math.random() * COLS), Math.floor(Math.random() * ROWS)]; }
   while (snake.some(s => s[0] === p[0] && s[1] === p[1]));
@@ -176,6 +184,7 @@ const wdelta = (d, n) => d > n / 2 ? d - n : d < -n / 2 ? d + n : d;
 function arrive() {
   if (food && snake[0][0] === food[0] && snake[0][1] === food[1]) {
     score++; grow = true; pulse = 1;
+    if (mode === 'play' && snake.length + 1 >= COLS * ROWS) { win(); return false; }   // last square filled
     if (mode === 'tut' && ++tut.eaten >= TUT_EAT) { finishTutorial(); return false; }
     placeFood(); if (mode === 'tut') tutSub(`${tut.eaten} / ${TUT_EAT}`);
   }
@@ -197,13 +206,14 @@ function move() {
 }
 function step() {
   if (!arrive()) return;
-  if (turnQueue.length) { const d = turnQueue.shift(); if (d !== dir && !isReverse(d, dir)) dir = d; }
+  if (turnQueue.length) { const d = turnQueue.shift(); if (d !== dir && !isReverse(d, dir)) { dir = d; turnsMade++; } }
   move();
 }
 
 // turn right now instead of at the next cell: if the head is less than half way into its
 // current move, redo that move in the new direction; otherwise finish it instantly and turn
 function turnNow(d) {
+  turnsMade++;
   // redoing the move is only safe if the new heading isn't a reversal of the heading *before* it
   // (two quick steers: up -> right -> down would redo the move straight back into the neck)
   if (snap && Math.min(1, acc) < 0.5 && !isReverse(d, snap.lastDir)) {
@@ -212,6 +222,17 @@ function turnNow(d) {
   } else {
     dir = d; acc = 0; step();
   }
+}
+const fmtTime = t => { t = Math.floor(t); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+function win() {
+  won = true; alive = false; food = null; updateHud(); deadAt = timeReal; gesture = null; pulse = 1; flash = 0;
+  showOverlay('CONGRATULATIONS!', [], 'Tap to play again');
+  overlay.classList.add('win');
+  overlay.querySelector('h1').insertAdjacentHTML('afterend',
+    `<p>You filled every square on the board.</p><div class="statrow">
+      <div class="stat"><b>${score}</b><span>Food</span></div>
+      <div class="stat"><b>${turnsMade}</b><span>Turns</span></div>
+      <div class="stat"><b>${fmtTime(runTime)}</b><span>Time</span></div></div>`);
 }
 function die() {
   alive = false; deadAt = timeReal; gesture = null; shake = 1;
@@ -280,7 +301,7 @@ function gameInit() { lastReal = timeReal; showStart(); }
 function gameUpdate() {
   if (started && alive && !sheet.classList.contains('open')) {
     acc += timeDelta * speedNow();
-    while (acc >= 1 && !dying) { acc -= 1; step(); }
+    while (acc >= 1 && !dying && alive) { acc -= 1; step(); }
     if (dying && acc >= CONTACT) { acc = CONTACT; die(); }
   }
 }
@@ -289,6 +310,7 @@ function gameUpdate() {
 function gameUpdatePost() {
   const realDt = Math.min(0.05, timeReal - lastReal); lastReal = timeReal;
   const sheetOpen = sheet.classList.contains('open');
+  if (started && alive && mode === 'play' && !sheetOpen) runTime += realDt;
 
   if (mouseWasPressed(0) && !sheetOpen && !pressIsOnUi()) {
     if (!started || !alive) {
@@ -348,7 +370,7 @@ function gameRender() {
   const tailU = [cur[0] + wdelta(oldTail[0] - snake[n - 1][0], COLS), cur[1] + wdelta(oldTail[1] - snake[n - 1][1], ROWS)];
   path.push([tailU[0] + (cur[0] - tailU[0]) * t, tailU[1] + (cur[1] - tailU[1]) * t]);
 
-  const bodyCol = alive ? C.body : C.dead, w = 0.66 + pulse * 0.15;
+  const bodyCol = alive || won ? C.body : C.dead, w = 0.66 + pulse * 0.15;
   const tl = worldToScreen(vec2(0, ROWS)), br = worldToScreen(vec2(COLS, 0));
   drawContext.save();
   drawContext.beginPath(); drawContext.rect(tl.x, tl.y, br.x - tl.x, br.y - tl.y); drawContext.clip();
@@ -359,7 +381,7 @@ function gameRender() {
       if (i) drawLine(pts[i - 1], pts[i], w, bodyCol);
     }
     const hp = pts[0];
-    drawCircle(hp, 0.8, alive ? C.head : C.deadHead);
+    drawCircle(hp, 0.8, alive || won ? C.head : C.deadHead);
     const [ex, ey] = DIRS[dir];
     for (const s of [-1, 1]) {
       const ox2 = ex * .14 + ey * s * .15, oy2 = ey * .14 - ex * s * .15;
