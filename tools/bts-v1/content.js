@@ -75,7 +75,10 @@ function markGear() {
 function resetDbg() {
   Object.assign(cfg, ENGINE_DEF); Object.assign(runCfg, JSON.parse(JSON.stringify(RUN_DEF)));
   for (const k of Object.keys(contentCfg)) delete contentCfg[k];
-  saveDbg();
+  // also wipe everything the game keeps in localStorage (saved settings and the tutorial-done flag)
+  try { localStorage.removeItem(DBG_KEY); localStorage.removeItem('bsnake-tut-done'); } catch (e) {}
+  markGear();
+  if (typeof refreshMods === 'function') refreshMods();
 }
 // tunable value for a challenge/power-up
 function T(id, key) {
