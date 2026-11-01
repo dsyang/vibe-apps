@@ -53,7 +53,7 @@ const rb = () => run ? run.rngBoard() : Math.random();   // board stream
 
 const stageGoal = () => {
   if (!run) return 0;
-  if (run.stage === 'continue') return Infinity;
+  if (run.stage === 'continue' || run.classic) return Infinity;
   return run.stage === 3 && run.challenge === 'feast' ? T('feast', 'goal') : runCfg.stageFood;
 };
 function speedNow() {
@@ -174,13 +174,13 @@ function arrive() {
     placeFoods(); tutSub(`${tut.eaten} / ${TUT_EAT}`);
     return true;
   }
-  run.score += 10; run.totalFood++; run.stageFood++; if (run.stage !== 1) run.rampFood++;
+  run.score += 10; run.totalFood++; run.stageFood++; if (run.stage !== 1 && !run.classic) run.rampFood++;
   popText(h, '+10', '#ffcc4d');
   grow = true;
   if (has('savor')) run.savorUntil = timeReal + T('savor', 'dur');
   if (chActive('decoy')) placeDecoy();
   placeFoods(); updateHud();
-  if (run.stage !== 'continue' && run.stageFood >= stageGoal()) { endStage(); return false; }
+  if (!run.classic && run.stage !== 'continue' && run.stageFood >= stageGoal()) { endStage(); return false; }
   return true;
 }
 // start moving one cell in `dir`
@@ -204,16 +204,17 @@ function move() {
 // Lure: food (and, deliberately, the decoy) within range slides one cell toward the head
 function lure() {
   const every = T('lure', 'every');
-  const h = snake[0], range = T('lure', 'range'), walls = wallsOn();
+  const h = snake[0], range = T('lure', 'range');
   const pull = p => {
-    const dx = walls ? h[0] - p[0] : wdelta(h[0] - p[0], COLS), dy = walls ? h[1] - p[1] : wdelta(h[1] - p[1], ROWS);
+    const dx = h[0] - p[0], dy = h[1] - p[1];   // straight distance: food is never pulled across a screen edge
     if (!dx && !dy || Math.abs(dx) + Math.abs(dy) > range) { p.pullN = 0; return p; }
     p.pullN = (p.pullN || 0) + 1;
     if ((p.pullN - 1) % every) return p;   // pulled when it enters range, then only every Nth snake step
     const tries = Math.abs(dx) >= Math.abs(dy) ? [[Math.sign(dx), 0], [0, Math.sign(dy)]] : [[0, Math.sign(dy)], [Math.sign(dx), 0]];
     for (const [sx, sy] of tries) {
       if (!sx && !sy) continue;
-      const q = [wrap(p[0] + sx, COLS), wrap(p[1] + sy, ROWS)];
+      const q = [p[0] + sx, p[1] + sy];
+      if (q[0] < 0 || q[0] >= COLS || q[1] < 0 || q[1] >= ROWS) continue;   // never wraps
       const bodyHit = snake.some((c, i) => i > 0 && c[0] === q[0] && c[1] === q[1]);
       if (!bodyHit && !foods.some(f => f !== p && f[0] === q[0] && f[1] === q[1])) { q.pullN = p.pullN; return glide(p, q, sx, sy, every / speedNow(), false); };   // one step of travel per snake step
     }
@@ -253,7 +254,7 @@ function skitTick(dt) {
     for (const [dx, dy] of order) {
       const q = [p[0] + dx, p[1] + dy];
       if (q[0] < 0 || q[0] >= COLS || q[1] < 0 || q[1] >= ROWS) continue;   // never wraps
-      if (!foodAt(q)) return glide(p, q, dx, dy, Math.min(0.3, T('skittish', 'interval') * 0.6), true);   // may hop through the snake's body
+      if (!taken(q)) return glide(p, q, dx, dy, Math.min(0.3, T('skittish', 'interval') * 0.6), true);   // never onto the snake's body
     }
     return p;
   });
@@ -278,10 +279,12 @@ function newRun() {
     phaseLeft: 0, savorUntil: 0, skitT: 0,
   };
 }
-function startRun() {
-  mode = 'play'; tut = null; run = newRun(); gesture = null; phase = 'ready';
+// classic === true: no power-ups, no challenge, no stages, no speed ramp; play until you crash
+function startRun(classic) {
+  mode = 'play'; tut = null; run = newRun();
+  if (classic === true) Object.assign(run, { classic: true, stage: 'classic', challenge: null, powerups: [], granted: [], offers: [[], [], []] }); gesture = null; phase = 'ready';
   reset(); hideTip();
-  beginStage(1);   // no blind pick: every run starts straight in stage 1
+  beginStage(run.classic ? 'classic' : 1);   // no blind pick: every run starts straight in stage 1
 }
 function pickPower(n, id) {
   run.powerups.push(id);
@@ -293,7 +296,7 @@ function beginStage(s) {
   run.phaseLeft = has('phase') ? T('phase', 'charges') : 0;
   if (chActive('decoy')) placeDecoy(); else decoy = null;
   placeFoods(); updateHud();
-  setReady(`STAGE ${s}`, 1000);
+  setReady(s === 'classic' ? 'GO' : `STAGE ${s}`, 1000);
 }
 function setReady(label, ms) {
   phase = 'ready'; readyUntil = timeReal + ms / 1000; gesture = null;
@@ -324,7 +327,8 @@ function continueRun() {
 }
 function die() {
   alive = false; deadAt = timeReal; gesture = null; shake = 1; phase = 'dead';
-  if (run && run.stage === 'continue') showContinueEnd(); else showCrash();
+  if (run && run.classic) showClassicEnd();
+  else if (run && run.stage === 'continue') showContinueEnd(); else showCrash();
 }
 function pauseGame() {
   if (phase !== 'play' || !run) return;

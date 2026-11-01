@@ -37,7 +37,7 @@ These already exist in `tools/bullet-time-snake.html` and carry over to v1 uncha
 - **Instant turns:** if the head is less than halfway into its current move, the move is redone in the new direction. Otherwise the move finishes instantly and then turns.
   - A guard stops quick double-steers from redoing a move straight into the neck.
 - **Ring expiry:** if the ring closes before you release, the steer is **cancelled** by default. The "Commit steer" debug option makes it commit instead.
-- **Counters:** `steers` (committed gestures) and `expired` (rings that closed) are tracked.
+- **Counters:** `steers` (committed gestures) and `expired` (rings that closed) are tracked. Only steers are shown to the player.
 
 ### Tutorial
 Eight steps at 70% speed. The ring starts long and tightens through steps 1 to 5 until it reaches the real setting. The label reads `TUTORIAL n / 8`, and every step has a **Skip tutorial** link.
@@ -153,7 +153,7 @@ One per run. It's revealed at staging zone 1 and **active in stage 3 and continu
 - Food hops one cell (up, down, left or right) every **2 s** of game time, so bullet time slows the hops too.
 - It **never wraps**: it can't hop off an edge.
 - It **holds still** while your head is within **1 cell** (straight up, down, left or right, not diagonal).
-- It **can hop through your body**. A food sitting on your body is drawn on top of it, and it's eaten when your head reaches that cell.
+- It **never hops onto your body** (or your head).
 - Hops glide over about 0.3 s instead of jumping.
 
 ---
@@ -202,9 +202,13 @@ Deep Focus and Adrenaline help in every run, which makes them safe picks whichev
 ### Start screen
 - First launch: **Start tutorial** or **Skip to game** (as in the prototype).
 - After the tutorial: **Play** goes straight into stage 1, with no pick screen first.
+- **Classic mode** button (always shown, under Play): no stages, power-ups, challenge or Speed Ramp. Constant base speed, play until you crash.
+  - HUD: score, a `food n` count, and the top-right buttons only. No stage bar, challenge card or power-up dock.
+  - Crash screen: score, food, time, steers, seed, with **Play again** and **Menu**. Pause shows the same stats.
+  - It still uses a seed for food spawns, and debug settings (board, speed, ring…) still apply. Forced challenge, offers and granted power-ups are ignored.
 
 ### HUD
-- **Top row:** score (with steers and expired rings under it) on the left. **⏸** pause, **?** tutorial and **⚙︎** debug settings on the right, as 44 px buttons.
+- **Top row:** score (with the steer count under it) on the left. **⏸** pause, **?** tutorial and **⚙︎** debug settings on the right, as 44 px buttons.
 - **Stage bar:** a green `STAGE n/3` badge and a bar of three segments. Finished stages are full, and the current segment grows with food and shows `food n/10`.
 - **Challenge card:** under the stage bar. "Challenge ???" until it's revealed, then its icon, name, one-line effect and a `STAGE 3` tag, which becomes `ACTIVE` in stage 3.
 - **Power-up dock:** at the bottom, under your thumb. Two slots show the icon and name of each power-up held, and empty slots are dashed. A power-up with per-stage charges (**Phase Shift**) **dims as disabled** once its charge is used, and lights up again when the next stage refills it.
@@ -222,7 +226,7 @@ Deep Focus and Adrenaline help in every run, which makes them safe picks whichev
 - Styled like the in-game HUD: the same stage bar, challenge card and power-up slots, on a solid background.
 - **Current stats:**
   - stage n/3 and food n/10
-  - score (with steers and expired rings)
+  - score (with steers)
   - time
 - **What's left:**
   - remaining stages and their food targets
@@ -381,6 +385,6 @@ Power-ups and challenges are data with hooks, not scattered `if`s. The prototype
 - **Debug panel access:** the ⚙︎ button is always visible. An orange dot sits on it whenever any setting (or a typed seed) differs from the default, so a leftover forced challenge can't hide. Inside the panel, every non-default row is highlighted with an orange bar and label.
 - **Offers:** the run stream shuffles the 8 power-ups once, and the two picks take disjoint pairs. That keeps same seed = same offers whatever you pick.
 - **Skittish Prey** timer runs on game time, so bullet time slows it too.
-- **Lure** measures range as Manhattan distance across wrapped edges. A food is pulled the moment it enters range, then once every 4 snake steps while it stays in range. The pull glides smoothly over those steps.
+- **Lure** measures range as straight Manhattan distance, never across a wrapped edge, and never pulls food across an edge or onto your body. A food is pulled the moment it enters range, then once every 4 snake steps while it stays in range. The pull glides smoothly over those steps.
 - **Decoy** is not respawned when you eat it; it comes back with the next real food.
 
