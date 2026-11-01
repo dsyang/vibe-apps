@@ -33,7 +33,17 @@ let tutDone = false; try { tutDone = localStorage.getItem('bsnake-tut-done') ===
 const TUT_STEPS = 6, TUT_EAT = 3;
 const CONTACT = 0.12; // fraction of a move at which a crashing head touches its body
 let deadAt = -1, gesture = null, flash = 0, pulse = 0, shake = 0, lastReal = 0, pops = [];
-const HUD_H = 78, PAD = 12;
+const PAD = 12;
+// space the DOM HUD takes at the top and bottom of the canvas (css px), measured from the elements
+let hudInsets = null;
+function insets() {
+  if (hudInsets) return hudInsets;
+  const bottomOf = id => { const e = document.getElementById(id); return e.classList.contains('hidden') ? 0 : e.getBoundingClientRect().bottom; };
+  const top = Math.max(bottomOf('chal'), bottomOf('hud')) + 12;
+  const dock = document.getElementById('dock'), bottom = dock.classList.contains('hidden') ? 0 : innerHeight - dock.getBoundingClientRect().top + 12;
+  return hudInsets = { top, bottom };
+}
+addEventListener('resize', () => { hudInsets = null; });
 
 // ---------- modifier hooks ----------
 const has = id => !!run && run.powerups.includes(id);
@@ -64,7 +74,7 @@ const ringFrac = g => Math.max(0, Math.min(1, 1 - (timeReal - ringStart(g)) / ri
 
 // ---------- layout ----------
 function layout() {
-  const availW = mainCanvasSize.x - PAD * 2, availH = mainCanvasSize.y - HUD_H - PAD * 2;
+  const availW = mainCanvasSize.x - 44, availH = mainCanvasSize.y - insets().top - insets().bottom - PAD * 2;
   return { cell: Math.floor(Math.min(availW / COLS, availH / ROWS)) };
 }
 function applyCamera() {
@@ -72,7 +82,7 @@ function applyCamera() {
   setCameraScale(cell);
   const sx = shake ? (Math.random() - .5) * 10 * shake / cell : 0;
   const sy = shake ? (Math.random() - .5) * 10 * shake / cell : 0;
-  setCameraPos(vec2(COLS / 2 + sx, ROWS / 2 + (HUD_H / 2) / cell + sy));
+  setCameraPos(vec2(COLS / 2 + sx, ROWS / 2 + ((insets().top - insets().bottom) / 2) / cell + sy));
 }
 // grid cell (y down) -> world pos (y up), cell centre
 const W = (x, y) => vec2(x + .5, ROWS - y - .5);
@@ -493,7 +503,7 @@ function gameRenderPost() {
   // Savor timer: a thin amber bar under the HUD
   if (run && phase === 'play' && savoring()) {
     const f = (run.savorUntil - timeReal) / T('savor', 'dur');
-    ctx.fillStyle = 'rgba(255,204,77,.85)'; ctx.fillRect(12, HUD_H - 4, (Wd - 24) * Math.max(0, f), 3);
+    ctx.fillStyle = 'rgba(255,204,77,.85)'; ctx.fillRect(22, insets().top - 8, (Wd - 44) * Math.max(0, f), 3);
   }
 
   if (gesture) {

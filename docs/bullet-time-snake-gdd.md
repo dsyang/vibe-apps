@@ -195,9 +195,11 @@ Deep Focus and Adrenaline help in every run, which makes them safe **blind picks
 - After the tutorial: **Play** goes straight to the blind pick.
 
 ### HUD
-- **Left:** score, plus a status line with stage pips `● ○ ○` and `food n/10`.
-- **Challenge tag:** shows the challenge once it's revealed: "*Short Fuse* · stage 3" during stage 2, then "*Short Fuse* · active".
-- **Right:** **⏸** pause, **?** tutorial, **⚙︎** debug settings.
+- **Top row:** score (with steers and expired rings under it) on the left. **⏸** pause, **?** tutorial and **⚙︎** debug settings on the right, as 44 px buttons.
+- **Stage bar:** a green `STAGE n/3` badge and a bar of three segments. Finished stages are full, and the current segment grows with food and shows `food n/10`.
+- **Challenge card:** under the stage bar. "Challenge ???" until it's revealed, then its icon, name, one-line effect and a `STAGE 3` tag, which becomes `ACTIVE` in stage 3.
+- **Power-up dock:** at the bottom, under your thumb. Three slots show the icon and name of each power-up held, and empty slots are dashed.
+- All HUD elements sit 22 px in from the screen edges. The board fits the space between the challenge card and the dock.
 
 ### Staging-zone cards
 - Zone 1 opens with the **challenge reveal card**: name, one-line effect and "active in stage 3". Tap to continue.

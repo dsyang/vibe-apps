@@ -18,20 +18,33 @@ const haveRow = () => run.powerups.length ? `<div class="have">you have: ${run.p
 
 // ---------- HUD ----------
 function updateHud() {
-  if (!run) {
-    $('score').textContent = '0'; $('stats').textContent = mode === 'tut' ? 'tutorial' : '';
-    $('chip').classList.add('hidden'); $('owned').textContent = ''; return;
-  }
+  const inRun = !!run;
+  for (const id of ['stagebar', 'chal', 'dock']) $(id).classList.toggle('hidden', !inRun);
+  hudInsets = null;
+  if (!run) { $('score').textContent = '0'; $('stats').textContent = mode === 'tut' ? 'tutorial' : ''; return; }
   $('score').textContent = run.score;
-  const st = run.stage, pips = [1, 2, 3].map(i => (st === 'continue' || i <= st) ? '●' : '○').join(' ');
-  $('stats').textContent = st === 'continue' ? `${pips} · food ${run.totalFood}` : `${pips} · food ${run.stageFood}/${stageGoal()}`;
-  const c = $('chip'); c.classList.remove('hidden', 'on', 'soon');
-  if (!run.revealed) c.textContent = '? challenge ???';
+  $('stats').textContent = `${run.steers} steers · ${run.expired} expired`;
+  const st = run.stage, cont = st === 'continue';
+  $('stagebadge').textContent = cont ? 'CONTINUE' : `STAGE ${st}/3`;
+  $('segs').querySelectorAll('.seg1').forEach((el, i) => {
+    const n = i + 1, done = cont || n < st;
+    el.classList.toggle('done', done); el.classList.toggle('cur', cont ? i === 2 : n === st);
+    el.querySelector('em').textContent = (cont ? i === 2 : n === st) ? (cont ? `food ${run.totalFood}` : `${run.stageFood} / ${stageGoal()}`) : '';
+    el.firstChild.style.width = done ? '100%' : n === st ? Math.min(100, run.stageFood / stageGoal() * 100) + '%' : '0';
+  });
+  const c = $('chal'), active = st === 3 || cont;
+  c.classList.remove('on', 'soon');
+  if (!run.revealed) c.innerHTML = '<div class="ic">❓</div><div><b>Challenge ???</b><span class="d">Revealed after stage 1</span></div>';
   else {
-    const ch = CHALLENGES[run.challenge], active = st === 3 || st === 'continue';
-    c.textContent = `${ch.icon} ${ch.name} · ${active ? 'active' : 'stage 3'}`; c.classList.add(active ? 'on' : 'soon');
+    const ch = CHALLENGES[run.challenge];
+    c.innerHTML = `<div class="ic">${ch.icon}</div><div><b>${ch.name}</b><span class="d">${ch.desc.split('.')[0]}</span></div><div class="tag">${active ? 'ACTIVE' : 'STAGE 3'}</div>`;
+    c.classList.add(active ? 'on' : 'soon');
   }
-  $('owned').textContent = run.powerups.map(i => POWERUPS[i].icon).join('');
+  const slots = [0, 1, 2].map(i => {
+    const id = run.powerups[i];
+    return id ? `<div class="pu"><span class="ic">${POWERUPS[id].icon}</span><span>${POWERUPS[id].name}</span></div>` : '<div class="pu empty">—</div>';
+  });
+  $('dock').innerHTML = slots.join('');
 }
 
 // ---------- screens ----------
