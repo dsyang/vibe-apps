@@ -153,7 +153,7 @@ One per run. It's revealed at staging zone 1 and **active in stage 3 and continu
 - Food hops one cell (up, down, left or right) every **2 s** of game time, so bullet time slows the hops too.
 - It **never wraps**: it can't hop off an edge.
 - It **holds still** while your head is within **1 cell** (straight up, down, left or right, not diagonal).
-- It **can hop through your body**. A food sitting on your body is drawn on top of it, and it's eaten when your head reaches that cell.
+- It **never hops onto your body** (or your head).
 - Hops glide over about 0.3 s instead of jumping.
 
 ---
@@ -381,6 +381,6 @@ Power-ups and challenges are data with hooks, not scattered `if`s. The prototype
 - **Debug panel access:** the ⚙︎ button is always visible. An orange dot sits on it whenever any setting (or a typed seed) differs from the default, so a leftover forced challenge can't hide. Inside the panel, every non-default row is highlighted with an orange bar and label.
 - **Offers:** the run stream shuffles the 8 power-ups once, and the two picks take disjoint pairs. That keeps same seed = same offers whatever you pick.
 - **Skittish Prey** timer runs on game time, so bullet time slows it too.
-- **Lure** measures range as Manhattan distance across wrapped edges. A food is pulled the moment it enters range, then once every 4 snake steps while it stays in range. The pull glides smoothly over those steps.
+- **Lure** measures range as straight Manhattan distance, never across a wrapped edge, and never pulls food across an edge or onto your body. A food is pulled the moment it enters range, then once every 4 snake steps while it stays in range. The pull glides smoothly over those steps.
 - **Decoy** is not respawned when you eat it; it comes back with the next real food.
 
