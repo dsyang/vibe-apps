@@ -39,10 +39,6 @@ const POWERUPS = {
     tun: { count: { label: 'Food on board', def: 2, min: 2, max: 4, step: 1, fmt: v => v } } },
 };
 
-// who answers what (GDD section 7). Deep Focus and Adrenaline answer Speed Ramp, which every run has.
-const COUNTERS = { shortfuse: ['longfuse', 'savor'], lockdown: ['phase', 'shed'], skittish: ['lure', 'second'], feast: ['shed'], decoy: ['second'] };
-const GENERALISTS = ['focus', 'adrenaline'];
-
 const ALL_CONTENT = Object.assign({}, CHALLENGES, POWERUPS);
 const CHALLENGE_IDS = Object.keys(CHALLENGES);
 const POWERUP_IDS = Object.keys(POWERUPS);
