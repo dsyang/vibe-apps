@@ -19,7 +19,7 @@
     display:flex; align-items:center; justify-content:space-between; z-index:5; font-variant-numeric:tabular-nums; }
   #score { font-size:28px; font-weight:800; letter-spacing:.5px; line-height:1.05; }
   #stats { font-size:13px; color:var(--dim); white-space:nowrap; }
-  #hudR { display:flex; gap:10px; pointer-events:auto; }
+  #hudR { position:fixed; top:calc(env(safe-area-inset-top) + 18px); right:22px; height:44px; display:flex; gap:10px; align-items:center; pointer-events:auto; z-index:7; }
   #hudR button { width:44px; height:44px; border-radius:12px; border:1px solid #232836; background:var(--card); color:var(--fg);
     font-size:19px; display:grid; place-items:center; padding:0; }
   #stagebar { position:fixed; top:calc(env(safe-area-inset-top) + 74px); left:22px; right:22px; z-index:5; pointer-events:none; }
@@ -71,7 +71,7 @@
 
   /* screens */
   #overlay { position:fixed; inset:0; z-index:4; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; padding:calc(env(safe-area-inset-top) + 28px) 24px calc(env(safe-area-inset-bottom) + 28px); pointer-events:none; overflow-y:auto; }
+    text-align:center; padding:calc(env(safe-area-inset-top) + 76px) 24px calc(env(safe-area-inset-bottom) + 28px); pointer-events:none; overflow-y:auto; }
   #overlay.modal { pointer-events:auto; background:rgba(13,15,20,.97); z-index:6; }
   #overlay.solid { background:#0d0f14; }
   #overlay.start { pointer-events:none; background:rgba(13,15,20,.82); justify-content:flex-end; }
@@ -126,11 +126,11 @@
 <body>
 <div id="hud">
   <div><div id="score">0</div><div id="stats"></div></div>
-  <div id="hudR">
-    <button id="pausebtn" aria-label="Pause">⏸</button>
-    <button id="help" aria-label="Tutorial">?</button>
-    <button id="gear" aria-label="Debug settings">⚙︎</button>
-  </div>
+</div>
+<div id="hudR">
+  <button id="pausebtn" aria-label="Pause">⏸</button>
+  <button id="help" aria-label="Tutorial">?</button>
+  <button id="gear" aria-label="Debug settings">⚙︎</button>
 </div>
 <div id="stagebar" class="hidden"></div>
 <div id="chal" class="hidden"></div>
