@@ -309,7 +309,7 @@ function buildSheet() {
     }
   }
   const rs = document.createElement('button'); rs.className = 'reset'; rs.textContent = 'Reset all to defaults'; body.appendChild(rs);
-  rs.onclick = () => { resetDbg(); buildSheet(); };
+  rs.onclick = () => { resetDbg(); tutDone = false; buildSheet(); if (phase === 'menu' && mode === 'play') showStart(); };
   $('closeSheet').onclick = () => sheet.classList.remove('open');
 }
 buildSheet();

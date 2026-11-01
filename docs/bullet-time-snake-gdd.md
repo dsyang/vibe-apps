@@ -382,7 +382,7 @@ Power-ups and challenges are data with hooks, not scattered `if`s. The prototype
 ### Decisions made while building BTS v1
 - **Decoy no-spawn area:** built as a centred **5 × 5** square (`area` tunable, odd sizes only).
 - **Phase Shift indicator:** a translucent blue glow around the head while a charge is unused.  The HUD power-up slot also dims once the charge is spent.
-- **Debug panel access:** the ⚙︎ button is always visible. An orange dot sits on it whenever any setting (or a typed seed) differs from the default, so a leftover forced challenge can't hide. Inside the panel, every non-default row is highlighted with an orange bar and label.
+- **Debug panel access:** the ⚙︎ button is always visible. **Reset all to defaults** also clears everything the game keeps in `localStorage` (saved settings and the tutorial-done flag), so the tutorial shows again on the start screen. An orange dot sits on it whenever any setting (or a typed seed) differs from the default, so a leftover forced challenge can't hide. Inside the panel, every non-default row is highlighted with an orange bar and label.
 - **Offers:** the run stream shuffles the 8 power-ups once, and the two picks take disjoint pairs. That keeps same seed = same offers whatever you pick.
 - **Skittish Prey** timer runs on game time, so bullet time slows it too.
 - **Lure** measures range as straight Manhattan distance, never across a wrapped edge, and never pulls food across an edge or onto your body. A food is pulled the moment it enters range, then once every 4 snake steps while it stays in range. The pull glides smoothly over those steps.
