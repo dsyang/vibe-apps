@@ -79,8 +79,30 @@ function showStart() {
       <button class="secondary" id="goClassic">Classic mode</button></div>
     <p class="classicnote">Classic: no power-ups, no challenges. Play until you crash.</p>`, 'start');
   if ($('goTut')) $('goTut').onclick = startTutorial;
-  $('goPlay').onclick = () => startRun();
-  $('goClassic').onclick = () => startRun(true);
+  onPress($('goPlay'), () => startRun(), () => showSeedPrompt(false));
+  onPress($('goClassic'), () => startRun(true), () => showSeedPrompt(true));
+}
+// tap runs `tap`; holding for about 0.6 s runs `hold` instead (a hidden feature: no hint on screen)
+function onPress(btn, tap, hold) {
+  let timer = 0, held = false;
+  const clear = () => { clearTimeout(timer); timer = 0; };
+  btn.addEventListener('pointerdown', () => { held = false; clear(); timer = setTimeout(() => { timer = 0; held = true; hold(); }, 600); });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, clear);
+  btn.addEventListener('click', e => { if (held) { held = false; e.preventDefault(); return; } tap(); });
+}
+// hidden: long-press Play (or Classic mode) to start a run from a chosen seed
+function showSeedPrompt(classic) {
+  setOverlay(`<div class="hero"><h1>PLAY A SEED</h1>
+    <p>Same seed, same challenge and same power-up offers.</p>
+    <input class="inp seedinp" id="seedGo" maxlength="5" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="K7QX4"></div>
+    <div class="btns"><button class="primary" id="seedStart" disabled>Start</button><button class="secondary" id="seedCancel">Cancel</button></div>`, 'start');
+  const inp = $('seedGo'), go = $('seedStart');
+  const sync = () => { inp.value = cleanSeed(inp.value); go.disabled = inp.value.length !== 5; };
+  inp.addEventListener('input', sync);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !go.disabled) go.click(); });
+  go.onclick = () => { if (!go.disabled) startRun(classic, inp.value); };
+  $('seedCancel').onclick = showStart;
+  inp.focus();
 }
 function showTutDone() {
   setOverlay(`<h1>YOU GOT IT</h1><p>Tap the ? at the top any time to do the tutorial again.</p>

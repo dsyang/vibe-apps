@@ -274,8 +274,9 @@ function skitTick(dt) {
 }
 
 // ---------- run / stage flow ----------
+let pendingSeed = '';   // seed typed into the hidden start-screen prompt; used by the next newRun() only
 function newRun() {
-  const typed = cleanSeed(runCfg.seed);
+  const typed = cleanSeed(pendingSeed || runCfg.seed); pendingSeed = '';
   const seed = typed.length === 5 ? typed : genSeed();
   const st = makeStreams(seed);
   const drawn = CHALLENGE_IDS[rInt(st.run, CHALLENGE_IDS.length)];   // always drawn, so a forced challenge doesn't shift the offers
@@ -293,8 +294,8 @@ function newRun() {
   };
 }
 // classic === true: no power-ups, no challenge, no stages, no speed ramp; play until you crash
-function startRun(classic) {
-  mode = 'play'; tut = null; run = newRun();
+function startRun(classic, seed) {
+  mode = 'play'; tut = null; pendingSeed = seed || ''; run = newRun();
   if (classic === true) Object.assign(run, { classic: true, stage: 'classic', challenge: null, powerups: [], granted: [], offers: [[], [], []] }); gesture = null; phase = 'ready';
   reset(); hideTip();
   beginStage(run.classic ? 'classic' : 1);   // no blind pick: every run starts straight in stage 1
