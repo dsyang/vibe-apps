@@ -173,9 +173,8 @@ function popText(cell, text, col) { pops.push({ x: cell[0], y: cell[1], text, co
 function arrive() {
   const h = snake[0];
   if (decoy && decoy[0] === h[0] && decoy[1] === h[1]) {      // Decoy: grows, costs points, doesn't count
-    const pen = T('decoy', 'penalty');
-    run.score -= pen; grow = true; pulse = 1; flash = 0.7; popText(h, '−' + pen, '#c77dff');
-    decoy = null; updateHud();
+    run.poisoned = true; decoy = null; flash = 0.7; popText(h, 'POISON', '#c77dff');   // the decoy is poisoned: eating it ends the run
+    die(); return false;
   }
   const fi = foods.findIndex(f => f[0] === h[0] && f[1] === h[1]);
   if (fi < 0) return true;

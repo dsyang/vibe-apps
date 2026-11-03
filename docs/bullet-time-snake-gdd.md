@@ -123,7 +123,6 @@ Stage 1 → [Reveal challenge + pick 1 of 2] → Stage 2 → [Pick 1 of 2] → S
 | Eat food | **+10** |
 | Steer (one committed gesture, including a multi-leg path) | **−1** |
 | Expired ring | **−1** |
-| Eat a decoy (*Decoy* challenge) | **−20** |
 
 - **No floor:** the score can go negative.
 - **Time** is tracked and shown, but it doesn't affect the score.
@@ -145,7 +144,7 @@ One per run. It's revealed at staging zone 1 and **active in stage 3 and continu
 | **Decoy** | A fake food in a different colour is also on the board | Reading the board | Second Helping |
 
 ### Decoy rules
-- Eating the decoy: **−20 points** and the snake **grows**, but it **doesn't count** toward the stage's food goal.
+- Eating the decoy is **poison: it ends the run** instantly (the crash screen reads *POISONED*). Phase Shift doesn't save you.
 - Each time you eat **real** food, the decoy respawns somewhere new.
 - The decoy never spawns in the **4 × 4 area around the snake's head**, so there are no unfair spawns right in front of you. See open questions about centring.
 - **Lure** pulls the decoy as well as real food. That's intended: a risky combo.
@@ -295,7 +294,7 @@ A section per power-up and per challenge, generated from the tunables declared i
 | Lockdown | (none) |
 | Skittish Prey | hop interval (2 s), stays put when head within (1 cell) |
 | Feast | stage 3 food goal (15) |
-| Decoy | penalty (−20), no-spawn area (4 × 4) |
+| Decoy | no-spawn area (5 × 5) |
 
 ### Behaviour
 - Every value has a default in `content.js`.
@@ -390,5 +389,4 @@ Power-ups and challenges are data with hooks, not scattered `if`s. The prototype
 - **Offers:** the run stream shuffles the 8 power-ups once, and the two picks take disjoint pairs. That keeps same seed = same offers whatever you pick.
 - **Skittish Prey** timer runs on game time, so bullet time slows it too.
 - **Lure** measures range as straight Manhattan distance, never across a wrapped edge, and never pulls food across an edge or onto your body. A food is pulled the moment it enters range, then once every 4 snake steps while it stays in range. The pull glides smoothly over those steps.
-- **Decoy** is not respawned when you eat it; it comes back with the next real food.
 
