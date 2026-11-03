@@ -165,11 +165,11 @@ function endStats() {
     Power-ups <b>${powerLine()}</b><br>Seed <span class="seed">${run.seed}</span></div>${modsBlock()}`;
 }
 function showCrash() {
-  setOverlay(`<h1>CRASHED</h1>${endStats()}<p class="big">Tap to retry</p>`);
+  setOverlay(`<h1>${run.poisoned ? 'POISONED' : 'CRASHED'}</h1>${endStats()}<p class="big">Tap to retry</p>`);
   overlay.onclick = () => { if (phase === 'dead' && timeReal - deadAt > 0.5) { overlay.onclick = null; startRun(); } };
 }
 function showClassicEnd() {
-  setOverlay(`<h1>CRASHED</h1><h2>CLASSIC</h2>
+  setOverlay(`<h1>${run.poisoned ? 'POISONED' : 'CRASHED'}</h1><h2>CLASSIC</h2>
     <div class="box">Score <b>${run.score}</b> · food <b>${run.totalFood}</b> · time <b>${fmtTime(run.time)}</b><br>
     ${run.steers} steers<br>Seed <span class="seed">${run.seed}</span></div>${modsBlock()}
     <div class="btns"><button class="primary" id="again">Play again</button><button class="secondary" id="menu">Menu</button></div>`);
@@ -187,7 +187,7 @@ function showWin() {
 }
 function showContinueEnd() {
   const ch = CHALLENGES[run.challenge], rc = run.roundClear;
-  setOverlay(`<h1>CRASHED</h1><h2>AFTER ROUND CLEAR</h2>
+  setOverlay(`<h1>${run.poisoned ? 'POISONED' : 'CRASHED'}</h1><h2>AFTER ROUND CLEAR</h2>
     <div class="box">At round clear: score <b>${rc.score}</b> · time <b>${fmtTime(rc.time)}</b><br>
     Final: score <b>${run.score}</b> · food <b>${run.totalFood}</b> · time <b>${fmtTime(run.time)}</b><br>
     Challenge <b>${ch.icon} ${ch.name}</b><br>Power-ups <b>${powerLine()}</b><br>Seed <span class="seed">${run.seed}</span></div>${modsBlock()}

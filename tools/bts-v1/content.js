@@ -13,9 +13,8 @@ const CHALLENGES = {
     } },
   feast: { id: 'feast', name: 'Feast', icon: '🍖', desc: 'Stage 3 needs 15 food instead of 10.',
     tun: { goal: { label: 'Stage 3 food goal', def: 15, min: 10, max: 30, step: 1, fmt: v => v + ' food' } } },
-  decoy: { id: 'decoy', name: 'Decoy', icon: '🎭', desc: 'A fake food is on the board. Eating it costs 20 points and doesn\'t count.',
+  decoy: { id: 'decoy', name: 'Decoy', icon: '🎭', desc: 'A fake food is on the board. Eating it is poison and ends your run.',
     tun: {
-      penalty: { label: 'Penalty', def: 20, min: 0, max: 60, step: 1, fmt: v => '−' + v },
       area: { label: 'No-spawn area around head (square)', def: 5, min: 3, max: 9, step: 2, fmt: v => v + ' × ' + v },
     } },
 };
