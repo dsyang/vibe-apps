@@ -36,6 +36,7 @@
         --board: max(200px, min(100vw - 2 * var(--pad), 100vh - 340px, 520px));
         --board: max(200px, min(100vw - 2 * var(--pad), 100dvh - 340px, 520px));
         --gap: calc(var(--board) * 0.03);
+        --cell: calc((var(--board) - 5 * var(--gap)) / 4);
     }
 
     .container {
@@ -126,7 +127,8 @@
 
     .grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(4, var(--cell));
+        grid-auto-rows: var(--cell);
         gap: var(--gap);
         position: relative;
     }
@@ -134,7 +136,8 @@
     .cell {
         background: rgba(238, 228, 218, 0.35);
         border-radius: 3px;
-        aspect-ratio: 1;
+        width: var(--cell);
+        height: var(--cell);
     }
 
     .tile-container {
