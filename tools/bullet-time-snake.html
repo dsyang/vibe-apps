@@ -11,14 +11,14 @@
   html,body { margin:0; height:100%; background:var(--bg); color:var(--fg);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;
     overflow:hidden; overscroll-behavior:none; user-select:none; -webkit-user-select:none; }
-  #wrap { position:fixed; inset:0; padding:calc(env(safe-area-inset-top) + 52px) 12px calc(env(safe-area-inset-bottom) + 12px);
+  #wrap { position:fixed; inset:0; padding:calc(env(safe-area-inset-top) + 52px) max(12px, env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 12px) max(12px, env(safe-area-inset-left));
     display:flex; align-items:center; justify-content:center; }
   canvas#game { touch-action:none; display:block; }
   canvas#fx { position:fixed; inset:0; pointer-events:none; }
   #hud { pointer-events:none; }
   #gear, #help { pointer-events:auto; }
   #hudR { display:flex; gap:8px; }
-  #hud { position:fixed; top:calc(env(safe-area-inset-top) + 8px); left:12px; right:12px; height:36px;
+  #hud { position:fixed; top:calc(env(safe-area-inset-top) + 8px); left:max(12px, env(safe-area-inset-left)); right:max(12px, env(safe-area-inset-right)); height:36px;
     display:flex; align-items:center; justify-content:space-between; z-index:5; font-variant-numeric:tabular-nums; }
   #score { font-size:22px; font-weight:700; letter-spacing:.5px; }
   #stats { font-size:12px; color:var(--dim); }
@@ -58,11 +58,16 @@
     border-radius:18px 18px 0 0; padding:16px 18px calc(env(safe-area-inset-bottom) + 18px); transform:translateY(105%);
     transition:transform .25s ease; }
   #sheet.open { transform:none; }
+  @media (min-width:600px) { #sheet { width:min(520px, 100%); margin:0 auto; } }
+  /* wide layout: HUD and tutorial tip live in a right-hand column */
+  body.wide #hud { left:auto; width:216px; height:auto; flex-direction:column; align-items:flex-end; gap:14px; text-align:right; }
+  body.wide #tip { left:auto; width:216px; right:max(12px, env(safe-area-inset-right)); top:calc(env(safe-area-inset-top) + 130px); text-align:left; }
+  body.wide #tip .main { max-width:none; display:block; }
   #sheet h2 { margin:0 0 10px; font-size:16px; display:flex; justify-content:space-between; align-items:center; }
   #sheet h2 button { background:none; border:0; color:var(--accent); font-size:15px; font-weight:600; }
   .row { margin:12px 0; }
   .grp { margin:16px 0 4px; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent); }
-  #sheet { max-height:85vh; overflow-y:auto; }
+  #sheet { max-height:85vh; max-height:85dvh; overflow-y:auto; }
   .row label { display:flex; justify-content:space-between; font-size:13px; color:var(--dim); margin-bottom:6px; }
   .row label b { color:var(--fg); font-weight:600; }
   input[type=range] { width:100%; accent-color:var(--accent); }
@@ -140,10 +145,13 @@ const ringTime = () => mode === 'tut' && tut.step < 5 ? Math.max(cfg.ring, [1.4,
 const speedNow = () => mode === 'tut' ? cfg.speed * 0.7 : cfg.speed;
 const CONTACT = 0.12; // fraction of a move at which a crashing head touches its body
 let deadAt = -1, gesture = null, flash = 0, pulse = 0, shake = 0, lastReal = 0;
-const HUD_H = 56, PAD = 12;
+const HUD_H = 56, PAD = 12, SIDE_W = 240;
+// wide screens (landscape / foldable inner): HUD moves to a right-hand column so the board gets the full height
+const isWide = () => mainCanvasSize.x > mainCanvasSize.y * 1.15 && mainCanvasSize.x >= 560;
 
 function layout() {
-  const availW = mainCanvasSize.x - PAD * 2, availH = mainCanvasSize.y - HUD_H - PAD * 2;
+  const wide = isWide();
+  const availW = mainCanvasSize.x - PAD * 2 - (wide ? SIDE_W : 0), availH = mainCanvasSize.y - PAD * 2 - (wide ? 0 : HUD_H);
   return { cell: Math.floor(Math.min(availW / COLS, availH / ROWS)) };
 }
 function applyCamera() {
@@ -152,7 +160,9 @@ function applyCamera() {
   // centre board in the area below the HUD (world y is up, so nudge camera up to push board down)
   const sx = shake ? (Math.random() - .5) * 10 * shake / cell : 0;
   const sy = shake ? (Math.random() - .5) * 10 * shake / cell : 0;
-  setCameraPos(vec2(COLS / 2 + sx, ROWS / 2 + (HUD_H / 2) / cell + sy));
+  document.body.classList.toggle('wide', isWide());
+  setCameraPos(isWide() ? vec2(COLS / 2 + (SIDE_W / 2) / cell + sx, ROWS / 2 + sy)
+                        : vec2(COLS / 2 + sx, ROWS / 2 + (HUD_H / 2) / cell + sy));
 }
 // grid cell (y down) -> world pos (y up), cell centre
 const W = (x, y) => vec2(x + .5, ROWS - y - .5);

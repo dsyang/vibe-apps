@@ -81,6 +81,23 @@
   .pz .left { font-size:13px; color:var(--dim); margin:6px 2px 0; }
   .pz .seedrow { display:flex; justify-content:space-between; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px 14px; font-size:13px; color:var(--dim); }
 
+  /* wide layout (landscape / foldable inner screen): everything but the board moves to a right-hand column */
+  body.wide #hud, body.wide #stagebar, body.wide #chal, body.wide #dock { left:calc(100% - 280px); }
+  body.wide #tip { left:calc(100% - 280px); right:16px; }
+  body.wide #banner { right:280px; }
+  body.wide #overlay { padding-right:calc(280px + 24px); }
+  body.wide #overlay.modal { padding-right:24px; }
+  body.wide .docks { flex-direction:column; }
+  /* short screens (cover display, landscape phones): compact menus that scroll from the top */
+  @media (max-height:420px) {
+    body #overlay, body #overlay.start { justify-content:flex-start; padding-top:calc(env(safe-area-inset-top) + 12px); padding-bottom:calc(env(safe-area-inset-bottom) + 12px); }
+    body #overlay .hero { flex:1 0 auto; }
+    body #overlay h1 { font-size:24px; }
+    body #overlay p { font-size:13px; margin:2px 0; }
+    body #overlay .btns { margin-top:10px; gap:8px; }
+    body #overlay .btns button { height:44px; font-size:16px; }
+  }
+
   /* tutorial tip */
   #tip { position:fixed; left:16px; right:16px; top:calc(env(safe-area-inset-top) + 72px); z-index:4; pointer-events:none; text-align:center; }
   #skip { pointer-events:auto; position:absolute; top:-2px; right:0; background:none; border:0; color:var(--dim); font-size:12px; padding:8px 4px; }

@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="description" content="A simple 2048 clone">
     <title>2048</title>
     <style>
@@ -21,24 +21,52 @@
         align-items: center;
         justify-content: center;
         min-height: 100vh;
-        padding: 20px;
+        min-height: 100dvh;
+        padding: max(var(--pad), env(safe-area-inset-top)) max(var(--pad), env(safe-area-inset-right))
+                 max(var(--pad), env(safe-area-inset-bottom)) max(var(--pad), env(safe-area-inset-left));
         touch-action: none;
     }
 
-    .container {
-        max-width: 500px;
-        width: 100%;
+    /* Layout is driven by --board (the square play area), computed from BOTH viewport
+       width and height so it fits phones, the foldable's near-square inner screen and
+       its short cover screen, in either orientation. Tiles/gaps/fonts scale from it. */
+    :root {
+        --pad: clamp(8px, 2.5vmin, 20px);
+        /* stacked (portrait): leave room for header, button, controls */
+        --board: max(200px, min(100vw - 2 * var(--pad), 100vh - 340px, 520px));
+        --board: max(200px, min(100vw - 2 * var(--pad), 100dvh - 340px, 520px));
+        --gap: calc(var(--board) * 0.03);
+        --cell: calc((var(--board) - 5 * var(--gap)) / 4);
     }
+
+    .container {
+        width: 100%;
+        margin: 0 auto;
+        display: grid;
+        justify-content: center;
+        gap: 12px 24px;
+        grid-template-columns: var(--board);
+        grid-template-areas:
+            "header"
+            "controls"
+            "board"
+            "instr"
+            "vctl";
+    }
+    .header { grid-area: header; }
+    .controls { grid-area: controls; }
+    .game-container { grid-area: board; }
+    .instructions { grid-area: instr; }
+    .virtual-controls { grid-area: vctl; }
 
     .header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
     }
 
     h1 {
-        font-size: 48px;
+        font-size: clamp(32px, calc(var(--board) * 0.095), 48px);
         color: #776e65;
         font-weight: bold;
     }
@@ -66,7 +94,6 @@
     .controls {
         display: flex;
         gap: 10px;
-        margin-bottom: 20px;
     }
 
     button {
@@ -92,30 +119,33 @@
     .game-container {
         background: #bbada0;
         border-radius: 6px;
-        padding: 15px;
+        padding: var(--gap);
         position: relative;
-        margin-bottom: 20px;
+        width: var(--board);
+        height: var(--board);
     }
 
     .grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 15px;
+        grid-template-columns: repeat(4, var(--cell));
+        grid-auto-rows: var(--cell);
+        gap: var(--gap);
         position: relative;
     }
 
     .cell {
         background: rgba(238, 228, 218, 0.35);
         border-radius: 3px;
-        aspect-ratio: 1;
+        width: var(--cell);
+        height: var(--cell);
     }
 
     .tile-container {
         position: absolute;
-        top: 15px;
-        left: 15px;
-        right: 15px;
-        bottom: 15px;
+        top: var(--gap);
+        left: var(--gap);
+        right: var(--gap);
+        bottom: var(--gap);
     }
 
     .tile {
@@ -123,7 +153,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 32px;
+        font-size: calc(var(--board) * 0.09);
         font-weight: bold;
         border-radius: 3px;
         transition: all 0.15s ease-in-out;
@@ -135,12 +165,12 @@
     .tile-16 { background: #f59563; color: #f9f6f2; }
     .tile-32 { background: #f67c5f; color: #f9f6f2; }
     .tile-64 { background: #f65e3b; color: #f9f6f2; }
-    .tile-128 { background: #edcf72; color: #f9f6f2; font-size: 28px; }
-    .tile-256 { background: #edcc61; color: #f9f6f2; font-size: 28px; }
-    .tile-512 { background: #edc850; color: #f9f6f2; font-size: 28px; }
-    .tile-1024 { background: #edc53f; color: #f9f6f2; font-size: 24px; }
-    .tile-2048 { background: #edc22e; color: #f9f6f2; font-size: 24px; }
-    .tile-super { background: #3c3a32; color: #f9f6f2; font-size: 20px; }
+    .tile-128 { background: #edcf72; color: #f9f6f2; font-size: calc(var(--board) * 0.075); }
+    .tile-256 { background: #edcc61; color: #f9f6f2; font-size: calc(var(--board) * 0.075); }
+    .tile-512 { background: #edc850; color: #f9f6f2; font-size: calc(var(--board) * 0.075); }
+    .tile-1024 { background: #edc53f; color: #f9f6f2; font-size: calc(var(--board) * 0.062); }
+    .tile-2048 { background: #edc22e; color: #f9f6f2; font-size: calc(var(--board) * 0.062); }
+    .tile-super { background: #3c3a32; color: #f9f6f2; font-size: calc(var(--board) * 0.05); }
 
     .tile-new {
         animation: appear 0.2s;
@@ -175,10 +205,11 @@
     }
 
     .game-over-message {
-        font-size: 48px;
+        font-size: calc(var(--board) * 0.095);
         font-weight: bold;
         color: #776e65;
         margin-bottom: 20px;
+        text-align: center;
     }
 
     .instructions {
@@ -186,7 +217,6 @@
         font-size: 14px;
         text-align: center;
         line-height: 1.6;
-        margin-bottom: 20px;
     }
 
     .virtual-controls {
@@ -221,32 +251,45 @@
             padding: 10px 5px;
             font-size: 18px;
         }
-        
+
         .virtual-controls button .key {
             font-size: 10px;
         }
     }
 
-    @media (max-width: 520px) {
-        h1 {
-            font-size: 36px;
+    /* short viewports (cover screen, landscape phones): drop the prose to save height */
+    @media (max-height: 700px) {
+        .instructions { display: none; }
+        :root {
+            --board: max(200px, min(100vw - 2 * var(--pad), 100vh - 270px, 520px));
+            --board: max(200px, min(100vw - 2 * var(--pad), 100dvh - 270px, 520px));
         }
-        
-        .tile {
-            font-size: 24px;
+    }
+
+    /* wide viewports (landscape, or a wide inner screen): board on the left, panel on the right */
+    @media (min-aspect-ratio: 5/4) {
+        :root {
+            --board: max(200px, min(100vh - 2 * var(--pad), 100vw - 2 * var(--pad) - 300px, 640px));
+            --board: max(200px, min(100dvh - 2 * var(--pad), 100vw - 2 * var(--pad) - 300px, 640px));
         }
-        
-        .tile-128, .tile-256, .tile-512 {
-            font-size: 20px;
+        .container {
+            grid-template-columns: var(--board) minmax(200px, 280px);
+            grid-template-rows: auto auto auto auto 1fr;
+            align-content: center;
+            grid-template-areas:
+                "board header"
+                "board controls"
+                "board instr"
+                "board vctl"
+                "board .";
+            align-items: start;
         }
-        
-        .tile-1024, .tile-2048 {
-            font-size: 18px;
-        }
-        
-        .tile-super {
-            font-size: 16px;
-        }
+        .game-container { align-self: center; grid-row: 1 / -1; }
+        .virtual-controls button { min-height: 52px; }
+    }
+    @media (min-aspect-ratio: 5/4) and (max-height: 520px) {
+        .instructions { display: none; }
+        .virtual-controls button { min-height: 44px; padding: 6px 4px; }
     }
 </style>
 
@@ -316,6 +359,9 @@
 
             this.setupGrid();
             this.setupEventListeners();
+
+            // re-place tiles when the board resizes (rotation, fold/unfold, split view)
+            new ResizeObserver(() => this.render(false)).observe(this.gridElement);
 
             // Load saved game or start new game
             if (!this.loadGame()) {
@@ -691,19 +737,20 @@
             return false;
         }
 
-        render() {
+        render(animate = true) {
             this.tileContainer.innerHTML = '';
             this.scoreElement.textContent = this.score;
 
-            const cellSize = this.gridElement.querySelector('.cell').offsetWidth;
-            const gap = 15;
+            // measure the live layout (board size changes with screen/orientation/fold state)
+            const cellSize = this.gridElement.querySelector('.cell').getBoundingClientRect().width;
+            const gap = parseFloat(getComputedStyle(this.gridElement).columnGap) || 0;
 
             for (let row = 0; row < this.gridSize; row++) {
                 for (let col = 0; col < this.gridSize; col++) {
                     const value = this.grid[row][col];
                     if (value !== 0) {
                         const tile = document.createElement('div');
-                        tile.className = `tile tile-${value > 2048 ? 'super' : value} tile-new`;
+                        tile.className = `tile tile-${value > 2048 ? 'super' : value}${animate ? ' tile-new' : ''}`;
                         tile.textContent = value;
                         
                         const left = col * (cellSize + gap);
@@ -716,8 +763,7 @@
                         
                         this.tileContainer.appendChild(tile);
                         
-                        // Remove animation class after animation completes
-                        setTimeout(() => tile.classList.remove('tile-new'), 200);
+                        if (animate) setTimeout(() => tile.classList.remove('tile-new'), 200);
                     }
                 }
             }
