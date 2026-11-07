@@ -59,7 +59,6 @@
     transition:transform .25s ease; }
   #sheet.open { transform:none; }
   @media (min-width:600px) { #sheet { width:min(520px, 100%); margin:0 auto; } }
-  .row.off { opacity:.4; pointer-events:none; }
   #sheet h2 { margin:0 0 10px; font-size:16px; display:flex; justify-content:space-between; align-items:center; }
   #sheet h2 button { background:none; border:0; color:var(--accent); font-size:15px; font-weight:600; }
   .row { margin:12px 0; }
@@ -89,10 +88,8 @@
 <div id="sheet">
   <h2>Tuning <button id="closeSheet">Done</button></h2>
   <div class="grp">Snake</div>
-  <div class="row"><label>Board size (next game)</label>
-    <div class="seg" id="fit"><button data-v="1">Fit screen</button><button data-v="0">Manual</button></div></div>
-  <div class="row" id="rowCols"><label>Board width (next game) <b id="v-cols"></b></label><input id="cols" type="range" min="7" max="21" step="1"></div>
-  <div class="row" id="rowRows"><label>Board height (next game) <b id="v-rows"></b></label><input id="rows" type="range" min="7" max="30" step="1"></div>
+  <div class="row"><label>Board width (next game) <b id="v-cols"></b></label><input id="cols" type="range" min="7" max="21" step="1"></div>
+  <div class="row"><label>Board height (next game) <b id="v-rows"></b></label><input id="rows" type="range" min="7" max="30" step="1"></div>
   <div class="row"><label>Snake speed <b id="v-speed"></b></label><input id="speed" type="range" min="3" max="16" step="0.5"></div>
   <div class="grp">Bullet time</div>
   <div class="row"><label>Bullet time length (real time) <b id="v-ring"></b></label><input id="ring" type="range" min="0.15" max="1.5" step="0.05"></div>
@@ -108,7 +105,7 @@
 'use strict';
 // ---------- tunables ----------
 // all tunables live here and in the ⚙︎ sheet: board/speed are normal snake settings, ring/slow are bullet time
-const cfg = { fit: true, cols: 13, rows: 20, speed: 7, ring: 0.45, slow: 0.08, dead: 26, ramp: 120, expire: 'cancel' };
+const cfg = { cols: 13, rows: 20, speed: 7, ring: 0.45, slow: 0.08, dead: 26, ramp: 120, expire: 'cancel' };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem('bsnake-ljs-cfg5') || '{}')); } catch (e) {}
 const saveCfg = () => { try { localStorage.setItem('bsnake-ljs-cfg5', JSON.stringify(cfg)); } catch (e) {} };
 
@@ -146,16 +143,6 @@ const CONTACT = 0.12; // fraction of a move at which a crashing head touches its
 let deadAt = -1, gesture = null, flash = 0, pulse = 0, shake = 0, lastReal = 0;
 const HUD_H = 56, PAD = 12;
 
-// "Fit screen": keep the same cell size the manual cols x rows would give on this screen,
-// then add as many cells as the free area holds on each axis. Portrait phone stays ~13 wide;
-// a near-square foldable inner screen or a landscape window gets a wider board instead of
-// a narrow strip with empty margins.
-function fitBoard() {
-  const availW = mainCanvasSize.x - PAD * 2, availH = mainCanvasSize.y - HUD_H - PAD * 2;
-  const cell = Math.max(14, Math.floor(Math.min(availW / cfg.cols, availH / cfg.rows)));
-  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-  return { cols: clamp(Math.floor(availW / cell), 7, 21), rows: clamp(Math.floor(availH / cell), 7, 30) };
-}
 function layout() {
   const availW = mainCanvasSize.x - PAD * 2, availH = mainCanvasSize.y - HUD_H - PAD * 2;
   return { cell: Math.floor(Math.min(availW / COLS, availH / ROWS)) };
@@ -172,7 +159,7 @@ function applyCamera() {
 const W = (x, y) => vec2(x + .5, ROWS - y - .5);
 
 function reset() {
-  if (mode === 'tut' || screen === 'start') { COLS = 13; ROWS = 13; } else if (cfg.fit) { const f = fitBoard(); COLS = f.cols; ROWS = f.rows; } else { COLS = cfg.cols; ROWS = cfg.rows; }   // tutorial board leaves room for the instructions
+  if (mode === 'tut' || screen === 'start') { COLS = 13; ROWS = 13; } else { COLS = cfg.cols; ROWS = cfg.rows; }   // tutorial board leaves room for the instructions
   const cx = Math.floor(COLS / 2), cy = Math.floor(ROWS * 0.6);
   snake = [[cx, cy], [cx, cy + 1], [cx, cy + 2]];
   prev = snake.map(s => s.slice());
@@ -540,14 +527,6 @@ const seg = document.getElementById('expire');
 const paintSeg = () => seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === cfg.expire));
 seg.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { cfg.expire = b.dataset.v; paintSeg(); saveCfg(); } });
 paintSeg();
-const fitSeg = document.getElementById('fit');
-const paintFit = () => {
-  fitSeg.querySelectorAll('button').forEach(b => b.classList.toggle('on', (b.dataset.v === '1') === cfg.fit));
-  document.getElementById('rowCols').classList.toggle('off', cfg.fit);
-  document.getElementById('rowRows').classList.toggle('off', cfg.fit);
-};
-fitSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { cfg.fit = b.dataset.v === '1'; paintFit(); saveCfg(); } });
-paintFit();
 document.addEventListener('contextmenu', e => e.preventDefault());
 
 // ---------- modes ----------
