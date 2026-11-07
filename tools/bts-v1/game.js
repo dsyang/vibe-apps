@@ -37,14 +37,21 @@ let deadAt = -1, gesture = null, flash = 0, pulse = 0, shake = 0, lastReal = 0, 
 const PAD = 12;
 // space the DOM HUD takes at the top and bottom of the canvas (css px), measured from the elements
 let hudInsets = null;
+// wide screens (landscape / foldable inner): the HUD, stage bar, challenge card, dock and tips live in a right-hand
+// column (CSS: body.wide) so the board gets the full height; the board is centred in the area left of the column
+const SIDE_W = 280;
+const isWide = () => innerWidth > innerHeight * 1.15 && innerWidth >= 560;
+const syncWide = () => document.body.classList.toggle('wide', isWide());
 function insets() {
   if (hudInsets) return hudInsets;
+  syncWide();
   const bottomOf = id => { const e = document.getElementById(id); return e.classList.contains('hidden') ? 0 : e.getBoundingClientRect().bottom; };
   const top = Math.max(bottomOf('chal'), bottomOf('hud')) + 12;
   const dock = document.getElementById('dock'), bottom = dock.classList.contains('hidden') ? 0 : innerHeight - dock.getBoundingClientRect().top + 12;
-  return hudInsets = { top, bottom };
+  // colTop: bottom of the stacked top UI (the Savor bar hangs there); top/bottom: space the board must clear
+  return hudInsets = isWide() ? { top: 0, bottom: 0, colTop: top } : { top, bottom, colTop: top };
 }
-addEventListener('resize', () => { hudInsets = null; });
+addEventListener('resize', () => { hudInsets = null; syncWide(); });
 
 // ---------- modifier hooks ----------
 const has = id => !!run && run.powerups.includes(id);
@@ -79,7 +86,7 @@ const ringFrac = g => Math.max(0, Math.min(1, 1 - (timeReal - ringStart(g)) / ri
 
 // ---------- layout ----------
 function layout() {
-  const availW = mainCanvasSize.x - 44, availH = mainCanvasSize.y - insets().top - insets().bottom - PAD * 2;
+  const availW = mainCanvasSize.x - 44 - (isWide() ? SIDE_W : 0), availH = mainCanvasSize.y - insets().top - insets().bottom - PAD * 2;
   return { cell: Math.floor(Math.min(availW / COLS, availH / ROWS)) };
 }
 function applyCamera() {
@@ -87,7 +94,7 @@ function applyCamera() {
   setCameraScale(cell);
   const sx = shake ? (Math.random() - .5) * 10 * shake / cell : 0;
   const sy = shake ? (Math.random() - .5) * 10 * shake / cell : 0;
-  setCameraPos(vec2(COLS / 2 + sx, ROWS / 2 + ((insets().top - insets().bottom) / 2) / cell + sy));
+  setCameraPos(vec2(COLS / 2 + (isWide() ? SIDE_W / 2 / cell : 0) + sx, ROWS / 2 + ((insets().top - insets().bottom) / 2) / cell + sy));
 }
 // grid cell (y down) -> world pos (y up), cell centre
 const W = (x, y) => vec2(x + .5, ROWS - y - .5);
@@ -565,7 +572,8 @@ function gameRenderPost() {
   // Savor timer: a thin amber bar under the HUD
   if (run && phase === 'play' && savoring()) {
     const f = (run.savorUntil - timeReal) / T('savor', 'dur');
-    ctx.fillStyle = 'rgba(255,204,77,.85)'; ctx.fillRect(22, insets().top - 8, (Wd - 44) * Math.max(0, f), 3);
+    ctx.fillStyle = 'rgba(255,204,77,.85)'; isWide() ? ctx.fillRect(Wd - SIDE_W, insets().colTop - 8, (SIDE_W - 22) * Math.max(0, f), 3)
+      : ctx.fillRect(22, insets().colTop - 8, (Wd - 44) * Math.max(0, f), 3);
   }
 
   if (gesture) {
