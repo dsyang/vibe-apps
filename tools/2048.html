@@ -32,15 +32,19 @@
        its short cover screen, in either orientation. Tiles/gaps/fonts scale from it. */
     :root {
         --pad: clamp(8px, 2.5vmin, 20px);
+        /* horizontal/vertical space actually usable once safe-area insets (notch, hinge, status overlay) are applied */
+        --avail-w: calc(100vw - max(var(--pad), env(safe-area-inset-left)) - max(var(--pad), env(safe-area-inset-right)));
+        --avail-h: calc(100vh - max(var(--pad), env(safe-area-inset-top)) - max(var(--pad), env(safe-area-inset-bottom)));
         /* stacked (portrait): leave room for header, button, controls */
-        --board: max(200px, min(100vw - 2 * var(--pad), 100vh - 340px, 520px));
-        --board: max(200px, min(100vw - 2 * var(--pad), 100dvh - 340px, 520px));
+        --board: max(200px, min(var(--avail-w), 100vh - 340px, 520px));
+        --board: max(200px, min(var(--avail-w), 100dvh - 340px, 520px));
         --gap: calc(var(--board) * 0.03);
         --cell: calc((var(--board) - 5 * var(--gap)) / 4);
     }
 
     .container {
         width: 100%;
+        min-width: 0;
         margin: 0 auto;
         display: grid;
         justify-content: center;
@@ -261,16 +265,16 @@
     @media (max-height: 700px) {
         .instructions { display: none; }
         :root {
-            --board: max(200px, min(100vw - 2 * var(--pad), 100vh - 270px, 520px));
-            --board: max(200px, min(100vw - 2 * var(--pad), 100dvh - 270px, 520px));
+            --board: max(200px, min(var(--avail-w), 100vh - 270px, 520px));
+            --board: max(200px, min(var(--avail-w), 100dvh - 270px, 520px));
         }
     }
 
     /* wide viewports (landscape, or a wide inner screen): board on the left, panel on the right */
     @media (min-aspect-ratio: 5/4) {
         :root {
-            --board: max(200px, min(100vh - 2 * var(--pad), 100vw - 2 * var(--pad) - 300px, 640px));
-            --board: max(200px, min(100dvh - 2 * var(--pad), 100vw - 2 * var(--pad) - 300px, 640px));
+            --board: max(200px, min(var(--avail-h), var(--avail-w) - 300px, 640px));
+            --board: max(200px, min(var(--avail-h), var(--avail-w) - 300px, 640px));
         }
         .container {
             grid-template-columns: var(--board) minmax(200px, 280px);
