@@ -240,6 +240,11 @@
             font-weight: 400;
         }
 
+        .btn-self.selected {
+            background: var(--gold-light);
+            border-color: var(--gold);
+        }
+
         .btn-family:hover {
             background: #fefcf8;
             box-shadow: 0 2px 8px var(--shadow);
@@ -457,12 +462,12 @@
                 <button class="btn-family" onclick="addRelation('女兒')">女兒<span class="en">daughter</span></button>
             </div>
 
-            <div class="section-label" style="margin-top: 4px;">配偶 Spouse</div>
+            <div class="section-label" style="margin-top: 4px;">配偶與自己 Spouse &amp; Me</div>
             <div class="btn-row family">
                 <button class="btn-family" onclick="addRelation('丈夫')">丈夫<span class="en">husband</span></button>
                 <button class="btn-family" onclick="addRelation('太太')">太太<span class="en">wife</span></button>
-                <button class="btn-family" style="visibility:hidden"></button>
-                <button class="btn-family" style="visibility:hidden"></button>
+                <button class="btn-family btn-self" id="sexM" onclick="setSelfSex('M')">我(男)<span class="en">me · male</span></button>
+                <button class="btn-family btn-self" id="sexF" onclick="setSelfSex('F')">我(女)<span class="en">me · female</span></button>
             </div>
 
             <div class="section-label" style="margin-top: 4px;">操作 Controls</div>
@@ -809,11 +814,11 @@
         const expr = document.getElementById('expression');
 
         if (chain.length === 0 && !hasDe) {
-            expr.innerHTML = '<span class="placeholder">我的⋯</span>';
+            expr.innerHTML = `<span class="placeholder">${selfLabel()}的⋯</span>`;
             return;
         }
 
-        let html = '我';
+        let html = selfLabel();
         chain.forEach((rel, i) => {
             html += '<span class="de">的</span>' + rel;
         });
@@ -866,39 +871,163 @@
             '<span class="label">按下「是」來查詢稱謂</span>';
     }
 
+    // ============================
+    // RELATIONSHIP ENGINE
+    // Rewrites a chain into canonical forms (e.g. 女兒的爸爸 → 我) using
+    // pairwise rules, then looks the canonical chain up in RELATIONS.
+    // A chain can resolve to several people (爸爸的兒子 = 哥哥/弟弟/我).
+    // ============================
+    let selfSex = 'M';
+    try { if (localStorage.getItem('kinshipSelfSex') === 'F') selfSex = 'F'; } catch (e) {}
+
+    const MALE = new Set(['爸爸', '哥哥', '弟弟', '兒子', '丈夫']);
+    const PARENT = new Set(['爸爸', '媽媽']);
+    const CHILD = new Set(['兒子', '女兒']);
+    const SPOUSE = new Set(['丈夫', '太太']);
+    const SIB = new Set(['哥哥', '弟弟', '姊姊', '妹妹']);
+    const OLDER = new Set(['哥哥', '姊姊']);
+    const sexOf = (t) => (MALE.has(t) ? 'M' : 'F');
+    // Sibling term with given sex and relative age
+    const sibTerm = (sex, older) => sex === 'M' ? (older ? '哥哥' : '弟弟') : (older ? '姊姊' : '妹妹');
+
+    // Given P (whose sex is pSex), "P的a的b" → list of replacements for "a的b"
+    // (each an array of tokens; [] means P itself). null = no rule applies.
+    function rule(a, b, pSex) {
+        // Sibling's parent is my parent
+        if (SIB.has(a) && PARENT.has(b)) return [[b]];
+        // Child's parent is me or my spouse
+        if (CHILD.has(a) && PARENT.has(b)) {
+            return sexOf(b) === pSex ? [[]] : [[pSex === 'M' ? '太太' : '丈夫']];
+        }
+        // Child's sibling is my child
+        if (CHILD.has(a) && SIB.has(b)) return [[sexOf(b) === 'M' ? '兒子' : '女兒']];
+        // Parent's child is me or my sibling
+        if (PARENT.has(a) && CHILD.has(b)) {
+            const sex = sexOf(b);
+            const out = [[sibTerm(sex, true)], [sibTerm(sex, false)]];
+            if (sex === pSex) out.push([]);
+            return out;
+        }
+        // Sibling's sibling
+        if (SIB.has(a) && SIB.has(b)) {
+            const sex = sexOf(b);
+            const aOlder = OLDER.has(a), bOlder = OLDER.has(b);
+            if (aOlder === bOlder) return [[sibTerm(sex, aOlder)]];
+            const out = [[sibTerm(sex, true)], [sibTerm(sex, false)]];
+            if (sex === pSex) out.push([]);
+            return out;
+        }
+        // Parent's spouse is my other parent
+        if (a === '爸爸' && b === '太太') return [['媽媽']];
+        if (a === '媽媽' && b === '丈夫') return [['爸爸']];
+        // Spouse's spouse is me
+        if (SPOUSE.has(a) && SPOUSE.has(b) && sexOf(b) === pSex) return [[]];
+        // Spouse's child is my child
+        if (SPOUSE.has(a) && CHILD.has(b)) return [[b]];
+        return null;
+    }
+
+    function reduceChain(start) {
+        const done = new Map();
+        const queue = [start];
+        const seen = new Set();
+        while (queue.length && seen.size < 500) {
+            const c = queue.shift();
+            const k = c.join('的');
+            if (seen.has(k)) continue;
+            seen.add(k);
+            let applied = false;
+            for (let i = 0; i + 1 < c.length; i++) {
+                const pSex = i === 0 ? selfSex : sexOf(c[i - 1]);
+                const repl = rule(c[i], c[i + 1], pSex);
+                if (!repl) continue;
+                for (const r of repl) queue.push([...c.slice(0, i), ...r, ...c.slice(i + 2)]);
+                applied = true;
+                break;
+            }
+            if (!applied) done.set(k, c);
+        }
+        return [...done.values()];
+    }
+
+    const SELF_RESULT = ['我', '就是你自己', 'wǒ'];
+
+    function lookup(c) {
+        if (c.length === 0) return SELF_RESULT;
+        const key = c.join('的');
+        if (RELATIONS[key]) return RELATIONS[key];
+        // In-laws without a dedicated term: address them as your spouse does
+        if (SPOUSE.has(c[0]) && c.length > 1) {
+            const rest = RELATIONS[c.slice(1).join('的')];
+            if (rest) return [rest[0], `隨${c[0] === '丈夫' ? '丈夫' : '太太'}稱呼`, rest[2]];
+        }
+        return null;
+    }
+
+    // Returns { results: [[title, note, pinyin], ...], unresolved: [chain, ...] }
+    function resolve(c) {
+        const results = [];
+        const unresolved = [];
+        const titles = new Set();
+        for (const r of reduceChain(c)) {
+            const hit = lookup(r);
+            if (hit) {
+                if (!titles.has(hit[0])) { titles.add(hit[0]); results.push(hit); }
+            } else {
+                unresolved.push(r);
+            }
+        }
+        return { results, unresolved };
+    }
+
+    const selfLabel = () => selfSex === 'M' ? '我(男)' : '我(女)';
+
+    // Sets who "我" is; can be tapped at any time without changing the chain
+    function setSelfSex(sex) {
+        selfSex = sex;
+        try { localStorage.setItem('kinshipSelfSex', sex); } catch (e) {}
+        document.getElementById('sexM').classList.toggle('selected', sex === 'M');
+        document.getElementById('sexF').classList.toggle('selected', sex === 'F');
+        updateDisplay();
+        clearResult();
+    }
+
     function calculate() {
         if (chain.length === 0) return;
 
-        const key = chain.join('的');
-        const result = RELATIONS[key];
+        const { results, unresolved } = resolve(chain);
         const area = document.getElementById('resultArea');
 
-        if (result) {
-            const [title, note, pinyin] = result;
+        if (results.length === 1 && unresolved.length === 0) {
+            const [title, note, pinyin] = results[0];
             let html = '<div>';
             html += `<div class="result">${title}</div>`;
-            if (pinyin) {
-                html += `<div class="result-pinyin">${pinyin}</div>`;
-            }
-            if (note) {
-                html += `<div class="result-note">${note}</div>`;
-            }
+            if (pinyin) html += `<div class="result-pinyin">${pinyin}</div>`;
+            if (note) html += `<div class="result-note">${note}</div>`;
             html += '</div>';
             area.innerHTML = html;
-
-            // Speak "是" then the result title
-            speak('是').then(() => {
-                setTimeout(() => speak(title), 150);
-            });
+            speak('是').then(() => setTimeout(() => speak(title), 150));
+        } else if (results.length > 0) {
+            const title = results.map(r => r[0]).join(' / ');
+            let html = '<div>';
+            html += `<div class="result">${title}</div>`;
+            html += `<div class="result-pinyin">${results.map(r => r[2]).join(' / ')}</div>`;
+            html += `<div class="result-note">依年齡或性別而定，可能是以上任一位</div>`;
+            html += '</div>';
+            area.innerHTML = html;
+            speak('是').then(() => setTimeout(() => speak(results.map(r => r[0]).join('，')), 150));
         } else {
-            area.innerHTML = `<span class="error">找不到此稱謂 — 組合可能太深或不常見</span>`;
-            speak('是').then(() => {
-                setTimeout(() => speak('找不到此稱謂'), 150);
-            });
+            const simplest = unresolved.sort((x, y) => x.length - y.length)[0];
+            const shown = simplest ? '我的' + simplest.join('的') : '';
+            area.innerHTML = `<div><span class="error">找不到常用稱謂</span>` +
+                (simplest && simplest.join('的') !== chain.join('的')
+                    ? `<div class="result-note">即：${shown}</div>` : '') + `</div>`;
+            speak('是').then(() => setTimeout(() => speak('找不到此稱謂'), 150));
         }
     }
 
     // Initialize
+    setSelfSex(selfSex);
     updateDisplay();
     </script>
 </body>
