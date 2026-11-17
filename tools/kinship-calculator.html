@@ -240,6 +240,11 @@
             font-weight: 400;
         }
 
+        .btn-self.selected {
+            background: var(--gold-light);
+            border-color: var(--gold);
+        }
+
         .btn-family:hover {
             background: #fefcf8;
             box-shadow: 0 2px 8px var(--shadow);
@@ -443,10 +448,6 @@
         </div>
 
         <div class="buttons">
-            <div class="toggle-row">
-                <button class="btn-toggle active" id="sexM" onclick="setSelfSex('M')">我是男生 male</button>
-                <button class="btn-toggle" id="sexF" onclick="setSelfSex('F')">我是女生 female</button>
-            </div>
             <div class="section-label">家人 Family</div>
             <div class="btn-row family">
                 <button class="btn-family" onclick="addRelation('爸爸')">爸爸<span class="en">dad</span></button>
@@ -461,12 +462,12 @@
                 <button class="btn-family" onclick="addRelation('女兒')">女兒<span class="en">daughter</span></button>
             </div>
 
-            <div class="section-label" style="margin-top: 4px;">配偶 Spouse</div>
+            <div class="section-label" style="margin-top: 4px;">配偶與自己 Spouse &amp; Me</div>
             <div class="btn-row family">
                 <button class="btn-family" onclick="addRelation('丈夫')">丈夫<span class="en">husband</span></button>
                 <button class="btn-family" onclick="addRelation('太太')">太太<span class="en">wife</span></button>
-                <button class="btn-family" style="visibility:hidden"></button>
-                <button class="btn-family" style="visibility:hidden"></button>
+                <button class="btn-family btn-self" id="sexM" onclick="setSelfSex('M')">我(男)<span class="en">me · male</span></button>
+                <button class="btn-family btn-self" id="sexF" onclick="setSelfSex('F')">我(女)<span class="en">me · female</span></button>
             </div>
 
             <div class="section-label" style="margin-top: 4px;">操作 Controls</div>
@@ -813,11 +814,11 @@
         const expr = document.getElementById('expression');
 
         if (chain.length === 0 && !hasDe) {
-            expr.innerHTML = '<span class="placeholder">我的⋯</span>';
+            expr.innerHTML = `<span class="placeholder">${selfLabel()}的⋯</span>`;
             return;
         }
 
-        let html = '我';
+        let html = selfLabel();
         chain.forEach((rel, i) => {
             html += '<span class="de">的</span>' + rel;
         });
@@ -979,11 +980,15 @@
         return { results, unresolved };
     }
 
+    const selfLabel = () => selfSex === 'M' ? '我(男)' : '我(女)';
+
+    // Sets who "我" is; can be tapped at any time without changing the chain
     function setSelfSex(sex) {
         selfSex = sex;
         try { localStorage.setItem('kinshipSelfSex', sex); } catch (e) {}
-        document.getElementById('sexM').classList.toggle('active', sex === 'M');
-        document.getElementById('sexF').classList.toggle('active', sex === 'F');
+        document.getElementById('sexM').classList.toggle('selected', sex === 'M');
+        document.getElementById('sexF').classList.toggle('selected', sex === 'F');
+        updateDisplay();
         clearResult();
     }
 
