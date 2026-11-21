@@ -197,7 +197,7 @@
         <div id="trText"></div>
     </div>
 
-    <p class="hint" style="text-align:center">Pinyin is computed on your device (pinyin-pro + OpenCC). On-device photo reading uses Tesseract; the first use downloads its ~10&nbsp;MB Chinese model. OpenRouter is only used for the OpenRouter photo option and Translate.</p>
+    <p class="hint" style="text-align:center">Pinyin is computed on your device (pinyin-pro + OpenCC), using Taiwan readings by default — change in Settings. On-device photo reading uses Tesseract; the first use downloads its ~10&nbsp;MB Chinese model. OpenRouter is only used for the OpenRouter photo option and Translate.</p>
 </div>
 
 <!-- Character sheet -->
@@ -224,6 +224,12 @@
 <div class="sheet" id="setSheet" role="dialog" aria-label="Settings">
     <div class="grab"></div>
     <h2 style="font-size:18px;margin:0 0 4px">Settings</h2>
+    <div class="switch"><span>Pronunciation</span>
+        <div class="seg" id="region">
+            <button data-v="tw" class="on">台灣 Taiwan</button>
+            <button data-v="cn">大陸 Mainland</button>
+        </div>
+    </div>
     <div class="switch"><span>Speech voice</span>
         <select id="voiceSel" style="width:auto;max-width:60%"></select>
     </div>
@@ -263,6 +269,7 @@
         showHz: store.get('hz', '1') === '1',
         fs: +store.get('fs', '30'),
         engine: store.get('engine', 'local'),
+        region: store.get('region', 'tw'),
         dir: store.get('dir', 'h'),
         overrides: {},          // index -> chosen reading for this text
         items: []
@@ -275,6 +282,44 @@
     // pinyin-pro's phrase data is keyed by Simplified characters, so polyphones like
     // 銀行 / 還 / 音樂 come out wrong on Traditional input. Convert per line to
     // Simplified (1:1 by character), compute readings there, and display the original.
+    // ---------- Taiwan (國語) readings ----------
+    // pinyin-pro follows Mainland Putonghua. Taiwan mode: (1) restores full tones on
+    // syllables the Mainland reads as neutral (東西 dōngxī, 知識 zhīshì), keeping true
+    // particles neutral; (2) applies Taiwan Ministry of Education readings that differ.
+    const TW_CHAR = {
+        期:'qí', 危:'wéi', 微:'wéi', 企:'qì', 綜:'zòng', 質:'zhí', 究:'jiù', 液:'yì', 擁:'yǒng',
+        寂:'jí', 亞:'yǎ', 菌:'jùn', 癌:'yán', 播:'bò', 蝸:'guā', 帆:'fán', 惜:'xí', 昔:'xí',
+        夕:'xì', 息:'xí', 擊:'jí', 績:'jī', 跡:'jī', 蹟:'jī', 誰:'shéi', 識:'shì', 熟:'shóu',
+        暫:'zhàn', 髮:'fǎ', 頗:'pǒ', 偽:'wèi', 酵:'xiào', 框:'kuāng', 曝:'pù', 攜:'xī', 骰:'tóu'
+    };
+    const TW_WORD = {
+        垃圾:['lè','sè'], 法國:['fà','guó'], 暴露:['pù','lù'], 覺得:['jué','dé'], 記得:['jì','dé'],
+        值得:['zhí','dé'], 曉得:['xiǎo','dé'], 懂得:['dǒng','dé'], 認得:['rèn','dé'], 捨得:['shě','dé'],
+        顯得:['xiǎn','dé'], 免得:['miǎn','dé'], 難得:['nán','dé'], 使得:['shǐ','dé'], 省得:['shěng','dé']
+    };
+    const TW_EXTRA = { 和:['hàn'] };
+    const KEEP_NEUTRAL = new Set(Array.from('的了嗎呢吧啊呀啦喔哦哪們麼么著子地得兒嘛囉唄'));
+
+    function applyTaiwan(li) {
+        li.forEach(it => {
+            if (!it.zh) return;
+            if (toneOf(it.py) === 0 && !KEEP_NEUTRAL.has(it.ch)) {
+                const full = it.poly.find(r => toneOf(r) !== 0);
+                if (full) it.py = full;
+            }
+            if (TW_CHAR[it.ch]) it.py = TW_CHAR[it.ch];
+        });
+        for (let i = 0; i < li.length; i++) {
+            for (const w in TW_WORD) {
+                const wa = Array.from(w);
+                if (wa.every((c, k) => li[i + k] && li[i + k].ch === c)) wa.forEach((_, k) => { li[i + k].py = TW_WORD[w][k]; });
+            }
+        }
+    }
+
+    // pinyin-pro's phrase data is keyed by Simplified characters, so polyphones like
+    // 銀行 / 還 / 音樂 come out wrong on Traditional input. Convert per line to
+    // Simplified (1:1 by character), compute readings there, and display the original.
     function analyse(text) {
         const items = [];
         const lines = text.split('\n');
@@ -283,23 +328,26 @@
             let simp = line;
             if (t2s) { const s = t2s(line); if (Array.from(s).length === orig.length) simp = s; }
             const marks = pinyinPro.pinyin(simp, { type: 'all' });
-            const nums = pinyinPro.pinyin(simp, { type: 'array', toneType: 'num' });
             const simpArr = Array.from(simp);
-            orig.forEach((ch, i) => {
+            const lineItems = orig.map((ch, i) => {
                 const m = marks[i] || {};
-                if (m.isZh && m.pinyin) {
-                    const poly = (pinyinPro.pinyin(simpArr[i], { multiple: true, type: 'array' }) || []);
-                    items.push({ ch, simp: simpArr[i], zh: true, py: m.pinyin, num: (nums[i] || m.pinyin).replace(/0$/, ''), tone: m.num || 0, poly });
-                } else {
-                    items.push({ ch, zh: false });
-                }
+                if (!(m.isZh && m.pinyin)) return { ch, zh: false };
+                const poly = pinyinPro.pinyin(simpArr[i], { multiple: true, type: 'array' }) || [];
+                return { ch, simp: simpArr[i], zh: true, py: m.pinyin, cn: m.pinyin, poly };
+            });
+            if (state.region === 'tw') applyTaiwan(lineItems);
+            lineItems.forEach(it => {
+                if (it.zh) it.poly = [...new Set([it.py, ...it.poly, it.cn, ...(TW_EXTRA[it.ch] || [])])];
+                items.push(it);
             });
             if (li < lines.length - 1) items.push({ br: true });
         });
         return items;
     }
 
-    function markToNum(py) { return pinyinPro.convert ? pinyinPro.convert(py, { format: 'symbolToNum' }) : py; }
+    function markToNum(py) {
+        return (pinyinPro.convert ? pinyinPro.convert(py, { format: 'symbolToNum' }) : py).replace(/0$/, '');
+    }
     function toneOf(py) {
         const n = markToNum(py).match(/(\d)$/);
         return n ? +n[1] % 5 : 0;
@@ -307,9 +355,7 @@
 
     function shown(item, idx) {
         const py = state.overrides[idx] || item.py;
-        const tone = state.overrides[idx] ? toneOf(py) : item.tone;
-        const label = state.tone === 'num' ? (state.overrides[idx] ? markToNum(py) : item.num) : py;
-        return { py, tone, label };
+        return { py, tone: toneOf(py), label: state.tone === 'num' ? markToNum(py) : py };
     }
 
     function render() {
@@ -412,6 +458,7 @@
     seg('toneStyle', 'tone', render);
     seg('ocrEngine', 'engine', () => { if (state.engine === 'llm' && !$('orKey').value) { showSheet('setSheet'); } syncDir(); });
     seg('ocrDir', 'dir');
+    seg('region', 'region', () => update(true));
     function syncDir() { $('ocrDir').style.display = state.engine === 'local' ? '' : 'none'; }
     syncDir();
 
