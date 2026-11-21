@@ -159,14 +159,14 @@
             <span class="hint" style="margin:0">Read photo with</span>
             <div class="seg" id="ocrEngine">
                 <button data-v="local" class="on">On-device</button>
-                <button data-v="llm">OpenRouter</button>
-            </div>
-            <div class="seg" id="ocrDir">
-                <button data-v="h" class="on">橫 Horiz</button>
-                <button data-v="v">直 Vert</button>
+                <button data-v="llm">AI · OpenRouter</button>
             </div>
         </div>
-        <div class="preview" id="preview"><img id="previewImg" alt="Photo being read"></div>
+        <div class="preview" id="preview"><img id="previewImg" alt="Photo being read">
+            <div class="row" style="margin-top:8px">
+                <button class="btn grow" id="rereadBtn">✨ Re-read with AI</button>
+            </div>
+        </div>
         <div class="status" id="status"><span id="statusText"></span><div class="bar"><i id="barFill"></i></div></div>
         <textarea id="input" placeholder="Paste or type Traditional Chinese here… e.g. 我們今天去銀行，還要買音樂會的票。" lang="zh-Hant"></textarea>
         <p class="hint">Photo text appears here so you can fix any misread characters. Tap a character below for other readings.</p>
@@ -197,7 +197,7 @@
         <div id="trText"></div>
     </div>
 
-    <p class="hint" style="text-align:center">Pinyin is computed on your device (pinyin-pro + OpenCC), using Taiwan readings by default — change in Settings. On-device photo reading uses Tesseract; the first use downloads its ~10&nbsp;MB Chinese model. OpenRouter is only used for the OpenRouter photo option and Translate.</p>
+    <p class="hint" style="text-align:center">Pinyin is computed on your device (pinyin-pro + OpenCC), using Taiwan readings by default — change in Settings. On-device photo reading uses PaddleOCR (PP-OCRv5); the first photo downloads a ~22&nbsp;MB model that is then cached. OpenRouter is only used for AI photo reading and Translate.</p>
 </div>
 
 <!-- Character sheet -->
@@ -270,7 +270,6 @@
         fs: +store.get('fs', '30'),
         engine: store.get('engine', 'local'),
         region: store.get('region', 'tw'),
-        dir: store.get('dir', 'h'),
         overrides: {},          // index -> chosen reading for this text
         items: []
     };
@@ -456,11 +455,10 @@
         sync();
     }
     seg('toneStyle', 'tone', render);
-    seg('ocrEngine', 'engine', () => { if (state.engine === 'llm' && !$('orKey').value) { showSheet('setSheet'); } syncDir(); });
-    seg('ocrDir', 'dir');
+    seg('ocrEngine', 'engine', () => { if (state.engine === 'llm' && !$('orKey').value) { showSheet('setSheet'); } syncReread(); });
     seg('region', 'region', () => update(true));
-    function syncDir() { $('ocrDir').style.display = state.engine === 'local' ? '' : 'none'; }
-    syncDir();
+    function syncReread() { $('rereadBtn').parentElement.style.display = state.engine === 'local' ? '' : 'none'; }
+    syncReread();
 
     function syncChips() {
         $('toneColorBtn').classList.toggle('on', state.colors);
@@ -555,16 +553,23 @@
         } finally { URL.revokeObjectURL(url); }
     }
 
-    let busy = false;
-    async function handleImage(blob) {
+    let busy = false, lastBlob = null;
+    async function handleImage(blob, engine) {
         if (busy) return;
         busy = true;
-        $('previewImg').src = URL.createObjectURL(blob);
+        engine = engine || state.engine;
+        if (blob !== lastBlob) { lastBlob = blob; $('previewImg').src = URL.createObjectURL(blob); }
         $('preview').classList.add('show');
+        $('rereadBtn').disabled = true;
         try {
-            const text = state.engine === 'llm' ? await ocrLLM(blob) : await ocrLocal(blob);
+            let text;
+            if (engine === 'llm') text = await ocrLLM(blob);
+            else {
+                try { text = await ocrPaddle(blob); }
+                catch (e) { console.warn('PaddleOCR failed, falling back to Tesseract', e); text = await ocrTesseract(blob); }
+            }
             const clean = tidy(text);
-            if (!clean) { setStatus('No text found. Try a closer, straighter photo' + (state.engine === 'local' ? ', or switch text direction.' : '.'), true); return; }
+            if (!clean) { setStatus('No text found. Try a closer, sharper photo' + (engine === 'local' ? ', or Re-read with AI.' : '.'), true); return; }
             $('input').value = clean;
             setStatus('');
             update(true);
@@ -572,7 +577,197 @@
         } catch (e) {
             console.error(e);
             setStatus('Could not read photo: ' + (e.message || e), true);
-        } finally { busy = false; }
+        } finally { busy = false; $('rereadBtn').disabled = false; }
+    }
+    $('rereadBtn').onclick = () => { if (lastBlob) handleImage(lastBlob, 'llm'); };
+
+    // ---------- On-device OCR: PP-OCRv5 (PaddleOCR) via ONNX Runtime Web ----------
+    // Detection (DB) finds text lines; each line is cropped (vertical columns rotated
+    // 90° CCW, as PaddleOCR does) and recognised with a CTC model covering
+    // Simplified + Traditional Chinese. Models come from npm via jsDelivr and are
+    // kept in the Cache API after the first download.
+    const ORT_BASE = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/';
+    const MODEL_BASE = 'https://cdn.jsdelivr.net/npm/pdfmarkdown-ppocrv5-models@1.0.0/';
+    const MODEL_FILES = {
+        det: 'detection/PP-OCRv5_mobile_det_infer.ort',
+        rec: 'recognition/PP-OCRv5_mobile_rec_infer.onnx',
+        dict: 'recognition/ppocrv5_dict.txt'
+    };
+    let paddle = null, paddleLoading = null;
+
+    async function fetchCached(url, onBytes) {
+        let cache = null;
+        try { cache = await caches.open('pinyin-reader-models-v1'); const hit = await cache.match(url); if (hit) return new Uint8Array(await hit.arrayBuffer()); } catch {}
+        const r = await fetch(url);
+        if (!r.ok) throw new Error('download failed (' + r.status + ')');
+        const total = +r.headers.get('content-length') || 0;
+        const chunks = []; let got = 0;
+        const reader = r.body.getReader();
+        for (;;) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); got += value.length; onBytes && onBytes(got, total); }
+        const buf = new Uint8Array(got); let o = 0; for (const c of chunks) { buf.set(c, o); o += c.length; }
+        try { if (cache) await cache.put(url, new Response(buf.slice())); } catch {}
+        return buf;
+    }
+
+    function loadPaddle() {
+        return paddleLoading ||= (async () => {
+            setStatus('Loading on-device reader…', false, 0);
+            if (!window.ort) await loadScript(ORT_BASE + 'ort.wasm.min.js');
+            ort.env.wasm.wasmPaths = ORT_BASE;
+            ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
+            const prog = {}, EST = { det: 4.9e6, rec: 16.6e6, dict: 7.4e4 };
+            const report = () => {
+                const got = Object.values(prog).reduce((a, b) => a + b, 0);
+                setStatus('Downloading Chinese text model (first time only, ~22 MB)…', false, got / (EST.det + EST.rec + EST.dict));
+            };
+            const [det, rec, dict] = await Promise.all(['det', 'rec', 'dict'].map(k =>
+                fetchCached(MODEL_BASE + MODEL_FILES[k], g => { prog[k] = g; report(); })));
+            setStatus('Starting on-device reader…', false, 1);
+            const opts = { executionProviders: ['wasm'], graphOptimizationLevel: 'all' };
+            // This dict file already holds the CTC blank slot (line 0) and the trailing
+            // space, so line k is class k (18385 classes).
+            const lines = new TextDecoder().decode(dict).replace(/\r/g, '').split('\n');
+            if (lines.length > 18385 && lines[lines.length - 1] === '') lines.pop();
+            paddle = {
+                det: await ort.InferenceSession.create(det, opts),
+                rec: await ort.InferenceSession.create(rec, opts),
+                chars: lines
+            };
+            return paddle;
+        })().catch(e => { paddleLoading = null; throw e; });
+    }
+
+    function toTensor(data, w, h, mean, std) {
+        // RGBA -> planar BGR float32, normalised like PaddleOCR (cv2 images are BGR)
+        const n = w * h, out = new Float32Array(3 * n);
+        for (let i = 0; i < n; i++) {
+            const r = data[i * 4] / 255, g = data[i * 4 + 1] / 255, b = data[i * 4 + 2] / 255;
+            out[i] = (b - mean[0]) / std[0];
+            out[n + i] = (g - mean[1]) / std[1];
+            out[2 * n + i] = (r - mean[2]) / std[2];
+        }
+        return out;
+    }
+
+    async function detectBoxes(src) {
+        const W = src.width, H = src.height, LIMIT = 1280;
+        const r = Math.min(1, LIMIT / Math.max(W, H));
+        const rw = Math.max(32, Math.round(W * r / 32) * 32), rh = Math.max(32, Math.round(H * r / 32) * 32);
+        const c = document.createElement('canvas'); c.width = rw; c.height = rh;
+        const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(src, 0, 0, rw, rh);
+        const input = toTensor(g.getImageData(0, 0, rw, rh).data, rw, rh, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]);
+        const res = await paddle.det.run({ [paddle.det.inputNames[0]]: new ort.Tensor('float32', input, [1, 3, rh, rw]) });
+        const prob = res[paddle.det.outputNames[0]].data;
+
+        // Connected components on the thresholded probability map; each component's
+        // orientation comes from its second moments so tilted lines get straightened.
+        const n = rw * rh, label = new Uint8Array(n), pix = new Int32Array(n), boxes = [];
+        const sx = W / rw, sy = H / rh, T = 0.3;
+        for (let i = 0; i < n; i++) {
+            if (label[i] || prob[i] <= T) continue;
+            let head = 0, tail = 0, sum = 0, mx = 0, my = 0;
+            pix[tail++] = i; label[i] = 1;
+            while (head < tail) {
+                const p = pix[head++], x = p % rw, y = (p - x) / rw;
+                sum += prob[p]; mx += x; my += y;
+                if (x > 0 && !label[p - 1] && prob[p - 1] > T) { label[p - 1] = 1; pix[tail++] = p - 1; }
+                if (x < rw - 1 && !label[p + 1] && prob[p + 1] > T) { label[p + 1] = 1; pix[tail++] = p + 1; }
+                if (y > 0 && !label[p - rw] && prob[p - rw] > T) { label[p - rw] = 1; pix[tail++] = p - rw; }
+                if (y < rh - 1 && !label[p + rw] && prob[p + rw] > T) { label[p + rw] = 1; pix[tail++] = p + rw; }
+            }
+            const cnt = tail;
+            if (cnt < 10 || sum / cnt < 0.5) continue;
+            mx /= cnt; my /= cnt;
+            // work in original-image pixels from here on
+            let cxx = 0, cyy = 0, cxy = 0;
+            for (let k = 0; k < cnt; k++) {
+                const p = pix[k], x = ((p % rw) - mx) * sx, y = (((p - p % rw) / rw) - my) * sy;
+                cxx += x * x; cyy += y * y; cxy += x * y;
+            }
+            let phi = 0.5 * Math.atan2(2 * cxy, cxx - cyy);          // major-axis angle
+            const extents = ang => {
+                const c = Math.cos(ang), si = Math.sin(ang);
+                let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+                for (let k = 0; k < cnt; k++) {
+                    const p = pix[k], x = ((p % rw) - mx) * sx, y = (((p - p % rw) / rw) - my) * sy;
+                    const u = x * c + y * si, v = -x * si + y * c;
+                    if (u < u0) u0 = u; if (u > u1) u1 = u; if (v < v0) v0 = v; if (v > v1) v1 = v;
+                }
+                return { L: u1 - u0 + Math.max(sx, sy), Th: v1 - v0 + Math.max(sx, sy), cu: (u0 + u1) / 2, cv: (v0 + v1) / 2 };
+            };
+            let e = extents(phi);
+            if (e.L < 1.5 * e.Th) { phi = 0; e = extents(0); }          // short blob: keep upright
+            if (Math.min(e.L, e.Th) < 3 * Math.max(sx, sy)) continue;
+            const vertical = Math.abs(Math.sin(phi)) > Math.SQRT1_2;
+            if (vertical && Math.sin(phi) < 0) phi += Math.PI;         // columns run downward
+            if (!vertical && Math.cos(phi) < 0) phi += Math.PI;        // rows run rightward
+            e = extents(phi);
+            const d = (e.L * e.Th * 1.5) / (2 * (e.L + e.Th));          // DB "unclip" expansion
+            const L = e.L + 2 * d, Th = e.Th + 2 * d;
+            const c = Math.cos(phi), si = Math.sin(phi);
+            const cx = mx * sx + e.cu * c - e.cv * si, cy = my * sy + e.cu * si + e.cv * c;
+            const hw = Math.abs(L * c) / 2 + Math.abs(Th * si) / 2, hh = Math.abs(L * si) / 2 + Math.abs(Th * c) / 2;
+            boxes.push({ cx, cy, L, Th, phi, vertical, x: cx - hw, y: cy - hh, w: 2 * hw, h: 2 * hh });
+        }
+        return boxes;
+    }
+
+    async function recognise(src, b) {
+        const H = 48;
+        const tw = Math.max(8, Math.min(3200, Math.ceil(H * b.L / b.Th)));
+        const W = Math.max(320, tw);
+        const c = document.createElement('canvas'); c.width = tw; c.height = H;
+        const g = c.getContext('2d', { willReadFrequently: true });
+        g.fillStyle = '#fff'; g.fillRect(0, 0, tw, H);
+        // Map the rotated rect onto the crop: text direction -> +x. Vertical columns
+        // therefore end up rotated 90° CCW, which is what PP-OCR's recogniser expects.
+        g.translate(tw / 2, H / 2); g.scale(tw / b.L, H / b.Th); g.rotate(-b.phi); g.translate(-b.cx, -b.cy);
+        g.drawImage(src, 0, 0);
+        const part = toTensor(g.getImageData(0, 0, tw, H).data, tw, H, [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]);
+        const input = new Float32Array(3 * H * W);   // zero padding on the right, as PaddleOCR does
+        for (let ch = 0; ch < 3; ch++) for (let y = 0; y < H; y++)
+            input.set(part.subarray(ch * H * tw + y * tw, ch * H * tw + (y + 1) * tw), ch * H * W + y * W);
+        const res = await paddle.rec.run({ [paddle.rec.inputNames[0]]: new ort.Tensor('float32', input, [1, 3, H, W]) });
+        const out = res[paddle.rec.outputNames[0]], [, T, C] = out.dims, d = out.data;
+        let text = '', prev = 0, conf = 0, nc = 0;
+        for (let t = 0; t < T; t++) {
+            let best = 0, bv = -Infinity;
+            for (let k = 0; k < C; k++) { const v = d[t * C + k]; if (v > bv) { bv = v; best = k; } }
+            if (best && best !== prev) { text += paddle.chars[best] || ''; conf += bv; nc++; }
+            prev = best;
+        }
+        return { text, conf: nc ? conf / nc : 0 };
+    }
+
+    async function ocrPaddle(blob) {
+        await loadPaddle();
+        const src = await loadCanvas(blob, 2400);
+        setStatus('Finding text…', false, 0);
+        const boxes = await detectBoxes(src);
+        const found = [];
+        for (let i = 0; i < boxes.length; i++) {
+            setStatus('Reading characters…', false, i / boxes.length);
+            const r = await recognise(src, boxes[i]);
+            if (r.text.trim() && r.conf >= 0.5) found.push({ ...boxes[i], ...r });
+        }
+        return orderLines(found);
+    }
+
+    // Reading order: vertical columns right-to-left; otherwise rows top-to-bottom.
+    function orderLines(items) {
+        if (!items.length) return '';
+        const vert = items.filter(i => i.vertical).length > items.length / 2;
+        if (vert) {
+            return items.sort((a, b) => (b.x + b.w) - (a.x + a.w) || a.y - b.y).map(i => i.text).join('\n');
+        }
+        items.sort((a, b) => a.y - b.y);
+        const rows = [];
+        for (const it of items) {
+            const cy = it.y + it.h / 2;
+            const row = rows.find(r => Math.abs(r.cy - cy) < Math.min(r.h, it.h) * 0.5);
+            if (row) row.items.push(it); else rows.push({ cy, h: it.h, items: [it] });
+        }
+        return rows.map(r => r.items.sort((a, b) => a.x - b.x).map(i => i.text).join(' ')).join('\n');
     }
 
     function tidy(t) {
@@ -586,8 +781,8 @@
     function loadScript(src) {
         return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('failed to load ' + src)); document.head.appendChild(s); });
     }
-    async function ocrLocal(blob) {
-        const lang = state.dir === 'v' ? 'chi_tra_vert' : 'chi_tra';
+    async function ocrTesseract(blob) {
+        const lang = 'chi_tra';
         setStatus('Loading on-device reader…', false, 0);
         if (!window.Tesseract) await (tessLoading ||= loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'));
         if (!tess || tessLang !== lang) {
@@ -599,7 +794,7 @@
                 }
             });
             tessLang = lang;
-            await tess.setParameters({ tessedit_pageseg_mode: state.dir === 'v' ? '5' : '3', preserve_interword_spaces: '0' });
+            await tess.setParameters({ tessedit_pageseg_mode: '3', preserve_interword_spaces: '0' });
         }
         const canvas = await loadCanvas(blob, 2200);
         setStatus('Reading characters…', false, 0);
