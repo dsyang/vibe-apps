@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Photo or paste Traditional Chinese, see Mandarin pinyin" />
+    <meta name="theme-color" content="#b8372b">
+    <title>Pinyin Reader</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f6f1e7;
+            --card: #fffdf8;
+            --ink: #1d1813;
+            --muted: #7d7368;
+            --line: #e4dccd;
+            --accent: #b8372b;
+            --accent-ink: #fff;
+            --soft: #f1e8d8;
+            --t1: #d0342c; --t2: #e08a00; --t3: #2e9a48; --t4: #2a62c9; --t5: #8a8178;
+            --shadow: 0 1px 2px rgba(40,25,10,.06), 0 6px 20px rgba(40,25,10,.07);
+        }
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #16130f; --card: #211d18; --ink: #f1ebe1; --muted: #a39887;
+                --line: #3a332a; --accent: #e0574a; --soft: #2b261f;
+                --t1: #ff6b61; --t2: #ffb340; --t3: #5fd27b; --t4: #6c9cff; --t5: #a39887;
+                --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+            }
+        }
+        * { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; }
+        body {
+            margin: 0; background: var(--bg); color: var(--ink);
+            font-family: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+            line-height: 1.45;
+            padding: max(12px, env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom));
+        }
+        .wrap { max-width: 640px; margin: 0 auto; }
+        header { display: flex; align-items: center; gap: 10px; margin: 4px 0 14px; }
+        header a.back { color: var(--muted); text-decoration: none; font-size: 22px; padding: 4px 6px 4px 0; }
+        header h1 { font-family: 'Noto Serif TC', serif; font-size: 22px; margin: 0; flex: 1; letter-spacing: .02em; }
+        header h1 span { color: var(--accent); }
+        .icon-btn {
+            border: 1px solid var(--line); background: var(--card); color: var(--ink);
+            width: 40px; height: 40px; border-radius: 12px; font-size: 18px; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .card {
+            background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+            box-shadow: var(--shadow); padding: 14px; margin-bottom: 14px;
+        }
+        .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .btn {
+            appearance: none; border: 1px solid var(--line); background: var(--soft); color: var(--ink);
+            padding: 10px 14px; border-radius: 12px; font: inherit; font-size: 15px; font-weight: 500;
+            cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-height: 44px;
+        }
+        .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+        .btn:disabled { opacity: .5; cursor: default; }
+        .btn.grow { flex: 1 1 0; justify-content: center; }
+        textarea {
+            width: 100%; min-height: 110px; resize: vertical; border: 1px solid var(--line); border-radius: 12px;
+            background: var(--bg); color: var(--ink); padding: 12px; font: inherit; font-size: 18px; margin-top: 10px;
+        }
+        textarea:focus, input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+        .hint { color: var(--muted); font-size: 13px; margin: 8px 2px 0; }
+        .status { font-size: 14px; color: var(--muted); margin-top: 10px; display: none; }
+        .status.show { display: block; }
+        .status.err { color: var(--accent); }
+        .bar { height: 4px; background: var(--line); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+        .bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+        .preview { display: none; margin-top: 10px; position: relative; }
+        .preview.show { display: block; }
+        .preview img { max-width: 100%; max-height: 220px; border-radius: 10px; border: 1px solid var(--line); display: block; }
+        .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+        .seg button { border: 0; background: transparent; color: var(--muted); padding: 7px 10px; font: inherit; font-size: 13px; cursor: pointer; min-height: 36px; }
+        .seg button.on { background: var(--ink); color: var(--card); }
+        .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+        .toolbar .spacer { flex: 1; }
+        .chip {
+            display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); background: transparent;
+            color: var(--ink); border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 13px; cursor: pointer; min-height: 36px;
+        }
+        .chip.on { background: var(--soft); border-color: var(--muted); }
+
+        /* Reading output */
+        #out { font-size: var(--fs, 30px); line-height: 1; word-break: break-all; min-height: 40px; }
+        #out .line { display: flex; flex-wrap: wrap; align-items: flex-end; margin-bottom: .35em; min-height: .6em; }
+        .ch {
+            display: inline-flex; flex-direction: column; align-items: center; justify-content: flex-end;
+            padding: .08em .06em; margin: 0 .02em .1em; border-radius: 8px; cursor: pointer; min-width: 1.05em;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ch:active, .ch.sel { background: var(--soft); }
+        .ch .py { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: .46em; line-height: 1.25; margin-bottom: .12em; white-space: nowrap; color: var(--muted); }
+        .ch .hz { font-family: 'Noto Serif TC', 'Noto Sans TC', serif; font-weight: 500; line-height: 1.12; }
+        .ch.poly .py { text-decoration: underline dotted; text-underline-offset: 3px; }
+        .nz { font-size: .7em; padding: 0 .04em .2em; color: var(--muted); white-space: pre; align-self: flex-end; }
+        .tones .t1 .py, .tones .t1 .hz { color: var(--t1); }
+        .tones .t2 .py, .tones .t2 .hz { color: var(--t2); }
+        .tones .t3 .py, .tones .t3 .hz { color: var(--t3); }
+        .tones .t4 .py, .tones .t4 .hz { color: var(--t4); }
+        .tones .t0 .py, .tones .t0 .hz { color: var(--t5); }
+        .nohz .ch .hz { display: none; }
+        .nohz .ch .py { font-size: .6em; color: var(--ink); }
+        .empty { color: var(--muted); font-size: 15px; text-align: center; padding: 18px 0; line-height: 1.5; }
+        #translation { display: none; }
+        #translation.show { display: block; }
+        #translation h2, .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; font-weight: 700; }
+        #trText { font-size: 17px; white-space: pre-wrap; }
+
+        /* Popover */
+        .pop-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; z-index: 20; }
+        .pop-bg.show { display: block; }
+        .sheet {
+            position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--card); color: var(--ink);
+            border-radius: 20px 20px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+            transform: translateY(105%); transition: transform .22s ease; max-width: 640px; margin: 0 auto;
+            box-shadow: 0 -8px 30px rgba(0,0,0,.2); max-height: 85vh; overflow-y: auto; visibility: hidden;
+        }
+        .sheet.show { transform: translateY(0); visibility: visible; }
+        .sheet .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: -6px auto 12px; }
+        .big { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+        .big .hz { font-family: 'Noto Serif TC', serif; font-size: 64px; line-height: 1; }
+        .big .meta { flex: 1; }
+        .big .py { font-size: 26px; font-weight: 600; }
+        .big .simp { color: var(--muted); font-size: 14px; }
+        .readings { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 14px; }
+        .readings .chip { font-size: 16px; }
+        label.f { display: block; font-size: 13px; font-weight: 700; color: var(--muted); margin: 14px 0 6px; }
+        input[type=text], input[type=password], select {
+            width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink);
+            padding: 11px 12px; font: inherit; font-size: 16px;
+        }
+        .sheet p { font-size: 14px; color: var(--muted); margin: 6px 0; }
+        .sheet a { color: var(--accent); }
+        .switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+        .switch input { width: 22px; height: 22px; accent-color: var(--accent); }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <a class="back" href="../" aria-label="Back to all tools">&larr;</a>
+        <h1>拼音 <span>Pinyin Reader</span></h1>
+        <button class="icon-btn" id="settingsBtn" aria-label="Settings">⚙︎</button>
+    </header>
+
+    <div class="card">
+        <div class="row">
+            <label class="btn primary grow" for="file">📷 Photo</label>
+            <input id="file" type="file" accept="image/*" class="hidden">
+            <button class="btn grow" id="pasteBtn">📋 Paste</button>
+            <button class="btn" id="clearBtn" aria-label="Clear">✕</button>
+        </div>
+        <div class="row" style="margin-top:10px">
+            <span class="hint" style="margin:0">Read photo with</span>
+            <div class="seg" id="ocrEngine">
+                <button data-v="local" class="on">On-device</button>
+                <button data-v="llm">OpenRouter</button>
+            </div>
+            <div class="seg" id="ocrDir">
+                <button data-v="h" class="on">橫 Horiz</button>
+                <button data-v="v">直 Vert</button>
+            </div>
+        </div>
+        <div class="preview" id="preview"><img id="previewImg" alt="Photo being read"></div>
+        <div class="status" id="status"><span id="statusText"></span><div class="bar"><i id="barFill"></i></div></div>
+        <textarea id="input" placeholder="Paste or type Traditional Chinese here… e.g. 我們今天去銀行，還要買音樂會的票。" lang="zh-Hant"></textarea>
+        <p class="hint">Photo text appears here so you can fix any misread characters. Tap a character below for other readings.</p>
+    </div>
+
+    <div class="card">
+        <div class="toolbar">
+            <div class="seg" id="toneStyle">
+                <button data-v="mark" class="on">mǎ</button>
+                <button data-v="num">ma3</button>
+            </div>
+            <button class="chip" id="toneColorBtn">🎨 Tones</button>
+            <button class="chip on" id="hzBtn">字</button>
+            <span class="spacer"></span>
+            <button class="chip" id="smallerBtn" aria-label="Smaller text">A−</button>
+            <button class="chip" id="biggerBtn" aria-label="Bigger text">A+</button>
+        </div>
+        <div id="out"><div class="empty">Pinyin will appear here.</div></div>
+        <div class="row" style="margin-top:12px">
+            <button class="btn grow" id="speakBtn">🔊 Listen</button>
+            <button class="btn grow" id="copyBtn">Copy pinyin</button>
+            <button class="btn grow" id="translateBtn">🌐 Translate</button>
+        </div>
+    </div>
+
+    <div class="card" id="translation">
+        <h2>Translation <span id="trModel" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+        <div id="trText"></div>
+    </div>
+
+    <p class="hint" style="text-align:center">Pinyin is computed on your device (pinyin-pro + OpenCC). On-device photo reading uses Tesseract; the first use downloads its ~10&nbsp;MB Chinese model. OpenRouter is only used for the OpenRouter photo option and Translate.</p>
+</div>
+
+<!-- Character sheet -->
+<div class="pop-bg" id="popBg"></div>
+<div class="sheet" id="charSheet" role="dialog" aria-label="Character details">
+    <div class="grab"></div>
+    <div class="big">
+        <div class="hz" id="cHz"></div>
+        <div class="meta">
+            <div class="py" id="cPy"></div>
+            <div class="simp" id="cSimp"></div>
+        </div>
+        <button class="icon-btn" id="cSpeak" aria-label="Speak character">🔊</button>
+    </div>
+    <div class="hint" style="margin:0 0 6px" id="cReadHint">Other readings — tap to use here:</div>
+    <div class="readings" id="cReadings"></div>
+    <div class="row">
+        <a class="btn grow" id="cDict" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">Dictionary ↗</a>
+        <button class="btn grow" id="cClose">Done</button>
+    </div>
+</div>
+
+<!-- Settings sheet -->
+<div class="sheet" id="setSheet" role="dialog" aria-label="Settings">
+    <div class="grab"></div>
+    <h2 style="font-size:18px;margin:0 0 4px">Settings</h2>
+    <div class="switch"><span>Speech voice</span>
+        <select id="voiceSel" style="width:auto;max-width:60%"></select>
+    </div>
+    <label class="f" for="orKey">OpenRouter API key (optional)</label>
+    <input type="password" id="orKey" placeholder="sk-or-…" autocomplete="off">
+    <p>Stored only in this browser. Needed for Translate and the OpenRouter photo option. Get one at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.</p>
+    <label class="f" for="visionModel">Vision model (reads photos)</label>
+    <input type="text" id="visionModel" list="visionList" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <datalist id="visionList"></datalist>
+    <label class="f" for="textModel">Translation model</label>
+    <input type="text" id="textModel" list="textList" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <datalist id="textList"></datalist>
+    <p id="modelHint">Open-weight models are suggested by default. Start typing to pick from OpenRouter's live list (cheapest first).</p>
+    <div class="row" style="margin-top:14px">
+        <button class="btn grow" id="resetModels">Reset models</button>
+        <button class="btn primary grow" id="setClose">Done</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.29.5/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/opencc-js@1.4.2/dist/umd/t2cn.js"></script>
+<script>
+(() => {
+    const $ = id => document.getElementById(id);
+    const store = {
+        get(k, d) { try { const v = localStorage.getItem('pyr.' + k); return v === null ? d : v; } catch { return d; } },
+        set(k, v) { try { localStorage.setItem('pyr.' + k, v); } catch {} }
+    };
+    const DEFAULT_VISION = 'qwen/qwen2.5-vl-72b-instruct';
+    const DEFAULT_TEXT = 'qwen/qwen-2.5-72b-instruct';
+    // Open-weight model families, used to rank the live OpenRouter list.
+    const OPEN_RE = /^(qwen|deepseek|meta-llama|mistralai|google\/gemma|thudm|z-ai|moonshotai|zhipu|01-ai|baidu|tencent|nousresearch|microsoft\/phi|allenai|openai\/gpt-oss|minimax)/i;
+
+    const state = {
+        tone: store.get('tone', 'mark'),
+        colors: store.get('colors', '0') === '1',
+        showHz: store.get('hz', '1') === '1',
+        fs: +store.get('fs', '30'),
+        engine: store.get('engine', 'local'),
+        dir: store.get('dir', 'h'),
+        overrides: {},          // index -> chosen reading for this text
+        items: []
+    };
+
+    // ---------- Pinyin ----------
+    let t2s = null;
+    try { t2s = OpenCC.Converter({ from: 'tw', to: 'cn' }); } catch (e) { console.warn('OpenCC unavailable', e); }
+
+    // pinyin-pro's phrase data is keyed by Simplified characters, so polyphones like
+    // 銀行 / 還 / 音樂 come out wrong on Traditional input. Convert per line to
+    // Simplified (1:1 by character), compute readings there, and display the original.
+    function analyse(text) {
+        const items = [];
+        const lines = text.split('\n');
+        lines.forEach((line, li) => {
+            const orig = Array.from(line);
+            let simp = line;
+            if (t2s) { const s = t2s(line); if (Array.from(s).length === orig.length) simp = s; }
+            const marks = pinyinPro.pinyin(simp, { type: 'all' });
+            const nums = pinyinPro.pinyin(simp, { type: 'array', toneType: 'num' });
+            const simpArr = Array.from(simp);
+            orig.forEach((ch, i) => {
+                const m = marks[i] || {};
+                if (m.isZh && m.pinyin) {
+                    const poly = (pinyinPro.pinyin(simpArr[i], { multiple: true, type: 'array' }) || []);
+                    items.push({ ch, simp: simpArr[i], zh: true, py: m.pinyin, num: (nums[i] || m.pinyin).replace(/0$/, ''), tone: m.num || 0, poly });
+                } else {
+                    items.push({ ch, zh: false });
+                }
+            });
+            if (li < lines.length - 1) items.push({ br: true });
+        });
+        return items;
+    }
+
+    function markToNum(py) { return pinyinPro.convert ? pinyinPro.convert(py, { format: 'symbolToNum' }) : py; }
+    function toneOf(py) {
+        const n = markToNum(py).match(/(\d)$/);
+        return n ? +n[1] % 5 : 0;
+    }
+
+    function shown(item, idx) {
+        const py = state.overrides[idx] || item.py;
+        const tone = state.overrides[idx] ? toneOf(py) : item.tone;
+        const label = state.tone === 'num' ? (state.overrides[idx] ? markToNum(py) : item.num) : py;
+        return { py, tone, label };
+    }
+
+    function render() {
+        const out = $('out');
+        out.style.setProperty('--fs', state.fs + 'px');
+        out.classList.toggle('tones', state.colors);
+        out.classList.toggle('nohz', !state.showHz);
+        if (!state.items.some(i => i.zh)) {
+            out.innerHTML = '<div class="empty">' + ($('input').value.trim() ? 'No Chinese characters found.' : 'Pinyin will appear here.') + '</div>';
+            return;
+        }
+        const frag = document.createDocumentFragment();
+        let line = document.createElement('div'); line.className = 'line';
+        state.items.forEach((it, idx) => {
+            if (it.br) { frag.appendChild(line); line = document.createElement('div'); line.className = 'line'; return; }
+            if (!it.zh) {
+                const s = document.createElement('span'); s.className = 'nz'; s.textContent = it.ch; line.appendChild(s); return;
+            }
+            const { tone, label } = shown(it, idx);
+            const el = document.createElement('span');
+            el.className = 'ch t' + tone + (it.poly.length > 1 ? ' poly' : '');
+            el.dataset.i = idx;
+            el.innerHTML = '<span class="py"></span><span class="hz"></span>';
+            el.firstChild.textContent = label;
+            el.lastChild.textContent = it.ch;
+            line.appendChild(el);
+        });
+        frag.appendChild(line);
+        out.replaceChildren(frag);
+    }
+
+    function plainPinyin() {
+        let s = '';
+        state.items.forEach((it, idx) => {
+            if (it.br) { s = s.trimEnd() + '\n'; return; }
+            if (!it.zh) { s += it.ch; return; }
+            if (s && !/[\s\n]$/.test(s)) s += ' ';
+            s += shown(it, idx).label + ' ';
+        });
+        return s.replace(/ +([，。！？、；：,.!?;:）」』])/g, '$1').replace(/ +\n/g, '\n').trim();
+    }
+
+    let timer;
+    function update(immediate) {
+        clearTimeout(timer);
+        const run = () => {
+            const text = $('input').value;
+            store.set('text', text);
+            state.overrides = {};
+            state.items = analyse(text);
+            render();
+        };
+        immediate ? run() : (timer = setTimeout(run, 180));
+    }
+
+    // ---------- Character sheet ----------
+    let curIdx = -1;
+    function openChar(idx) {
+        const it = state.items[idx]; if (!it || !it.zh) return;
+        curIdx = idx;
+        document.querySelectorAll('.ch.sel').forEach(e => e.classList.remove('sel'));
+        const el = document.querySelector('.ch[data-i="' + idx + '"]'); if (el) el.classList.add('sel');
+        const { py } = shown(it, idx);
+        $('cHz').textContent = it.ch;
+        $('cPy').textContent = py;
+        $('cSimp').textContent = it.simp && it.simp !== it.ch ? 'Simplified: ' + it.simp : '';
+        const box = $('cReadings'); box.innerHTML = '';
+        $('cReadHint').style.display = it.poly.length > 1 ? '' : 'none';
+        if (it.poly.length > 1) it.poly.forEach(r => {
+            const b = document.createElement('button');
+            b.className = 'chip' + (r === py ? ' on' : '');
+            b.textContent = r;
+            b.onclick = () => { if (r === it.py) delete state.overrides[idx]; else state.overrides[idx] = r; render(); openChar(idx); };
+            box.appendChild(b);
+        });
+        $('cDict').href = 'https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=' + encodeURIComponent(it.ch);
+        showSheet('charSheet');
+    }
+    $('out').addEventListener('click', e => { const c = e.target.closest('.ch'); if (c) openChar(+c.dataset.i); });
+    $('cSpeak').onclick = () => speak(state.items[curIdx]?.ch || '');
+
+    function showSheet(id) {
+        ['charSheet', 'setSheet'].forEach(s => $(s).classList.toggle('show', s === id));
+        $('popBg').classList.toggle('show', !!id);
+        if (!id) document.querySelectorAll('.ch.sel').forEach(e => e.classList.remove('sel'));
+    }
+    $('popBg').onclick = () => showSheet(null);
+    $('cClose').onclick = () => showSheet(null);
+
+    // ---------- Toolbar ----------
+    function seg(id, key, onChange) {
+        const box = $(id);
+        const sync = () => box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === state[key]));
+        box.addEventListener('click', e => {
+            const b = e.target.closest('button'); if (!b) return;
+            state[key] = b.dataset.v; store.set(key, state[key]); sync(); onChange && onChange();
+        });
+        sync();
+    }
+    seg('toneStyle', 'tone', render);
+    seg('ocrEngine', 'engine', () => { if (state.engine === 'llm' && !$('orKey').value) { showSheet('setSheet'); } syncDir(); });
+    seg('ocrDir', 'dir');
+    function syncDir() { $('ocrDir').style.display = state.engine === 'local' ? '' : 'none'; }
+    syncDir();
+
+    function syncChips() {
+        $('toneColorBtn').classList.toggle('on', state.colors);
+        $('hzBtn').classList.toggle('on', state.showHz);
+    }
+    $('toneColorBtn').onclick = () => { state.colors = !state.colors; store.set('colors', state.colors ? '1' : '0'); syncChips(); render(); };
+    $('hzBtn').onclick = () => { state.showHz = !state.showHz; store.set('hz', state.showHz ? '1' : '0'); syncChips(); render(); };
+    $('smallerBtn').onclick = () => { state.fs = Math.max(18, state.fs - 3); store.set('fs', state.fs); render(); };
+    $('biggerBtn').onclick = () => { state.fs = Math.min(60, state.fs + 3); store.set('fs', state.fs); render(); };
+    syncChips();
+
+    $('input').addEventListener('input', () => update());
+    $('clearBtn').onclick = () => {
+        $('input').value = ''; $('preview').classList.remove('show'); $('translation').classList.remove('show');
+        setStatus(''); update(true);
+    };
+    $('pasteBtn').onclick = async () => {
+        try {
+            if (navigator.clipboard.read) {
+                const items = await navigator.clipboard.read();
+                for (const it of items) {
+                    const type = it.types.find(t => t.startsWith('image/'));
+                    if (type) { return handleImage(await it.getType(type)); }
+                }
+            }
+            const t = await navigator.clipboard.readText();
+            if (t) { $('input').value = t; update(true); }
+        } catch (e) {
+            try { const t = await navigator.clipboard.readText(); if (t) { $('input').value = t; update(true); return; } } catch {}
+            $('input').focus();
+            setStatus('Clipboard blocked — long-press the box and choose Paste.', true);
+        }
+    };
+    document.addEventListener('paste', e => {
+        const f = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/'));
+        if (f) { e.preventDefault(); handleImage(f); }
+    });
+
+    $('copyBtn').onclick = async () => {
+        const txt = plainPinyin(); if (!txt) return;
+        try { await navigator.clipboard.writeText(txt); flash($('copyBtn'), 'Copied ✓'); }
+        catch { flash($('copyBtn'), 'Copy failed'); }
+    };
+    function flash(btn, msg) { const o = btn.textContent; btn.textContent = msg; setTimeout(() => btn.textContent = o, 1300); }
+
+    // ---------- Speech (free, built into the phone) ----------
+    let voices = [];
+    function loadVoices() {
+        voices = (speechSynthesis.getVoices() || []).filter(v => /^(zh|cmn)/i.test(v.lang));
+        const sel = $('voiceSel'), saved = store.get('voice', '');
+        sel.innerHTML = '';
+        if (!voices.length) { sel.innerHTML = '<option value="">Default (zh-TW)</option>'; return; }
+        voices.sort((a, b) => (b.lang.includes('TW') - a.lang.includes('TW')) || a.lang.localeCompare(b.lang));
+        voices.forEach(v => { const o = document.createElement('option'); o.value = v.name; o.textContent = v.name + ' (' + v.lang + ')'; sel.appendChild(o); });
+        if (saved && voices.some(v => v.name === saved)) sel.value = saved;
+    }
+    if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+    else { $('speakBtn').classList.add('hidden'); $('cSpeak').classList.add('hidden'); }
+    $('voiceSel').onchange = e => store.set('voice', e.target.value);
+    function speak(text) {
+        if (!('speechSynthesis' in window) || !text.trim()) return;
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        const v = voices.find(v => v.name === $('voiceSel').value) || voices[0];
+        if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'zh-TW';
+        u.rate = 0.85;
+        speechSynthesis.speak(u);
+    }
+    $('speakBtn').onclick = () => speak($('input').value);
+
+    // ---------- Status ----------
+    function setStatus(msg, err, pct) {
+        $('status').classList.toggle('show', !!msg);
+        $('status').classList.toggle('err', !!err);
+        $('statusText').textContent = msg || '';
+        $('barFill').parentElement.style.display = pct == null ? 'none' : '';
+        if (pct != null) $('barFill').style.width = Math.round(pct * 100) + '%';
+    }
+
+    // ---------- Photo ----------
+    $('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) handleImage(f); e.target.value = ''; });
+
+    async function loadCanvas(blob, maxSide) {
+        const url = URL.createObjectURL(blob);
+        try {
+            const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+            const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+            const c = document.createElement('canvas');
+            c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+            return c;
+        } finally { URL.revokeObjectURL(url); }
+    }
+
+    let busy = false;
+    async function handleImage(blob) {
+        if (busy) return;
+        busy = true;
+        $('previewImg').src = URL.createObjectURL(blob);
+        $('preview').classList.add('show');
+        try {
+            const text = state.engine === 'llm' ? await ocrLLM(blob) : await ocrLocal(blob);
+            const clean = tidy(text);
+            if (!clean) { setStatus('No text found. Try a closer, straighter photo' + (state.engine === 'local' ? ', or switch text direction.' : '.'), true); return; }
+            $('input').value = clean;
+            setStatus('');
+            update(true);
+            $('out').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (e) {
+            console.error(e);
+            setStatus('Could not read photo: ' + (e.message || e), true);
+        } finally { busy = false; }
+    }
+
+    function tidy(t) {
+        const cjk = '\\u2E80-\\u9FFF\\uF900-\\uFAFF\\uFF00-\\uFFEF\\u3000-\\u303F';
+        return (t || '')
+            .replace(new RegExp('([' + cjk + '])[ \\t]+(?=[' + cjk + '])', 'g'), '$1')
+            .replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    let tess = null, tessLang = null, tessLoading = null;
+    function loadScript(src) {
+        return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('failed to load ' + src)); document.head.appendChild(s); });
+    }
+    async function ocrLocal(blob) {
+        const lang = state.dir === 'v' ? 'chi_tra_vert' : 'chi_tra';
+        setStatus('Loading on-device reader…', false, 0);
+        if (!window.Tesseract) await (tessLoading ||= loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'));
+        if (!tess || tessLang !== lang) {
+            if (tess) { await tess.terminate(); tess = null; }
+            tess = await Tesseract.createWorker(lang, 1, {
+                logger: m => {
+                    if (m.status === 'recognizing text') setStatus('Reading characters…', false, m.progress);
+                    else if (/loading|initializ/i.test(m.status)) setStatus('Preparing Chinese model (first time downloads ~10 MB)…', false, m.progress || 0);
+                }
+            });
+            tessLang = lang;
+            await tess.setParameters({ tessedit_pageseg_mode: state.dir === 'v' ? '5' : '3', preserve_interword_spaces: '0' });
+        }
+        const canvas = await loadCanvas(blob, 2200);
+        setStatus('Reading characters…', false, 0);
+        const { data } = await tess.recognize(canvas);
+        return data.text;
+    }
+
+    // ---------- OpenRouter ----------
+    const keyEl = $('orKey'), vEl = $('visionModel'), tEl = $('textModel');
+    keyEl.value = store.get('key', '');
+    vEl.value = store.get('vmodel', DEFAULT_VISION);
+    tEl.value = store.get('tmodel', DEFAULT_TEXT);
+    keyEl.oninput = () => store.set('key', keyEl.value.trim());
+    vEl.oninput = () => store.set('vmodel', vEl.value.trim());
+    tEl.oninput = () => store.set('tmodel', tEl.value.trim());
+    $('resetModels').onclick = () => { vEl.value = DEFAULT_VISION; tEl.value = DEFAULT_TEXT; store.set('vmodel', DEFAULT_VISION); store.set('tmodel', DEFAULT_TEXT); };
+    $('settingsBtn').onclick = () => { showSheet('setSheet'); loadModelList(); };
+    $('setClose').onclick = () => showSheet(null);
+
+    let modelsLoaded = false;
+    async function loadModelList() {
+        if (modelsLoaded) return; modelsLoaded = true;
+        try {
+            const r = await fetch('https://openrouter.ai/api/v1/models');
+            const { data } = await r.json();
+            const price = m => (+m.pricing?.prompt || 0) + (+m.pricing?.completion || 0);
+            const usable = data.filter(m => (m.architecture?.output_modalities || ['text']).includes('text') && OPEN_RE.test(m.id))
+                .sort((a, b) => price(a) - price(b));
+            const fill = (el, list) => {
+                el.innerHTML = '';
+                list.slice(0, 80).forEach(m => {
+                    const o = document.createElement('option'); o.value = m.id;
+                    const p = price(m) * 1e6 / 2;
+                    o.label = (m.name || m.id) + (p ? ' · ~$' + p.toFixed(2) + '/M tok' : ' · free');
+                    el.appendChild(o);
+                });
+            };
+            fill($('visionList'), usable.filter(m => (m.architecture?.input_modalities || []).includes('image')));
+            fill($('textList'), usable);
+        } catch (e) { modelsLoaded = false; }
+    }
+
+    async function openrouter(model, messages) {
+        const key = keyEl.value.trim();
+        if (!key) { showSheet('setSheet'); throw new Error('add an OpenRouter API key in Settings'); }
+        const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json', 'X-Title': 'Pinyin Reader' },
+            body: JSON.stringify({ model, messages, temperature: 0 })
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || j.error) throw new Error((j.error && j.error.message) || ('HTTP ' + r.status) + (r.status === 404 || r.status === 400 ? ' — check the model name in Settings' : ''));
+        return (j.choices?.[0]?.message?.content || '').trim();
+    }
+
+    async function ocrLLM(blob) {
+        setStatus('Sending photo to ' + vEl.value + '…');
+        const c = await loadCanvas(blob, 1600);
+        const dataUrl = c.toDataURL('image/jpeg', 0.85);
+        const txt = await openrouter(vEl.value.trim() || DEFAULT_VISION, [{
+            role: 'user', content: [
+                { type: 'text', text: 'Transcribe all Chinese text in this image exactly as written, using Traditional Chinese characters. Keep the original line breaks. If the text is vertical, read columns top-to-bottom, right-to-left, one column per line. Output only the transcribed text — no pinyin, translation, quotes, or commentary.' },
+                { type: 'image_url', image_url: { url: dataUrl } }
+            ]
+        }]);
+        return txt.replace(/^```\w*\n?|```$/g, '');
+    }
+
+    $('translateBtn').onclick = async () => {
+        const text = $('input').value.trim(); if (!text) return;
+        const btn = $('translateBtn'); btn.disabled = true; const o = btn.textContent; btn.textContent = 'Translating…';
+        try {
+            const model = tEl.value.trim() || DEFAULT_TEXT;
+            const out = await openrouter(model, [
+                { role: 'system', content: 'You translate Traditional Chinese into natural, faithful English. Output only the translation.' },
+                { role: 'user', content: text }
+            ]);
+            $('trText').textContent = out;
+            $('trModel').textContent = '· ' + model;
+            $('translation').classList.add('show');
+            $('translation').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } catch (e) { setStatus('Translate failed: ' + e.message, true); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+        finally { btn.disabled = false; btn.textContent = o; }
+    };
+
+    // ---------- Init ----------
+    const fromHash = new URLSearchParams(location.hash.slice(1)).get('t');
+    $('input').value = fromHash || store.get('text', '');
+    update(true);
+})();
+</script>
+</body>
+</html>
