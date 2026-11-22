@@ -540,7 +540,7 @@
     }
     seg('toneStyle', 'tone', render);
     seg('ocrEngine', 'engine', () => { if (state.engine === 'llm' && !$('orKey').value) $('orKey').focus(); syncReread(); });
-    seg('region', 'region', () => update(true));
+    seg('region', 'region', () => { update(true); if ('speechSynthesis' in window) loadVoices(); });
     function syncReread() { $('rereadBtn').style.display = state.engine === 'local' ? '' : 'none'; }
     syncReread();
 
@@ -553,22 +553,41 @@
     syncChips();
 
     $('input').addEventListener('input', () => update());
+    // ---------- Paste ----------
+    // Exactly one clipboard call per tap: iOS shows a confirmation for each call and the
+    // tap's permission is spent on the first, so a second call would only be rejected.
+    let statusTimer = 0;
+    function flashStatus(msg) {
+        setStatus(msg, false);
+        clearTimeout(statusTimer);
+        statusTimer = setTimeout(() => { if ($('statusText').textContent === msg) setStatus(''); }, 4000);
+    }
+    if (!navigator.clipboard || !(navigator.clipboard.read || navigator.clipboard.readText)) $('pasteBtn').classList.add('hidden');
     $('pasteBtn').onclick = async () => {
+        const prev = $('input').value;
+        let text = '', img = null;
         try {
             if (navigator.clipboard.read) {
                 const items = await navigator.clipboard.read();
                 for (const it of items) {
                     const type = it.types.find(t => t.startsWith('image/'));
-                    if (type) { return openCrop(await it.getType(type)); }
+                    if (type) { img = await it.getType(type); break; }
                 }
-            }
-            const t = await navigator.clipboard.readText();
-            if (t) { $('input').value = t; update(true); }
+                const tx = items.find(it => it.types.includes('text/plain'));
+                if (!img && tx) text = await (await tx.getType('text/plain')).text();
+            } else text = await navigator.clipboard.readText();
         } catch (e) {
-            try { const t = await navigator.clipboard.readText(); if (t) { $('input').value = t; update(true); return; } } catch {}
+            // Dismissed or blocked: do not retry the clipboard. Point at the native Paste instead.
             $('input').focus();
-            setStatus('Clipboard blocked — long-press the box and choose Paste.', true);
+            flashStatus('Tap the box and choose Paste');
+            return;
         }
+        if (img) return openCrop(img);
+        if (!text) return flashStatus('Nothing to paste. Copy some Chinese text first.');
+        setStatus('');
+        if (prev.trim() && prev !== text) { $('preview').classList.remove('show'); $('translation').classList.remove('show'); }
+        $('input').value = text;
+        update(true);
     };
     document.addEventListener('paste', e => {
         const f = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/'));
@@ -576,29 +595,71 @@
     });
 
     // ---------- Speech (free, built into the phone) ----------
-    let voices = [];
+    let voices = [], session = 0, utts = [];
+    const CN_RE = /^(zh|cmn)([-_]|$)/i;
+    const speakLang = () => (state.region === 'cn' ? 'zh-CN' : 'zh-TW');
+    // Best first: the chosen region's voice, then the other Mandarin one; Cantonese last.
+    const voiceRank = v => {
+        const lang = v.lang.replace('_', '-').toUpperCase(), want = state.region === 'cn' ? '-CN' : '-TW';
+        return /YUE|HK/.test(lang) ? 3 : lang.includes(want) ? 0 : /-(TW|CN)/.test(lang) ? 1 : 2;
+    };
     function loadVoices() {
-        voices = (speechSynthesis.getVoices() || []).filter(v => /^(zh|cmn)/i.test(v.lang));
+        voices = (speechSynthesis.getVoices() || []).filter(v => CN_RE.test(v.lang));
         const sel = $('voiceSel'), saved = store.get('voice', '');
         sel.innerHTML = '';
-        if (!voices.length) { sel.innerHTML = '<option value="">Default (zh-TW)</option>'; return; }
-        voices.sort((a, b) => (b.lang.includes('TW') - a.lang.includes('TW')) || a.lang.localeCompare(b.lang));
+        if (!voices.length) { sel.innerHTML = '<option value="">Default (' + speakLang() + ')</option>'; return; }
+        voices.sort((a, b) => voiceRank(a) - voiceRank(b) || a.name.localeCompare(b.name));
         voices.forEach(v => { const o = document.createElement('option'); o.value = v.name; o.textContent = v.name + ' (' + v.lang + ')'; sel.appendChild(o); });
-        if (saved && voices.some(v => v.name === saved)) sel.value = saved;
+        // No explicit choice in Settings: the top-ranked voice follows the pronunciation region.
+        sel.value = voices.some(v => v.name === saved) ? saved : voices[0].name;
     }
     if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
     else { $('speakBtn').classList.add('hidden'); $('cSpeak').classList.add('hidden'); }
     $('voiceSel').onchange = e => store.set('voice', e.target.value);
-    function speak(text) {
-        if (!('speechSynthesis' in window) || !text.trim()) return;
-        speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        const v = voices.find(v => v.name === $('voiceSel').value) || voices[0];
-        if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'zh-TW';
-        u.rate = 0.85;
-        speechSynthesis.speak(u);
+
+    const isPlaying = () => 'speechSynthesis' in window && (speechSynthesis.speaking || speechSynthesis.pending);
+    const setListen = on => { $('speakBtn').textContent = on ? '■ Stop' : '🔊 Listen'; };
+    // Split at sentence punctuation / newlines into chunks of at most 60 characters.
+    function chunks(text) {
+        const out = [];
+        let cur = '';
+        for (let p of text.match(/[^。！？；，,.!?;\n]+[。！？；，,.!?;\n]*|[。！？；，,.!?;\n]+/g) || []) {
+            while (p.length > 60) { if (cur) { out.push(cur); cur = ''; } out.push(p.slice(0, 60)); p = p.slice(60); }
+            if ((cur + p).length > 60) { out.push(cur); cur = ''; }
+            cur += p;
+        }
+        if (cur) out.push(cur);
+        return out.map(s => s.trim()).filter(Boolean);
     }
-    $('speakBtn').onclick = () => speak($('input').value);
+    // Chrome cuts off long utterances and garbage-collects unreferenced ones, so the chunks
+    // stay referenced in `utts` until the last one ends. Runs synchronously in the tap.
+    function speak(text) {
+        if (!('speechSynthesis' in window)) return;
+        const parts = chunks(text);
+        if (!parts.length) return;
+        if (!voices.length) loadVoices();
+        const id = ++session, v = voices.find(x => x.name === $('voiceSel').value);
+        if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+        speechSynthesis.resume();   // Chrome can be left paused
+        utts = parts.map((s, i) => {
+            const u = new SpeechSynthesisUtterance(s);
+            // iOS can report no voices until first use: then leave u.voice unset and only set the lang.
+            if (v) { u.voice = v; u.lang = v.lang; } else u.lang = speakLang();
+            u.rate = 0.85;
+            u.onend = () => { if (id === session && i === parts.length - 1) finish(); };
+            u.onerror = e => {
+                if (id !== session || /canceled|interrupted/.test(e.error)) return;
+                session++; speechSynthesis.cancel(); finish();
+                setStatus("Couldn't play audio — check your phone isn't on silent / a Chinese voice is installed", true);
+            };
+            return u;
+        });
+        setListen(true);
+        utts.forEach(u => speechSynthesis.speak(u));
+    }
+    function finish() { utts = []; setListen(false); }
+    function stop() { session++; if (isPlaying()) speechSynthesis.cancel(); finish(); }
+    $('speakBtn').onclick = () => (isPlaying() ? stop() : speak($('input').value));
 
     // ---------- Status ----------
     function setStatus(msg, err, pct) {
