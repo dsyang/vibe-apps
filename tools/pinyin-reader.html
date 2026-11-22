@@ -111,6 +111,31 @@
         #trText { font-size: 17px; white-space: pre-wrap; }
 
         /* Popover */
+        /* Crop screen */
+        .crop {
+            position: fixed; inset: 0; z-index: 30; background: #0d0b09; color: #fff; display: none;
+            flex-direction: column; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+        }
+        .crop.show { display: flex; }
+        .crop-top { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; font-size: 15px; }
+        .crop-top button { background: none; border: 0; color: #fff; font: inherit; font-size: 16px; padding: 8px 4px; cursor: pointer; min-height: 44px; }
+        .crop-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 8px 16px; }
+        .crop-box { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden; line-height: 0; }
+        .crop-box img { max-width: 100%; display: block; pointer-events: none; -webkit-user-drag: none; }
+        .crop-rect {
+            position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(0,0,0,.6);
+            background-image: linear-gradient(rgba(255,255,255,.25) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.25) 1px, transparent 1px);
+            background-size: 33.33% 33.33%; background-position: -1px -1px;
+        }
+        .crop-rect i { position: absolute; width: 28px; height: 28px; border: 4px solid #fff; }
+        .crop-rect i[data-h=nw] { left: -5px; top: -5px; border-right: 0; border-bottom: 0; }
+        .crop-rect i[data-h=ne] { right: -5px; top: -5px; border-left: 0; border-bottom: 0; }
+        .crop-rect i[data-h=sw] { left: -5px; bottom: -5px; border-right: 0; border-top: 0; }
+        .crop-rect i[data-h=se] { right: -5px; bottom: -5px; border-left: 0; border-top: 0; }
+        .crop-hint { text-align: center; font-size: 13px; color: #bbb; padding: 0 16px 8px; }
+        .crop-actions { display: flex; gap: 8px; padding: 8px 16px 14px; }
+        .crop-actions .btn { flex: 1; justify-content: center; background: #2a2520; color: #fff; border-color: #3a332a; }
+        .crop-actions .btn.primary { background: var(--accent); border-color: transparent; }
         .pop-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; z-index: 20; }
         .pop-bg.show { display: block; }
         .sheet {
@@ -164,7 +189,8 @@
         </div>
         <div class="preview" id="preview"><img id="previewImg" alt="Photo being read">
             <div class="row" style="margin-top:8px">
-                <button class="btn grow" id="rereadBtn">✨ Re-read with AI</button>
+                <button class="btn grow" id="recropBtn">✂︎ Crop again</button>
+                <button class="btn grow" id="rereadBtn">✨ Read with AI</button>
             </div>
         </div>
         <div class="status" id="status"><span id="statusText"></span><div class="bar"><i id="barFill"></i></div></div>
@@ -201,6 +227,25 @@
 </div>
 
 <!-- Character sheet -->
+<div class="crop" id="crop" role="dialog" aria-label="Crop photo">
+    <div class="crop-top">
+        <button id="cropCancel">Cancel</button>
+        <span>Select the words</span>
+        <button id="cropReset">Reset</button>
+    </div>
+    <div class="crop-stage" id="cropStage">
+        <div class="crop-box" id="cropBox">
+            <img id="cropImg" alt="Photo to crop">
+            <div class="crop-rect" id="cropRect"><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div>
+        </div>
+    </div>
+    <div class="crop-hint">Drag the corners, move the box, or drag across the words you want.</div>
+    <div class="crop-actions">
+        <button class="btn" id="cropAll">Whole photo</button>
+        <button class="btn primary" id="cropGo">Read selection</button>
+    </div>
+</div>
+
 <div class="pop-bg" id="popBg"></div>
 <div class="sheet" id="charSheet" role="dialog" aria-label="Character details">
     <div class="grab"></div>
@@ -457,7 +502,7 @@
     seg('toneStyle', 'tone', render);
     seg('ocrEngine', 'engine', () => { if (state.engine === 'llm' && !$('orKey').value) { showSheet('setSheet'); } syncReread(); });
     seg('region', 'region', () => update(true));
-    function syncReread() { $('rereadBtn').parentElement.style.display = state.engine === 'local' ? '' : 'none'; }
+    function syncReread() { $('rereadBtn').style.display = state.engine === 'local' ? '' : 'none'; }
     syncReread();
 
     function syncChips() {
@@ -481,7 +526,7 @@
                 const items = await navigator.clipboard.read();
                 for (const it of items) {
                     const type = it.types.find(t => t.startsWith('image/'));
-                    if (type) { return handleImage(await it.getType(type)); }
+                    if (type) { return openCrop(await it.getType(type)); }
                 }
             }
             const t = await navigator.clipboard.readText();
@@ -494,7 +539,7 @@
     };
     document.addEventListener('paste', e => {
         const f = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/'));
-        if (f) { e.preventDefault(); handleImage(f); }
+        if (f) { e.preventDefault(); openCrop(f); }
     });
 
     $('copyBtn').onclick = async () => {
@@ -539,7 +584,91 @@
     }
 
     // ---------- Photo ----------
-    $('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) handleImage(f); e.target.value = ''; });
+    $('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) openCrop(f); e.target.value = ''; });
+
+    // ---------- Crop ----------
+    // rect is kept as fractions of the image (0..1) so it survives layout changes.
+    let cropSrc = null, cropUrl = null, rect = null;
+    const MIN = 0.04;
+    function openCrop(blob) {
+        if (busy) return;
+        cropSrc = blob;
+        if (cropUrl) URL.revokeObjectURL(cropUrl);
+        cropUrl = URL.createObjectURL(blob);
+        const img = $('cropImg');
+        img.onload = () => { sizeCropImg(); if (!rect) rect = { x: .06, y: .06, w: .88, h: .88 }; drawRect(); };
+        rect = null;
+        img.src = cropUrl;
+        $('crop').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeCrop() { $('crop').classList.remove('show'); document.body.style.overflow = ''; }
+    function sizeCropImg() {
+        const img = $('cropImg'), st = $('cropStage');
+        if (!img.naturalWidth) return;
+        const maxW = st.clientWidth - 32, maxH = st.clientHeight - 16;
+        const k = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
+        img.style.width = Math.floor(img.naturalWidth * k) + 'px';
+        img.style.height = Math.floor(img.naturalHeight * k) + 'px';
+    }
+    window.addEventListener('resize', () => { if ($('crop').classList.contains('show')) { sizeCropImg(); drawRect(); } });
+    function drawRect() {
+        const r = $('cropRect').style;
+        r.left = rect.x * 100 + '%'; r.top = rect.y * 100 + '%'; r.width = rect.w * 100 + '%'; r.height = rect.h * 100 + '%';
+    }
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    (() => {
+        const box = $('cropBox');
+        let drag = null;
+        const pt = e => { const b = box.getBoundingClientRect(); return { x: clamp((e.clientX - b.left) / b.width, 0, 1), y: clamp((e.clientY - b.top) / b.height, 0, 1) }; };
+        box.addEventListener('pointerdown', e => {
+            if (!rect) return;
+            e.preventDefault();
+            box.setPointerCapture(e.pointerId);
+            const p = pt(e), h = e.target.dataset && e.target.dataset.h;
+            const inside = p.x > rect.x && p.x < rect.x + rect.w && p.y > rect.y && p.y < rect.y + rect.h;
+            if (h) {
+                // anchor = the opposite corner
+                drag = { mode: 'draw', ax: h.includes('w') ? rect.x + rect.w : rect.x, ay: h.includes('n') ? rect.y + rect.h : rect.y };
+            } else if (inside) drag = { mode: 'move', p, start: { ...rect } };
+            else drag = { mode: 'draw', ax: p.x, ay: p.y, fresh: true };
+        });
+        box.addEventListener('pointermove', e => {
+            if (!drag) return;
+            const p = pt(e);
+            if (drag.mode === 'move') {
+                rect.x = clamp(drag.start.x + p.x - drag.p.x, 0, 1 - rect.w);
+                rect.y = clamp(drag.start.y + p.y - drag.p.y, 0, 1 - rect.h);
+            } else {
+                if (drag.fresh && Math.abs(p.x - drag.ax) < .01 && Math.abs(p.y - drag.ay) < .01) return;
+                rect = { x: Math.min(p.x, drag.ax), y: Math.min(p.y, drag.ay), w: Math.max(MIN, Math.abs(p.x - drag.ax)), h: Math.max(MIN, Math.abs(p.y - drag.ay)) };
+                rect.x = Math.min(rect.x, 1 - rect.w); rect.y = Math.min(rect.y, 1 - rect.h);
+            }
+            drawRect();
+        });
+        const end = () => { drag = null; };
+        box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
+    })();
+    async function cropBlob(blob, r) {
+        const img = $('cropImg');
+        const W = img.naturalWidth, H = img.naturalHeight;
+        const sx = Math.round(r.x * W), sy = Math.round(r.y * H), sw = Math.round(r.w * W), sh = Math.round(r.h * H);
+        const k = Math.min(1, 2400 / Math.max(sw, sh));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(sw * k)); c.height = Math.max(1, Math.round(sh * k));
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+        return new Promise(res => c.toBlob(res, 'image/jpeg', 0.92));
+    }
+    $('cropCancel').onclick = closeCrop;
+    $('cropReset').onclick = () => { rect = { x: 0, y: 0, w: 1, h: 1 }; drawRect(); };
+    $('cropAll').onclick = () => { closeCrop(); handleImage(cropSrc); };
+    $('cropGo').onclick = async () => {
+        const full = rect.x < .005 && rect.y < .005 && rect.w > .99 && rect.h > .99;
+        const b = full ? cropSrc : await cropBlob(cropSrc, rect);
+        closeCrop(); handleImage(b);
+    };
+    $('recropBtn').onclick = () => { if (cropSrc) { const keep = rect; openCrop(cropSrc); rect = keep; } };
 
     async function loadCanvas(blob, maxSide) {
         const url = URL.createObjectURL(blob);
@@ -569,7 +698,7 @@
                 catch (e) { console.warn('PaddleOCR failed, falling back to Tesseract', e); text = await ocrTesseract(blob); }
             }
             const clean = tidy(text);
-            if (!clean) { setStatus('No text found. Try a closer, sharper photo' + (engine === 'local' ? ', or Re-read with AI.' : '.'), true); return; }
+            if (!clean) { setStatus('No text found. Try a closer, sharper photo' + (engine === 'local' ? ', or tap Read with AI.' : '.'), true); return; }
             $('input').value = clean;
             setStatus('');
             update(true);
