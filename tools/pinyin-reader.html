@@ -70,9 +70,15 @@
         .status.err { color: var(--accent); }
         .bar { height: 4px; background: var(--line); border-radius: 4px; overflow: hidden; margin-top: 6px; }
         .bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
-        .preview { display: none; margin-top: 10px; position: relative; }
+        .preview { display: none; margin-top: 10px; }
         .preview.show { display: block; }
-        .preview img { max-width: 100%; max-height: 220px; border-radius: 10px; border: 1px solid var(--line); display: block; }
+        .photo-row { display: flex; align-items: center; gap: 10px; }
+        .thumb { flex: none; width: 64px; height: 64px; padding: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--soft); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .photo-btns { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+        .photo-btns .btn { justify-content: center; min-height: 40px; padding: 8px 12px; }
+        .forget { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .busy #pickBtn, .busy #pasteBtn { opacity: .5; pointer-events: none; }
         .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
         .seg button { border: 0; background: transparent; color: var(--muted); padding: 7px 10px; font: inherit; font-size: 13px; cursor: pointer; min-height: 36px; }
         .seg button.on { background: var(--ink); color: var(--card); }
@@ -183,14 +189,18 @@
 
     <div class="card">
         <div class="row">
-            <label class="btn primary grow" for="file">📷 Photo</label>
+            <label class="btn primary grow" for="file" id="pickBtn">📷 Photo</label>
             <input id="file" type="file" accept="image/*" class="hidden">
             <button class="btn grow" id="pasteBtn">📋 Paste</button>
         </div>
-        <div class="preview" id="preview"><img id="previewImg" alt="Photo being read">
-            <div class="row" style="margin-top:8px">
-                <button class="btn grow" id="recropBtn">✂︎ Crop again</button>
-                <button class="btn grow" id="rereadBtn">✨ Read with AI</button>
+        <div class="preview" id="preview">
+            <div class="photo-row">
+                <button class="thumb" id="thumb" aria-label="Read again"><img id="previewImg" alt="Last photo"></button>
+                <div class="photo-btns">
+                    <button class="btn primary" id="readAgainBtn">Read again</button>
+                    <button class="btn" id="rereadBtn">✨ Read with AI</button>
+                </div>
+                <button class="forget" id="forgetBtn" aria-label="Forget photo">×</button>
             </div>
         </div>
         <div class="status" id="status"><span id="statusText"></span><div class="bar"><i id="barFill"></i></div></div>
@@ -541,8 +551,8 @@
     seg('toneStyle', 'tone', render);
     seg('ocrEngine', 'engine', () => { if (state.engine === 'llm' && !$('orKey').value) $('orKey').focus(); syncReread(); });
     seg('region', 'region', () => { update(true); if ('speechSynthesis' in window) loadVoices(); });
-    function syncReread() { $('rereadBtn').style.display = state.engine === 'local' ? '' : 'none'; }
-    syncReread();
+    // "Read with AI" only makes sense on the on-device engine and once a key is set.
+    function syncReread() { $('rereadBtn').classList.toggle('hidden', !(state.engine === 'local' && $('orKey').value.trim())); }
 
     function syncChips() {
         $('toneColorBtn').classList.toggle('on', state.colors);
@@ -582,16 +592,16 @@
             flashStatus('Tap the box and choose Paste');
             return;
         }
-        if (img) return openCrop(img);
+        if (img) return pickPhoto(img);
         if (!text) return flashStatus('Nothing to paste. Copy some Chinese text first.');
         setStatus('');
-        if (prev.trim() && prev !== text) { $('preview').classList.remove('show'); $('translation').classList.remove('show'); }
+        if (prev.trim() && prev !== text) $('translation').classList.remove('show');
         $('input').value = text;
         update(true);
     };
     document.addEventListener('paste', e => {
         const f = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/'));
-        if (f) { e.preventDefault(); openCrop(f); }
+        if (f) { e.preventDefault(); pickPhoto(f); }
     });
 
     // ---------- Speech (free, built into the phone) ----------
@@ -671,23 +681,105 @@
     }
 
     // ---------- Photo ----------
-    $('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) openCrop(f); e.target.value = ''; });
+    // The last original photo and the crop used for it are kept in IndexedDB so the preview
+    // survives reloads. Every access is best-effort: without IndexedDB the page still works.
+    let photo = null;        // { blob, rect }: rect is fractions of the photo, null until first cropped
+    let photoUrl = null;     // object URL of photo.blob, shown in the thumbnail and the crop screen
+    let busy = false;
+    const FULL = { x: 0, y: 0, w: 1, h: 1 };
+    const isFull = r => !r || (r.x < .005 && r.y < .005 && r.w > .99 && r.h > .99);
+    function photoDB(mode, op) {
+        return new Promise(res => {
+            try {
+                const q = indexedDB.open('pinyin-reader', 1);
+                q.onupgradeneeded = () => q.result.createObjectStore('photo');
+                q.onerror = () => res(undefined);
+                q.onsuccess = () => {
+                    try {
+                        const db = q.result, tx = db.transaction('photo', mode), req = op(tx.objectStore('photo'));
+                        tx.oncomplete = () => { db.close(); res(req.result); };
+                        tx.onerror = tx.onabort = () => { db.close(); res(undefined); };
+                    } catch { res(undefined); }
+                };
+            } catch { res(undefined); }
+        });
+    }
+    const savePhoto = () => { if (photo) photoDB('readwrite', s => s.put({ blob: photo.blob, rect: photo.rect }, 'last')); };
+    const forgetSaved = () => photoDB('readwrite', s => s.delete('last'));
+    function setPhoto(blob, rect) {
+        if (photoUrl) URL.revokeObjectURL(photoUrl);
+        photoUrl = URL.createObjectURL(blob);
+        photo = { blob, rect };
+        $('previewImg').src = photoUrl;
+        $('preview').classList.add('show');
+        syncReread();
+    }
+    // A new photo (picker, paste, share) starts with the crop screen.
+    function pickPhoto(blob) {
+        if (busy) return flashStatus('Still reading the last photo…');
+        setPhoto(blob, null);
+        savePhoto();
+        openCrop(null);
+    }
+    function readAgain() { if (photo && !busy) openCrop(photo.rect); }
+    function forgetPhoto() {
+        if (busy) return;
+        if (photoUrl) URL.revokeObjectURL(photoUrl);
+        photo = null; photoUrl = null;
+        $('previewImg').removeAttribute('src');
+        $('preview').classList.remove('show');
+        forgetSaved();
+    }
+    // Buttons and the Photo/Paste pickers are disabled while a read runs, so taps are never lost silently.
+    function setBusy(on) {
+        busy = on;
+        document.body.classList.toggle('busy', on);
+        ['readAgainBtn', 'rereadBtn', 'forgetBtn', 'thumb', 'pasteBtn'].forEach(id => { $(id).disabled = on; });
+    }
+    // Crop (if the last crop is not the whole photo) and read. The text replaces the box on success.
+    async function readPhoto(engine) {
+        if (!photo || busy) return;
+        setBusy(true);
+        try {
+            const blob = isFull(photo.rect) ? photo.blob : await cropBlob(photo.blob, photo.rect);
+            const text = window.__pyrOCR ? await window.__pyrOCR(blob, engine)
+                : engine === 'llm' ? await ocrLLM(blob) : await ocrLocal(blob);
+            const clean = tidy(text);
+            if (!clean) { setStatus('No text found. Try a tighter crop.', true); return; }
+            $('input').value = clean;
+            setStatus('');
+            update(true);
+            $('out').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (e) {
+            console.error(e);
+            setStatus('Could not read photo: ' + (e.message || e), true);
+        } finally { setBusy(false); }
+    }
+    async function ocrLocal(blob) {
+        try { return await ocrPaddle(blob); }
+        catch (e) { console.warn('PaddleOCR failed, falling back to Tesseract', e); return ocrTesseract(blob); }
+    }
+    $('file').addEventListener('change', e => { const f = e.target.files[0]; if (f) pickPhoto(f); e.target.value = ''; });
+    $('thumb').onclick = readAgain;
+    $('readAgainBtn').onclick = readAgain;
+    $('rereadBtn').onclick = () => { if (photo && !busy) readPhoto('llm'); };
+    $('forgetBtn').onclick = forgetPhoto;
 
     // ---------- Crop ----------
     // rect is kept as fractions of the image (0..1) so it survives layout changes.
-    let cropSrc = null, cropUrl = null, rect = null;
+    let rect = null;
     const MIN = 0.04;
-    function openCrop(blob) {
-        if (busy) return;
-        cropSrc = blob;
-        if (cropUrl) URL.revokeObjectURL(cropUrl);
-        cropUrl = URL.createObjectURL(blob);
+    // initRect: the rect to start from (Read again passes the last one), or null for the default inset.
+    function openCrop(initRect) {
+        if (busy) return flashStatus('Still reading the last photo…');
+        rect = initRect ? { ...initRect } : null;
         const img = $('cropImg');
-        img.onload = () => { sizeCropImg(); if (!rect) rect = { x: .06, y: .06, w: .88, h: .88 }; drawRect(); };
-        rect = null;
-        img.src = cropUrl;
+        const layout = () => { sizeCropImg(); if (!rect) rect = { x: .06, y: .06, w: .88, h: .88 }; drawRect(); };
+        img.onload = layout;
         $('crop').classList.add('show');
         document.body.style.overflow = 'hidden';
+        img.src = photoUrl;
+        if (img.complete && img.naturalWidth) layout();   // same URL again: no load event
     }
     function closeCrop() { $('crop').classList.remove('show'); document.body.style.overflow = ''; }
     function sizeCropImg() {
@@ -737,7 +829,7 @@
         box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
     })();
     async function cropBlob(blob, r) {
-        const img = $('cropImg');
+        const img = await loadImg(blob);
         const W = img.naturalWidth, H = img.naturalHeight;
         const sx = Math.round(r.x * W), sy = Math.round(r.y * H), sw = Math.round(r.w * W), sh = Math.round(r.h * H);
         const k = Math.min(1, 2400 / Math.max(sw, sh));
@@ -748,54 +840,34 @@
         return new Promise(res => c.toBlob(res, 'image/jpeg', 0.92));
     }
     $('cropCancel').onclick = closeCrop;
-    $('cropReset').onclick = () => { rect = { x: 0, y: 0, w: 1, h: 1 }; drawRect(); };
-    $('cropAll').onclick = () => { closeCrop(); handleImage(cropSrc); };
-    $('cropGo').onclick = async () => {
-        const full = rect.x < .005 && rect.y < .005 && rect.w > .99 && rect.h > .99;
-        const b = full ? cropSrc : await cropBlob(cropSrc, rect);
-        closeCrop(); handleImage(b);
-    };
-    $('recropBtn').onclick = () => { if (cropSrc) { const keep = rect; openCrop(cropSrc); rect = keep; } };
+    $('cropReset').onclick = () => { rect = { ...FULL }; drawRect(); };
+    $('cropAll').onclick = () => finishCrop({ ...FULL });
+    $('cropGo').onclick = () => { if (rect) finishCrop({ ...rect }); };
+    function finishCrop(r) {
+        closeCrop();
+        photo.rect = r;
+        savePhoto();
+        readPhoto(state.engine);
+    }
 
-    async function loadCanvas(blob, maxSide) {
+    function loadImg(blob) {
         const url = URL.createObjectURL(blob);
-        try {
-            const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
-            const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
-            const c = document.createElement('canvas');
-            c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
-            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-            return c;
-        } finally { URL.revokeObjectURL(url); }
+        return new Promise((res, rej) => {
+            const i = new Image();
+            i.onload = () => { URL.revokeObjectURL(url); res(i); };
+            i.onerror = () => { URL.revokeObjectURL(url); rej(new Error('could not open photo')); };
+            i.src = url;
+        });
+    }
+    async function loadCanvas(blob, maxSide) {
+        const img = await loadImg(blob);
+        const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        return c;
     }
 
-    let busy = false, lastBlob = null;
-    async function handleImage(blob, engine) {
-        if (busy) return;
-        busy = true;
-        engine = engine || state.engine;
-        if (blob !== lastBlob) { lastBlob = blob; $('previewImg').src = URL.createObjectURL(blob); }
-        $('preview').classList.add('show');
-        $('rereadBtn').disabled = true;
-        try {
-            let text;
-            if (engine === 'llm') text = await ocrLLM(blob);
-            else {
-                try { text = await ocrPaddle(blob); }
-                catch (e) { console.warn('PaddleOCR failed, falling back to Tesseract', e); text = await ocrTesseract(blob); }
-            }
-            const clean = tidy(text);
-            if (!clean) { setStatus('No text found. Try a closer, sharper photo' + (engine === 'local' ? ', or tap Read with AI.' : '.'), true); return; }
-            $('input').value = clean;
-            setStatus('');
-            update(true);
-            $('out').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } catch (e) {
-            console.error(e);
-            setStatus('Could not read photo: ' + (e.message || e), true);
-        } finally { busy = false; $('rereadBtn').disabled = false; }
-    }
-    $('rereadBtn').onclick = () => { if (lastBlob) handleImage(lastBlob, 'llm'); };
 
     // ---------- On-device OCR: PP-OCRv5 (PaddleOCR) via ONNX Runtime Web ----------
     // Detection (DB) finds text lines; each line is cropped (vertical columns rotated
@@ -1023,7 +1095,7 @@
     keyEl.value = store.get('key', '');
     vEl.value = store.get('vmodel', DEFAULT_VISION);
     tEl.value = store.get('tmodel', DEFAULT_TEXT);
-    keyEl.oninput = () => store.set('key', keyEl.value.trim());
+    keyEl.oninput = () => { store.set('key', keyEl.value.trim()); syncReread(); };
     vEl.oninput = () => store.set('vmodel', vEl.value.trim());
     tEl.oninput = () => store.set('tmodel', tEl.value.trim());
     $('resetModels').onclick = () => { vEl.value = DEFAULT_VISION; tEl.value = DEFAULT_TEXT; store.set('vmodel', DEFAULT_VISION); store.set('tmodel', DEFAULT_TEXT); };
@@ -1099,6 +1171,11 @@
     const fromHash = new URLSearchParams(location.hash.slice(1)).get('t');
     $('input').value = fromHash || store.get('text', '');
     update(true);
+    syncReread();
+    // Restore the last photo (small preview; tap it to crop and read again).
+    photoDB('readonly', s => s.get('last')).then(rec => {
+        if (!photo && rec && rec.blob instanceof Blob) setPhoto(rec.blob, rec.rect || null);
+    });
 })();
 </script>
 </body>
