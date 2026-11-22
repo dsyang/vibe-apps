@@ -422,7 +422,7 @@ $('algChips').onclick = e => {
     const k = b.dataset.a;
     mine.has(k) ? mine.delete(k) : mine.add(k);
     store.set('allergens', [...mine]);
-    renderAllergenChips(); refreshAll();
+    renderAllergenChips(); refreshAll(); recheckFrozen();
 };
 function setMeal(m, manual) {
     meal = m;
@@ -430,7 +430,7 @@ function setMeal(m, manual) {
     $('mealB').setAttribute('aria-pressed', m === 'breakfast');
     $('mealD').setAttribute('aria-pressed', m === 'dinner');
     lastShown = null; showIdle();
-    refreshAll();
+    refreshAll(); recheckFrozen();
 }
 $('mealB').onclick = () => setMeal('breakfast', true);
 $('mealD').onclick = () => setMeal('dinner', true);
@@ -824,14 +824,20 @@ function reticleInVideo() {
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// One check per second while live (start to start). Slower phones just run back to back.
+const SCAN_INTERVAL_MS = 1000;
+// While paused the frame is frozen, so it's checked once, and again only if the meal or allergens change.
+let frozenChecked = false;
 async function loop() {
     while (scanning) {
-        if (paused || document.hidden || !video.videoWidth) { await sleep(250); continue; }
+        if (document.hidden || !video.videoWidth || (paused && frozenChecked)) { await sleep(150); continue; }
         const t0 = performance.now();
+        if (paused) frozenChecked = true;
         try { await scanOnce(); } catch (e) { console.error(e); }
-        await sleep(Math.max(60, 300 - (performance.now() - t0)));
+        if (!paused) await sleep(Math.max(50, SCAN_INTERVAL_MS - (performance.now() - t0)));
     }
 }
+function recheckFrozen() { frozenChecked = false; }
 
 async function scanOnce() {
     const R = reticleInVideo();
@@ -839,7 +845,6 @@ async function scanOnce() {
     crop.width = Math.round(R.w * scale); crop.height = Math.round(R.h * scale);
     crop.getContext('2d').drawImage(video, R.x, R.y, R.w, R.h, 0, 0, crop.width, crop.height);
     const lines = await readCanvas(crop);
-    if (paused) return;
     const now = performance.now();
     const matches = matchLines(lines, meal);
     drawBoxes(lines, matches, R);
@@ -875,6 +880,7 @@ $('pauseBtn').onclick = () => {
     $('pauseBtn').textContent = paused ? '▶ Resume' : '⏸ Pause';
     $('cam').classList.toggle('scanning', !paused);
     if (paused) video.pause(); else video.play().catch(() => {});
+    frozenChecked = false;   // check the frozen frame right away
     $('result').classList.remove('stale');
 };
 $('torchBtn').onclick = async () => {
