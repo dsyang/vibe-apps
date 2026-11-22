@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="Photo or paste Traditional Chinese, see Mandarin pinyin" />
+    <meta name="description" content="Snap or paste Chinese, hear and read pinyin" />
     <meta name="theme-color" content="#b8372b">
-    <title>Pinyin Reader</title>
+    <title>Pronounciator</title>
+    <script>try { const t = localStorage.getItem('pyr.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -29,6 +30,13 @@
                 --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
                 color-scheme: dark;
             }
+        }
+        :root[data-theme="dark"] {
+            --bg: #16130f; --card: #211d18; --ink: #f1ebe1; --muted: #a39887;
+            --line: #3a332a; --accent: #e0574a; --soft: #2b261f;
+            --t1: #ff6b61; --t2: #ffb340; --t3: #5fd27b; --t4: #6c9cff; --t5: #a39887;
+            --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+            color-scheme: dark;
         }
         * { box-sizing: border-box; }
         html { -webkit-text-size-adjust: 100%; }
@@ -189,7 +197,7 @@
 <body>
 <div class="wrap">
     <header>
-        <h1>拼音 <span>Pinyin Reader</span></h1>
+        <h1>拼音 <span>Pronounciator</span></h1>
     </header>
 
     <div class="card">
@@ -277,6 +285,13 @@
 <div class="sheet" id="setSheet" role="dialog" aria-label="Settings">
     <div class="grab"></div>
     <h2 style="font-size:18px;margin:0 0 4px">Settings</h2>
+    <div class="switch"><span>Appearance</span>
+        <div class="seg" id="theme">
+            <button data-v="auto" class="on">Auto</button>
+            <button data-v="light">Light</button>
+            <button data-v="dark">Dark</button>
+        </div>
+    </div>
     <div class="switch"><span>Pronunciation</span>
         <div class="seg" id="region">
             <button data-v="tw" class="on">台灣 Taiwan</button>
@@ -567,6 +582,11 @@
     }
     seg('toneStyle', 'tone', render);
     seg('ocrEngine', 'engine', () => { if (state.engine === 'llm' && !$('orKey').value) $('orKey').focus(); syncAI(); });
+    state.theme = store.get('theme', 'auto');
+    seg('theme', 'theme', () => {
+        if (state.theme === 'auto') delete document.documentElement.dataset.theme;
+        else document.documentElement.dataset.theme = state.theme;
+    });
     seg('region', 'region', () => { update(true); if ('speechSynthesis' in window) loadVoices(); });
     // AI actions appear only once a key is set: "Read with AI" (on-device engine) and Translate.
     function syncAI() {
@@ -1151,7 +1171,7 @@
         if (!key) throw new Error('add an AI key in Settings first');   // Translate is hidden until a key is set
         const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json', 'X-Title': 'Pinyin Reader' },
+            headers: { 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json', 'X-Title': 'Pronounciator' },
             body: JSON.stringify({ model, messages, temperature: 0 })
         });
         const j = await r.json().catch(() => ({}));
